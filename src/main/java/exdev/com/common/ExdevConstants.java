@@ -1,5 +1,8 @@
 package exdev.com.common;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class ExdevConstants {
 	public static String SESSION_ID 				= "SID";
 	public static String EMAIL_TEMPLATE_PATH 		= "/ui/mail-template/";
@@ -14,7 +17,7 @@ public class ExdevConstants {
 //    public static final String TRANSFOR_SERVER_URL_CONVERT = "Home/ConvertToPdf";
     
     //스테이지
-    public static final String FILE_DIRECTORY_PATH= "/home/ubuntu/spring-boot";
+    public static final String FILE_DIRECTORY_PATH= "/shared/uploadFiles";
     public static final String TRANSFOR_SERVER_URL = "http://explan02.cafe24.com/";
     public static final String TRANSFOR_SERVER_URL_CONVERT = "Home/ConvertToPdf";
     
@@ -65,6 +68,19 @@ public class ExdevConstants {
         obong_HARAM;   //하람
     }
     
-
-    
+    // COMN 계정 공통
+    public static final List<String> commonTableList = Arrays.asList(
+       	 "TBL_EXP_AUTH"
+       	,"TBL_EXP_CODE"
+       	,"TBL_EXP_GRPCODE"
+       	,"TBL_EXP_MENU"
+       	,"TBL_EXP_ROLE"
+       	,"TBL_EXP_ROLEMENU"
+    );
+       
+    // POSD 계정 공통
+    public static final List<String> posDataTableList = Arrays.asList(
+          "TBL_EXP_STORE_SALES_MST"
+       	 ,"TBL_EXP_STORE_MENU_SALES_MST"
+    );
 }

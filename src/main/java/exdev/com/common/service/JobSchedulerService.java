@@ -318,10 +318,7 @@ public class JobSchedulerService {
             	    unionsoftStoreSalesAPI(resultMap);
             	}
             }
-           
         }
-        
-        
     }
 
     /** 
@@ -457,7 +454,7 @@ public class JobSchedulerService {
                 item.put("StoreSalesId", StoreSalesId);
                 item.put("StoreId", storeId);
                 item.put("yyyymmdd", yyyymmdd1);
-                
+
                 commonDao.insert("jobScheduler.updateStoreSalesMst", item);
                 /*
                 Map<String, String> updateMapApiBachState = new HashMap<String, String>();
@@ -490,6 +487,39 @@ public class JobSchedulerService {
     }
 
     /** 
+     * 내용        : 유니온소프트-일별 매출 조회수동 
+     * @생 성 자   : 이응규
+     * @생 성 일자 : 2024. 12. 30 : 최초 생성
+     * @수 정 자   : 
+     * @수 정 일자 :
+     * @수 정 자
+     */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public void unionsoftStoreSalesManual( Map dateMap ) throws Exception {
+        
+        Map<String, String> searchMap = new HashMap<String, String>();
+        
+        searchMap.put("posUseYn", "Y");// 포스 사용
+        searchMap.put("businessRegNumNull", "N");// 사업자 번호가 있는것
+        searchMap.put("posCdNull", "N");// 포스CD가 NOT NULL 
+        searchMap.put("apiCd", (String)ExdevConstants.API_CD.STORE_SALES.name());//일별 매출
+        
+        
+        List<Map> listMap = commonDao.getList("jobScheduler.getSalebachTargetStoreManual", searchMap);
+        
+       
+        for(Map resultMap : listMap) {
+            String posCompCd = (String)resultMap.get("POS_COMP_CD");
+            String posCd = (String)resultMap.get("POS_CD");
+            
+            if( ((String)ExdevConstants.API_COMPANY.UNIONSOFT.name()).equals(posCompCd)) {
+                if(posCd != null && !"".equals(posCd)) {
+                    unionsoftStoreSalesAPIManual(resultMap,dateMap);
+                }
+            }
+        }
+    }
+    /** 
      * 내용        : 유니온소프트-일별매출조회
      * @생 성 자   : 이응규
      * @생 성 일자 : 2025. 01. 13 : 최초 생성
@@ -498,7 +528,7 @@ public class JobSchedulerService {
      * @수 정 자  
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public void unionsoftStoreSalesAPI_bak( Map map ) throws Exception {
+    public void unionsoftStoreSalesAPIManual( Map map, Map dateMap ) throws Exception {
     
         
         String posCd = (String)map.get("POS_CD");
@@ -508,14 +538,14 @@ public class JobSchedulerService {
         String urlString = ExdevConstants.UNIONSOFT_BASE_URL + "/store/sales/day";
         String accessKey = ExdevConstants.UNIONSOFT_ACCESS_KEY ;
         String accessValue = ExdevConstants.UNIONSOFT_ACCESS_VALUE ;
-
+        
         
         List<Map<String, Object>> list = new ArrayList<>();
         String logId = ExdevCommonAPI.makeUniqueID(16);
 
         // 시작 날짜와 종료 날짜 설정
-        LocalDate startDate = LocalDate.parse("20250401", DateTimeFormatter.ofPattern("yyyyMMdd"));
-        LocalDate endDate = LocalDate.parse(  "20250408", DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate startDate = LocalDate.parse( (String)dateMap.get("startDate"), DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate endDate   = LocalDate.parse( (String)dateMap.get("endDate"), DateTimeFormatter.ofPattern("yyyyMMdd"));
         List<String> dateList = new ArrayList<>();
 
         // 날짜를 증가시키면서 리스트에 추가
@@ -614,8 +644,6 @@ public class JobSchedulerService {
                 // StoreItemList 출력
                 for (Map<String, Object> item : DayList) {
                     String StoreSalesId = ExdevCommonAPI.makeUniqueID(16);
-                    
-                    
                     
                     // EndTimeDate 값
                     String EndTimeDate = (String)item.get("EndTimeDate");
@@ -767,13 +795,14 @@ public class JobSchedulerService {
         String logId = ExdevCommonAPI.makeUniqueID(16);
         
         
-        String urlString = ExdevConstants.UNIONSOFT_BASE_URL + "/group/sales/item";
-        
+        String urlString = ExdevConstants.UNIONSOFT_BASE_URL + "/store/sales/item";
+        /*
         if( posGroupId == null || "".equals(posGroupId)) {
             urlString = ExdevConstants.UNIONSOFT_BASE_URL + "/store/sales/item";
         }else {
             urlString = ExdevConstants.UNIONSOFT_BASE_URL + "/group/sales/item";
         }
+        */
         
         try {
 
@@ -924,10 +953,13 @@ public class JobSchedulerService {
         } catch (Exception e) {
             //전송로그 저장
             Map<String, String> logMap = new HashMap<String, String>();
+            String errorMsg = CommUtil.getPrintStackTrace(e);
+            String limitedStr = errorMsg.length() > 250 ? errorMsg.substring(0, 250) : errorMsg;
+            
             logMap.put("logId", logId);
             logMap.put("successYn", "N");
             logMap.put("errorCd", "999");
-            logMap.put("errorMsg", CommUtil.getPrintStackTrace(e));
+            logMap.put("errorMsg", limitedStr);
             logMap.put("updateUser", "BATCH");
             insertApiTransferLog(logMap);
             e.printStackTrace();
@@ -944,16 +976,15 @@ public class JobSchedulerService {
      * @수 정 자
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public void unionposMenuSaletTest( ) throws Exception {
+    public void unionposMenuSaleManual( Map dateMap ) throws Exception {
         
         Map<String, String> searchMap = new HashMap<String, String>();
-        
         searchMap.put("posUseYn", "Y");// 포스 사용
         searchMap.put("businessRegNumNull", "N");// 사업자 번호가 있는것
         searchMap.put("posCdNull", "N");// 포스CD가 NOT NULL 
         searchMap.put("posCompCd", "N");// 포스 업체 코드가 NOT NULL
         searchMap.put("apiCd", (String)ExdevConstants.API_CD.STORE_MENU_SALES.name());//일별 메뉴 매출
-        searchMap.put("storeId", "obong_a00250");// 행당점
+        //searchMap.put("storeId", "obong_a00214");// 행당점:obong_a00250,  성수점:obong_a00214 
         
         
         List<Map> listMap = commonDao.getList("jobScheduler.getbachTargetStoreManual", searchMap);
@@ -979,8 +1010,8 @@ public class JobSchedulerService {
                 //POS API 호출
 
                 // 시작 날짜와 종료 날짜 설정
-                LocalDate startDate = LocalDate.parse("20240801", DateTimeFormatter.ofPattern("yyyyMMdd"));
-                LocalDate endDate = LocalDate.parse(  "20250409", DateTimeFormatter.ofPattern("yyyyMMdd"));
+                LocalDate startDate = LocalDate.parse((String)dateMap.get("startDate"), DateTimeFormatter.ofPattern("yyyyMMdd"));
+                LocalDate endDate   = LocalDate.parse((String)dateMap.get("endDate"), DateTimeFormatter.ofPattern("yyyyMMdd"));
                 List<String> dateList = new ArrayList<>();
 
                 // 날짜를 증가시키면서 리스트에 추가
@@ -990,22 +1021,24 @@ public class JobSchedulerService {
                 }
                 for(int i=0; i<dateList.size(); i++) {
                     resultMap.put("YYYYMMDD", dateList.get(i));
-                    unionposMenuSaleAPITest(resultMap);
+                    unionposMenuSaleAPIManual(resultMap);
                 }
                 
                 
             }else {
             } 
         }
-
+        /*  */
         for(int i=0;i<list.size();i++) {
             String brandId= list.get(i);
             Map<String, String> mergeMap = new HashMap<>();
             mergeMap.put("brandId", brandId);
             mergeMap.put("updateUser", "BATCH");
             mergeMap.put("createUser", "BATCH");
+
             commonDao.update("jobScheduler.mergeStoreMenuSalesMst", mergeMap);
         }
+       
         
         
     }
@@ -1018,7 +1051,7 @@ public class JobSchedulerService {
      * @수 정 자  
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public void unionposMenuSaleAPITest( Map map ) throws Exception {
+    public void unionposMenuSaleAPIManual( Map map ) throws Exception {
     
         
         String storeId = (String)map.get("STORE_ID");
@@ -1066,9 +1099,6 @@ public class JobSchedulerService {
                 reqMap.put("EndDate",   yyyymmdd);//yyyymmdd
                 reqMap.put("StoreCode", posStoreCode);
             }
-            
-            System.out.println("urlString ==>"+urlString);
-            System.out.println("posStoreCode ==>"+posStoreCode);
             
             String reqParam = "StoreCode["+posStoreCode+"], StartDate["+yyyymmdd+"], EndDate["+yyyymmdd+"] ";
             
@@ -1509,8 +1539,8 @@ public class JobSchedulerService {
         
         //fromDate
         //toDate
-        String fromDate = DateUtil.getDateYMD(-3);
-        String toDate   = DateUtil.getDateYMD(-1);
+        String fromDate = DateUtil.getDateYMD(-3).replace("-", "");
+        String toDate   = DateUtil.getDateYMD(-1).replace("-", "");
         
         for(Map resultMap : listMap) {
             resultMap.put("fromDate", fromDate);
@@ -2080,7 +2110,7 @@ public class JobSchedulerService {
      */
     public boolean delLog() throws Exception {
 
-        String dateYMDPre = DateUtil.getDateYMD(-90);// 90일 전
+        String dateYMDPre = DateUtil.getDateYMD(-60);// 90일 전
 
         
         Map<String, String> map = new HashMap<>();

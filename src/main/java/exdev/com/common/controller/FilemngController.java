@@ -49,6 +49,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -171,6 +172,11 @@ public class FilemngController {
             filePathStr = filePathStr.replace("\\", "/"); // 모든 `\`를 `/`로 변환
             Path filePath = Paths.get(filePathStr);
             Resource resource = new UrlResource(filePath.toUri());
+            
+            // 파일이 없을 때 에러 방지.
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }            
             
             // 파일의 MIME 타입 결정
             String contentType = Files.probeContentType(filePath);

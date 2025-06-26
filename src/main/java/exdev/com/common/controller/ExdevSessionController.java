@@ -56,6 +56,7 @@ public class ExdevSessionController {
 			// 메일 로그인 실패
 			if( userInfo == null ) {
 				map.put("state", "E");
+				map.put("mailType", mailType);
 				return map;
 			}
 			
@@ -78,6 +79,7 @@ public class ExdevSessionController {
 			String brandNm 		= (String)userInfo.get("BRAND_NM"	);
 			String storeId 		= (String)userInfo.get("STORE_ID"	);
 			String storeNm 		= (String)userInfo.get("STORE_NM"	);
+			String userNm 		= (String)userInfo.get("USER_NM"	);
 			
 			sessionVO.setUserId(loginId);
 			
@@ -88,7 +90,9 @@ public class ExdevSessionController {
 				userInfo = new HashMap();
 				userInfo.put("REASON", "AUTH");
 				userInfo.put("state", "E");
-				if( mailType == null) { commonDao.update("system.addlockCnt", userInfo);}
+				if( mailType == null) {
+					checkAndSetLock(userInfo);
+				}
 				return userInfo;
 			}
 			
@@ -97,7 +101,9 @@ public class ExdevSessionController {
 			if( !userType.equals( loginType )){
 				map.put("REASON", "LOGIN_TYPE");
 				map.put("state", "E");
-				if( mailType == null) { commonDao.update("system.addlockCnt", map);}
+				if( mailType == null) { 
+					checkAndSetLock(userInfo);
+				}
 				return map;
 			}
 			
@@ -112,7 +118,9 @@ public class ExdevSessionController {
 			
 			brandList = (List<Map>) commonDao.getList(buyerBrandQueryId, userInfo);
 			
-			authList = (List<Map>) commonDao.getList("common.getAuthListForSession", sessionVO);
+			userInfo.put("sessionVo", sessionVO);
+			
+			authList = (List<Map>) commonDao.getList("common.getAuthListForSession", userInfo);
 			
 			sessionVO.setLoginId	(loginId	);
 			sessionVO.setLoginNm	(loginNm	);
@@ -125,7 +133,7 @@ public class ExdevSessionController {
 			sessionVO.setBrandList	(brandList	);
 			sessionVO.setUserType	(userType	);
 			sessionVO.setAuthList	(authList	);
-			sessionVO.setUserNm		(loginNm	);
+			sessionVO.setUserNm		(userNm		);
 			
 			session.setAttribute(ExdevConstants.SESSION_ID, sessionVO);
 
@@ -152,6 +160,25 @@ public class ExdevSessionController {
 		}
 		
 		return userInfo;
+	}
+
+	private void checkAndSetLock(Map userInfo) {
+		
+		Map userLockInfo;
+		try {
+			userLockInfo = (Map)commonDao.getObject("system.getUserLoginLock"	, userInfo);
+			if( userLockInfo == null) {
+				commonDao.insert("system.insertLock", userInfo);
+			}
+			else {
+				commonDao.update("system.addlockCnt", userInfo);
+				userInfo.put("FAILED_ATTEMPTS", userLockInfo.get("FAILED_ATTEMPTS"));
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

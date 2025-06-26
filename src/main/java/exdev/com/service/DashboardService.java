@@ -28,111 +28,6 @@ public class DashboardService extends ExdevBaseService{
     
 
     /** 
-     * 내용        : 매출현황 매출액,AI영업이익, 본사영업이익, 홈텍스 영업이익
-     *               compPerformanceTab1.html
-     * @생 성 자   : 이응규
-     * @생 성 일자 : 2025. 04. 16 : 최초 생성
-     * @수 정 자   : 
-     * @수 정 일자 :
-     * @수 정 자
-     */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public Object getMonthAccrue(Map map) throws Exception {
-
-        String brandId    = (String)map.get("brandId");
-        String startDate  = (String)map.get("startYMD");
-        String endDate    = (String)map.get("endYMD");
-        String region     = (String)map.get("region");
-        String supervisor = (String)map.get("supervisor");
-        String storeId    = (String)map.get("storeId");
-        
-        List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
-        int dateDiff = DateUtil.minusMonth(startDate, endDate);
-
-        System.out.println("dateDiff["+dateDiff+"]    ");
-        for( int i =0; i <= dateDiff; i++ ) {
-            
-            String addMonth  = DateUtil.AddDate(startDate, 0, i, 0);
-            
-            Map<String, String> searchMap = new HashMap<String, String>();
-            searchMap.put("brandId", brandId);
-            searchMap.put("seartDate", addMonth.substring(0, 7));
-            searchMap.put("storeId", storeId);
-            searchMap.put("region", region);
-            searchMap.put("supervisor", supervisor);
-            
-            
-            Map<String, Object> addMap = new HashMap<String, Object>();
-            addMap.put("YYYYMM", addMonth.substring(0, 7));
-            
-            //매출액
-            Map salesMap  = (Map)commonDao.getObject("dashboardCorPerformance.getSales"   , searchMap);
-            //매출액
-            if (salesMap != null) {
-                if( salesMap.get("AMOUNT") != null) {
-                    addMap.put("SALES", salesMap.get("AMOUNT"));
-                }else {
-                    addMap.put("SALES", 0);   
-                }
-
-                if( salesMap.get("AMOUNT") != null) {
-                    addMap.put("BUSINESS_PROFITS_BRAND", salesMap.get("BRAND_PROFIT_AMOUNT"));
-                }else {
-                    addMap.put("BUSINESS_PROFITS_BRAND", 0);   
-                }
-                
-                
-            }else {
-                addMap.put("SALES", 0);
-                addMap.put("BUSINESS_PROFITS_BRAND", 0);
-            }
-            
-            //AI 예측 매출액
-            Map salesAIMap  = (Map)commonDao.getObject("dashboardCorPerformance.getAISales"   , searchMap);
-            
-            //AI 예측 매출액
-            if (salesAIMap != null) {
-                if( salesAIMap.get("AMOUNT") != null) {
-                    addMap.put("BUSINESS_PROFITS_AI", salesAIMap.get("AMOUNT"));
-                }else {
-                    addMap.put("BUSINESS_PROFITS_AI", 0);    
-                }
-                
-
-                if( salesAIMap.get("TAX_AMOUNT") != null) {
-                    addMap.put("BUSINESS_PROFITS_TAX", salesMap.get("TAX_AMOUNT"));
-                }else {
-                    addMap.put("BUSINESS_PROFITS_TAX", 0);    
-                }
-                
-            }else {
-                addMap.put("BUSINESS_PROFITS_AI", 0);
-                addMap.put("BUSINESS_PROFITS_BRAND", 0);
-                addMap.put("BUSINESS_PROFITS_TAX", 0);
-            }
-
-            //제조원가
-            Map costMap  = (Map)commonDao.getObject("dashboardCorPerformance.getCostSales"   , searchMap);
-
-            //AI 예측 매출액
-            if (costMap != null) {
-                if( costMap.get("SALES_COST") != null) {
-                    addMap.put("SALES_COST", costMap.get("SALES_COST"));
-                }else {
-                    addMap.put("SALES_COST", 0);    
-                }
-                
-            }else {
-                addMap.put("SALES_COST", 0);
-            }
-            
-            list.add(addMap);
-        }
-        
-        map.put("list", list);
-        return map;
-    }
-    /** 
      * 내용        : 매출 상위20%, 하위20%
      *               compPerformanceTab1.html
      * @생 성 자   : 이응규
@@ -152,7 +47,8 @@ public class DashboardService extends ExdevBaseService{
         String brandId = (String)map.get("brandId");
         String upLow = (String)map.get("upLow");
         String targetRate = (String)map.get("targetRate");
-        
+        String storeId = (String)map.get("storeId");
+                
         int startDateNum = Integer.parseInt(startDate.replace("-", ""));
         int endDateNum = Integer.parseInt(endDate.replace("-", ""));
         
@@ -176,12 +72,13 @@ public class DashboardService extends ExdevBaseService{
             searchMap.put("brandId", brandId);
             searchMap.put("seartDate", addMonth.substring(0, 7));
             searchMap.put("region", region);
+            searchMap.put("storeId", storeId);
             searchMap.put("supervisor", supervisor);
             searchMap.put("upLow", upLow);
             searchMap.put("upVal", upVal);
             searchMap.put("lowVal", lowVal);
             
-            List<Map> resultList = commonDao.getList("dashboardCorPerformance.getSalesUpperLowerStore", searchMap);
+    		List<Map> resultList = commonDao.getList("dashboardCorPerformance.getSalesUpperLowerStore", searchMap);
             for(Map resultMap : resultList) {
                 Map<String, Object> addMap = new HashMap<String, Object>();
                 addMap.put("YYYYMM", addMonth.substring(0, 7));

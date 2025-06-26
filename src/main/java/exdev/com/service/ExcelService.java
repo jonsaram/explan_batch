@@ -186,12 +186,15 @@ public class ExcelService  extends ExdevBaseService{
 	                Cell cell4 = row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 	                Cell cell5 = row.getCell(4, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 	                
-	        		tableName 	 = cell1.toString();
+	        		tableName 	= cell1.toString();
+	        		
 	        		if(!ExdevCommonAPI.isValid(tableName)) {
 	        			// 코드관리에서 Table Column정의가 없는 경우 오류 처리
 	        			throw new Exception(sheetNum + "번째 Sheet의 Format이 형식에 맞지 않습니다.");
 	        			
 	        		}
+
+	        		tableName	= commonDao.makeTableName(tableName);
 	        		
 	        		prmKeyNumStr = cell2.toString();
 	        		if(ExdevCommonAPI.isValid(prmKeyNumStr)) {
@@ -205,11 +208,30 @@ public class ExcelService  extends ExdevBaseService{
 	        		dupleProcess = cell4.toString();
 	        		backupYn	 = cell5.toString();
 	        		
-	        		optionMap.put("TABLE_NAME"		, tableName);
-	        		optionMap.put("BK_TABLE_NAME"	, "EXBACKUP_" + tableName);
-	        		optionMap.put("CLEAR_CHECK"		, clearCheck);
-	        		optionMap.put("DUPLE_PROCESS"	, dupleProcess);
-	        		optionMap.put("BACKUP_DATE"		, ExdevCommonAPI.getToday("yyyyMMddHHmmss"));
+	    			String orgTableName 	= "";
+	    			String bkTableName 		= "";
+	    			String orgBkTableName 	= "";
+	    			String owner 			= (String)commonDao.getOwner();
+	    			if(tableName.indexOf(".") > -1) {
+	    				String [] spArr = tableName.split("\\.");
+	    				bkTableName		= spArr[0] + ".EXBACKUP_" + spArr[1];
+	    				orgBkTableName	= "EXBACKUP_" + spArr[1];
+	    				owner			= spArr[0];
+	    				orgTableName	= spArr[1];
+	    			} else {
+	    				bkTableName		= "EXBACKUP_" + tableName;
+	    				orgBkTableName	= "EXBACKUP_" + tableName;
+	    				orgTableName	= tableName;
+	    			}
+	        		
+	        		optionMap.put("TABLE_NAME"			, tableName			);
+	        		optionMap.put("ORG_TABLE_NAME"		, orgTableName		);
+	        		optionMap.put("BK_TABLE_NAME"		, bkTableName		);
+	        		optionMap.put("ORG_BK_TABLE_NAME"	, orgBkTableName	);
+	        		optionMap.put("OWNER"				, owner				);
+	        		optionMap.put("CLEAR_CHECK"			, clearCheck		);
+	        		optionMap.put("DUPLE_PROCESS"		, dupleProcess		);
+	        		optionMap.put("BACKUP_DATE"			, ExdevCommonAPI.getToday("yyyyMMddHHmmss"));
 	        		optionMap.put("sessionVo", sessionVo);
 	        		
 	        		// Table에 해당하는 Column읽어온다.
@@ -560,25 +582,25 @@ public class ExcelService  extends ExdevBaseService{
         return workbook;
     }
     
-
+    CellStyle styleNumberValue = null;
 	private void setNumberValue(Workbook workbook, Cell cell, Object value) {
     	
     	cell.setCellValue(((BigDecimal)value).doubleValue());
-        CellStyle style = workbook.createCellStyle();
+        if(styleNumberValue == null) styleNumberValue = workbook.createCellStyle();
         DataFormat dataFormat = workbook.createDataFormat();
         BigDecimal bigDecimalValue = (BigDecimal) value;
         if (bigDecimalValue.scale() > 0) {
             // 소수점이 있으면 소수점 2자리까지 표시
-        	style.setDataFormat(dataFormat.getFormat("#,##0.00"));
+        	styleNumberValue.setDataFormat(dataFormat.getFormat("#,##0.00"));
         } else {
             // 소수점이 없으면 정수형 서식
-        	style.setDataFormat(dataFormat.getFormat("#,##0"));
+        	styleNumberValue.setDataFormat(dataFormat.getFormat("#,##0"));
         }
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderBottom(BorderStyle.THIN);
-        cell.setCellStyle(style); // 셀 서식 적용
+        styleNumberValue.setBorderLeft(BorderStyle.THIN);
+        styleNumberValue.setBorderRight(BorderStyle.THIN);
+        styleNumberValue.setBorderTop(BorderStyle.THIN);
+        styleNumberValue.setBorderBottom(BorderStyle.THIN);
+        cell.setCellStyle(styleNumberValue); // 셀 서식 적용
 		
 	}
 	private void createMergedCell(Sheet sheet, Row row, int startCol, int endCol, String text, CellStyle style) {

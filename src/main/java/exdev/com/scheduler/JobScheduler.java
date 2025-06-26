@@ -1,10 +1,15 @@
 package exdev.com.scheduler;
 
+import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
 import exdev.com.common.controller.ExdevJobSchedulerController;
 
 /*
@@ -36,7 +41,23 @@ public class JobScheduler {
     @Autowired
     private ExdevJobSchedulerController exdevJobSchedulerController;
 
-    boolean IS_REAL = true;//true
+    public boolean localCheck() {
+        try {
+            String localHost = InetAddress.getLocalHost().getHostAddress();//.getCanonicalHostName();
+            String[] parts = localHost.split("\\.");
+            
+            if (parts.length >= 3) {
+                String prefix = parts[0] + "." + parts[1] + "." + parts[2];
+                if(("172.30.1".equals(prefix))) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            logger.error("Error executing ExdevJobSchedulerController.test(): ", e);
+        }
+        return false;
+      }
     
     /*
     * 세친구 매출  cron = "0 15 1 * * *"
@@ -51,7 +72,7 @@ public class JobScheduler {
     public void taxpalStoreSales() {
       
       try {
-          if(IS_REAL) {exdevJobSchedulerController.taxpalStoreSales();}
+          if(!localCheck()) { exdevJobSchedulerController.taxpalStoreSales();}
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.taxpalStoreSales(): ", e);
       }
@@ -68,9 +89,8 @@ public class JobScheduler {
     public void taxpalStorePurchase() {
       
       try {
-    
           // ExdevJobSchedulerController의 test 메서드 호출
-          //exdevJobSchedulerController.taxpalStorePurchase();
+          //if(localCheck()) {exdevJobSchedulerController.taxpalStorePurchase();}
           
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.test(): ", e);
@@ -107,7 +127,7 @@ public class JobScheduler {
     public void unionposGroupMenu() {
       
       try {
-          if(IS_REAL) {exdevJobSchedulerController.unionposGroupMenu();}
+          if(!localCheck()) {exdevJobSchedulerController.unionposGroupMenu();}
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.unionposGroupMenu(): ", e);
       }
@@ -123,9 +143,7 @@ public class JobScheduler {
     @Scheduled( cron = "0 10 1 * * *" )
     public void unionsoftStoreSales() {  
       try {
-
-          if(IS_REAL) {exdevJobSchedulerController.unionsoftStoreSales();}
-          
+          if(!localCheck()) {exdevJobSchedulerController.unionsoftStoreSales();}
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.unionpos(): ", e);
       }
@@ -141,7 +159,7 @@ public class JobScheduler {
     @Scheduled( cron = "0 25 1 * * *")
     public void unionposMenuSale() {
       try {
-          if(IS_REAL) {exdevJobSchedulerController.unionposMenuSale();}
+          if(!localCheck()) {exdevJobSchedulerController.unionposMenuSale();}
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.unionposMenuSale(): ", e);
       }
@@ -157,7 +175,7 @@ public class JobScheduler {
     @Scheduled( cron = "0 30 1 * * *" )
     public void unionposStoreList() {
       try {
-          if(IS_REAL) {exdevJobSchedulerController.unionposStoreList();}
+          if(!localCheck()) {exdevJobSchedulerController.unionposStoreList();}
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.unionposStoreList(): ", e);
       }
@@ -175,7 +193,7 @@ public class JobScheduler {
       
       try {
           // ExdevJobSchedulerController의 test 메서드 호출
-          if(IS_REAL) {exdevJobSchedulerController.delLog();}
+          if(!localCheck()) {exdevJobSchedulerController.delLog();}
           
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.test(): ", e);
@@ -194,7 +212,7 @@ public class JobScheduler {
       
       try {
           // ExdevJobSchedulerController의 test 메서드 호출
-          if(IS_REAL) {exdevJobSchedulerController.storeSalesGoal();}
+          if(!localCheck()) {exdevJobSchedulerController.storeSalesGoal();}
           
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.test(): ", e);
@@ -208,18 +226,60 @@ public class JobScheduler {
     매일새벽 2시 15분 : cron = "0 15 2 * * *"
     매일오후 5시 10분 : cron = "0 12 17 * * *"
     */
-    @Scheduled( cron = "0 43 1 * * *" )
+    @Scheduled( cron = "0 40 1 * * *" )
     public void setMaterialsSales() {
       
       try {
           // ExdevJobSchedulerController의 test 메서드 호출
-          if(IS_REAL) {exdevJobSchedulerController.setMaterialsSales();}
+          if(!localCheck()) {exdevJobSchedulerController.setMaterialsSales();}
           
       } catch (Exception e) {
           logger.error("Error executing ExdevJobSchedulerController.test(): ", e);
       }
     }
 
+    /*
+    * 유니온 소프트 - 포스업체(일별매출)-수동 cron = "0 10 1 * * *"
+    1분마다          :  cron = "0 * * * * *"
+    매일새벽 1시  5분 : cron = "0 5 1 * * *"
+    매일새벽 2시 15분 : cron = "0 15 2 * * *"
+    매일오후 5시 10분 : cron = "0 12 17 * * *"
+    */
+    @Scheduled( cron = "0 10 1 * * *" )
+    public void unionsoftStoreSalesManual() {
+        
+        try {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("startDate", "20250601");
+            map.put("endDate",   "20250618");
+            
+            exdevJobSchedulerController.unionsoftStoreSalesManual(map);
+        } catch (Exception e) {
+            logger.error("Error executing ExdevJobSchedulerController.unionpos(): ", e);
+        }
+    }
+
+    /*
+    * 유니온 소프트 - 포스업체(메뉴매출)-수동 cron = "0 25 1 * * *"
+    1분마다          :  cron = "0 * * * * *"
+    매일새벽 1시  5분 : cron = "0 5 1 * * *"
+    매일새벽 2시 15분 : cron = "0 15 2 * * *"
+    매일오후 5시 10분 : cron = "0 12 17 * * *"
+    */
+    @Scheduled( cron = "0 34 11 * * *")
+    public void unionposMenuSaleManual() {
+      try {
+
+          Map<String, Object> map = new HashMap<String, Object>();
+          map.put("startDate", "20250601");
+          map.put("endDate",   "20250618");
+          exdevJobSchedulerController.unionposMenuSaleManual(map);
+          
+      } catch (Exception e) {
+          logger.error("Error executing ExdevJobSchedulerController.unionposMenuSale(): ", e);
+      }
+    }
+    
     /*=================================================================================*/
     /*
     * 임시 - 지점메뉴 매출 데이타 만들기

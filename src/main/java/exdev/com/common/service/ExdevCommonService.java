@@ -9,6 +9,7 @@ import java.util.Map;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,9 @@ import exdev.com.service.ApprovalService;
 import exdev.com.service.DashboardService;
 import exdev.com.service.EmailService;
 import exdev.com.service.ExdevSampleService;
+import exdev.com.service.ScheduleService;
+import exdev.com.common.service.JobSchedulerService;
+
 
 @Service("ExdevCommonService")
 @Transactional(rollbackFor = { Exception.class }, propagation = Propagation.REQUIRED)
@@ -47,7 +51,8 @@ public class ExdevCommonService extends ExdevBaseService
     @Autowired
     private DataUploadService    dataUploadService;
     
-    
+    @Autowired
+    private ScheduleService    scheduleService;
     
 	public Map requestService(Map map, HttpSession session) throws Exception {
 		
@@ -57,7 +62,7 @@ public class ExdevCommonService extends ExdevBaseService
 		
 		// Session이 필요하다면 여기서 넣어준다.
 		requestParm.put("sessionVo", session.getAttribute(ExdevConstants.SESSION_ID));
-		
+
 		String [] token = serviceId.split("\\.");
 		
 		String classId 		= token[0];
@@ -90,7 +95,10 @@ public class ExdevCommonService extends ExdevBaseService
         } else if("DataUploadService".equals(classId)) {
             targetService = dataUploadService;
             targetMethod = DataUploadService.class.getMethod(methodId, Map.class);
-        }  
+        }  else if("ScheduleService".equals(classId)) {
+            targetService = scheduleService;
+            targetMethod = ScheduleService.class.getMethod(methodId, Map.class);
+        } 
 			
 		
 		Object resultObject = (Object)targetMethod.invoke(targetService, requestParm);
@@ -141,7 +149,7 @@ public class ExdevCommonService extends ExdevBaseService
 
 			// Session이 필요하다면 여기서 넣어준다.
 			requestParm.put("sessionVo", session.getAttribute(ExdevConstants.SESSION_ID));
-			
+
 			if(queryId.indexOf(".delete") > -1 || queryId.indexOf(".update") > -1) {
 				Integer i = commonDao.update(queryId, requestParm);
 				HashMap<String, Integer> hm = new HashMap<String, Integer>();
@@ -179,7 +187,7 @@ public class ExdevCommonService extends ExdevBaseService
 
 					// Session이 필요하다면 여기서 넣어준다.
 					requestParm.put("sessionVo", session.getAttribute(ExdevConstants.SESSION_ID));
-					
+
 					if(ExdevCommonAPI.isValid(requestCommonParm)) {
 						requestCommonParm.putAll(requestParm);
 						requestParm = requestCommonParm;
@@ -205,7 +213,7 @@ public class ExdevCommonService extends ExdevBaseService
 
 				// Session이 필요하다면 여기서 넣어준다.
 				requestParm.put("sessionVo", session.getAttribute(ExdevConstants.SESSION_ID));
-				
+
 				resultList = (List<Map>)commonDao.getList(queryId, requestParm);
 				
 				if(ExdevCommonAPI.isValid(resultMap.get(queryId))) queryId = queryId + "_" + idx++;
@@ -241,12 +249,30 @@ public class ExdevCommonService extends ExdevBaseService
 		
 		if(whereList != null) {
 			String tableName 		= (String)requestParm.get("tableName");
-			String bkTableName		= "GRD_BKUP_" + tableName;
+			tableName = commonDao.makeTableName(tableName);
 			
-			requestParm.put("TABLE_NAME"	, tableName		);
-			requestParm.put("BK_TABLE_NAME"	, bkTableName	);
-			requestParm.put("whereList"		, whereList		);
-			requestParm.put("backupType"	, backupType	);
+			if(!ExdevCommonAPI.isValid(tableName)) return;
+			
+			String bkTableName 		= "";
+			String orgBkTableName 	= "";
+			String owner 			= (String)commonDao.getOwner();
+
+			if(tableName.indexOf(".") > -1) {
+				String [] spArr = tableName.split("\\.");
+				bkTableName		= spArr[0] + ".GRD_BKUP_" + spArr[1];
+				orgBkTableName	= "GRD_BKUP_" + spArr[1];
+				owner			= spArr[0];
+			} else {
+				bkTableName		= "GRD_BKUP_" + tableName;
+				orgBkTableName	= "GRD_BKUP_" + tableName;
+			}
+			
+			requestParm.put("TABLE_NAME"		, tableName			);
+			requestParm.put("BK_TABLE_NAME"		, bkTableName		);
+			requestParm.put("ORG_BK_TABLE_NAME"	, orgBkTableName	);
+			requestParm.put("OWNER"				, owner				);
+			requestParm.put("whereList"			, whereList			);
+			requestParm.put("backupType"		, backupType		);
 			
 			// 기존 Data Backukp 후 Clear함
 			List tabCntList = (List)commonDao.getList("common.existTableName", requestParm);
@@ -270,7 +296,7 @@ public class ExdevCommonService extends ExdevBaseService
 		String	queryId		= (String	)map .get("queryId"		);
 		Map 	option		= (Map		)map .get("option"		);
 		option.put("sessionVo", map.get("sessionVo"));
-		
+
 		Integer currentPage = (Integer)option.get("currentPage"	);
 		Integer listRange 	= (Integer)option.get("listRange"	);
 		

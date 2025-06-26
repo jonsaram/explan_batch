@@ -123,20 +123,43 @@ public class ExdevJobSchedulerController {
         jobSchedulerService.unionsoftStoreSales();
     }
 
+    /** 
+     * 내용        : 유니온소프트 API 호출
+     * @생 성 자   : 이응규
+     * @생 성 일자 : 2025. 01. 13: 최초 생성
+     * @수 정 자   : 
+     * @수 정 일자 :
+     * @수 정 자
+     */
+    public void unionsoftStoreSalesManual(Map map) throws Exception {
+        jobSchedulerService.unionsoftStoreSalesManual(map);
+    }
 
     /** 
-     * 내용        : 유니온소프트 메뉴 매출 API 호출
+     * 내용        : 유니온소프트 메뉴 매출 API-수동 호출
      * @생 성 자   : 이응규
-     * @생 성 일자 : 2025. 01. 14: 최초 생성
+     * @생 성 일자 : 2025. 06. 20: 최초 생성
      * @수 정 자   : 
      * @수 정 일자 :
      * @수 정 자
      */
     public void unionposMenuSale() throws Exception {
         jobSchedulerService.unionposMenuSale();
-        //jobSchedulerService.unionposMenuSaletTest();
     }
 
+    /** 
+     * 내용        : 유니온소프트 메뉴 매출 API-수동 호출
+     * @생 성 자   : 이응규
+     * @생 성 일자 : 2025. 06. 20: 최초 생성
+     * @수 정 자   : 
+     * @수 정 일자 :
+     * @수 정 자
+     */
+    public void unionposMenuSaleManual(Map map) throws Exception {
+        
+        jobSchedulerService.unionposMenuSaleManual(map);
+    }
+    
     /** 
      * 내용        : 유니온소프트 메뉴정보조회
      * @생 성 자   : 이응규
@@ -238,7 +261,7 @@ public class ExdevJobSchedulerController {
         dataUploadService.conversionUnitPrice();//환산단위당 단가
         
     }
-
+    
     /** 
      * 내용        : KAKAO 채널로 데이터 전송
      * @생 성 자   : 유태원
@@ -269,8 +292,4 @@ public class ExdevJobSchedulerController {
 		System.out.println("Response: " + response.getBody());
 		
 	}
-    
-    
-    
-    
 }

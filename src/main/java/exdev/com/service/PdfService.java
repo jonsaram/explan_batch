@@ -38,6 +38,7 @@ import com.google.gson.Gson;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
+import com.itextpdf.kernel.pdf.canvas.parser.listener.LocationTextExtractionStrategy;
 import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
 
 import exdev.com.ExdevCommonAPI;
@@ -142,7 +143,7 @@ public class PdfService extends ExdevBaseService{
 
             // 첫페이지 표지 제외하고 시작[재무상태표]
             for (int i = 2; i <= numberOfPages; i++) {
-                String text = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(i), new SimpleTextExtractionStrategy());
+                String text = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(i), new LocationTextExtractionStrategy());
                 //System.out.println(text);
                 // 페이지마다 1라인씩 처리
                 String[] lines = text.split("\\n+");
@@ -171,11 +172,16 @@ public class PdfService extends ExdevBaseService{
         	PDDocument document = PDDocument.load(file.getInputStream());
         	List<String[]> insertDataList = new ArrayList<String[]>();
             for(int i=0; i<firstWords.size(); i++) {
-            	PDFTextPositionFinder stripper = null;
-                stripper = new PDFTextPositionFinder(firstWords.get(i), insertData);
-                stripper.setSortByPosition(true);
-                stripper.getText(document);
-                insertDataList.add(stripper.getReturnData());
+            	try {
+	            	PDFTextPositionFinder stripper = null;
+	                stripper = new PDFTextPositionFinder(firstWords.get(i), insertData);
+	                stripper.setSortByPosition(true);
+	                stripper.getText(document);
+	                insertDataList.add(stripper.getReturnData());
+	                System.out.println("==size===>"+insertDataList.size());
+            	}catch(Exception e) {
+            		System.out.println("==error===>"+e.getMessage());
+            	}
             }
             document.close();
             
@@ -185,16 +191,25 @@ public class PdfService extends ExdevBaseService{
             	deletePdfMap.put("ACCOUNT_GUBUN"	, "01");
             	commonDao.update("common.deleteFinPdfTemp"	, deletePdfMap);
 	            for (String[] insertPdfData : insertDataList) {
-	            	Map insertPdfMap = new HashMap();
-	            	insertPdfMap.put("BUYER_ID"			, sessionVo.getBuyerId());
-	            	insertPdfMap.put("ACCOUNT_GUBUN"	, "01");
-	            	insertPdfMap.put("INDENT_DEGREE"	, insertPdfData[0]);	            	
-	            	insertPdfMap.put("ACCOUNT_NAME"		, insertPdfData[1]);
-	            	insertPdfMap.put("YEAR_DATA01"		, insertPdfData[2]);
-	            	insertPdfMap.put("YEAR_DATA02"		, insertPdfData[3]);
-	            	insertPdfMap.put("YEAR_DATA03"		, insertPdfData[4]);	            	
-	            	insertPdfMap.put("sessionVo"		, sessionVo);
-	            	commonDao.update("common.insertFinPdfTemp"	, insertPdfMap);
+	            	try {
+	            		if(insertPdfData != null) {
+			            	Map insertPdfMap = new HashMap();
+			            	insertPdfMap.put("BUYER_ID"			, sessionVo.getBuyerId());
+			            	insertPdfMap.put("ACCOUNT_GUBUN"	, "01");
+			            	insertPdfMap.put("INDENT_DEGREE"	, insertPdfData[0]);	            	
+			            	insertPdfMap.put("ACCOUNT_NAME"		, insertPdfData[1]);
+			            	insertPdfMap.put("YEAR_DATA01"		, insertPdfData[2]);
+			            	insertPdfMap.put("YEAR_DATA02"		, insertPdfData[3]);
+			            	insertPdfMap.put("YEAR_DATA03"		, insertPdfData[4]);	            	
+			            	insertPdfMap.put("sessionVo"		, sessionVo);
+			            	commonDao.update("common.insertFinPdfTemp"	, insertPdfMap);
+			            	System.out.println("==insertPdfData===>"+insertPdfData[0]+"/"
+			            			+insertPdfData[1]+"/"+insertPdfData[2]+"/"+insertPdfData[3]+"/"
+			            			+insertPdfData[4]);
+	            		}
+	            	}catch(Exception e) {
+	            		System.out.println("==error===>"+insertPdfData.length+"/"+e.getMessage());
+	            	}
 	            }
             }
             
@@ -204,8 +219,8 @@ public class PdfService extends ExdevBaseService{
             excludeStr = true;
             // 첫페이지 표지 제외하고 시작[손익계산서]
             for (int i = 2; i <= numberOfPages; i++) {
-                String text = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(i), new SimpleTextExtractionStrategy());
-                //System.out.println(text);
+                String text = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(i), new LocationTextExtractionStrategy());
+                System.out.println(text);
                 // 페이지마다 1라인씩 처리
                 String[] lines = text.split("\\n+");
                 for (String line : lines) {
@@ -340,12 +355,24 @@ public class PdfService extends ExdevBaseService{
 	        		dupleProcess = cell4.toString();
 	        		backupYn	 = cell5.toString();
 	        		
-	        		optionMap.put("TABLE_NAME"		, tableName);
-	        		optionMap.put("BK_TABLE_NAME"	, "EXBACKUP_" + tableName);
-	        		optionMap.put("CLEAR_CHECK"		, clearCheck);
-	        		optionMap.put("DUPLE_PROCESS"	, dupleProcess);
-	        		optionMap.put("BACKUP_DATE"		, ExdevCommonAPI.getToday("yyyyMMddHHmmss"));
-	        		optionMap.put("sessionVo", sessionVo);
+	    			String exTableName 		= "";
+	    			String orgExTableName 	= "";
+	    			if(tableName.indexOf(".") > -1) {
+	    				String [] spArr = tableName.split(".");
+	    				exTableName		= spArr[0] + ".EXBACKUP_" + spArr[1];
+	    				orgExTableName	= "EXBACKUP_" + spArr[1];
+	    			} else {
+	    				exTableName		= "EXBACKUP_" + tableName;
+	    				orgExTableName	= "EXBACKUP_" + tableName;
+	    			}
+	        		
+	        		optionMap.put("TABLE_NAME"			, tableName);
+	        		optionMap.put("BK_TABLE_NAME"		, exTableName);
+	        		optionMap.put("ORG_BK_TABLE_NAME"	, orgExTableName);
+	        		optionMap.put("CLEAR_CHECK"			, clearCheck);
+	        		optionMap.put("DUPLE_PROCESS"		, dupleProcess);
+	        		optionMap.put("BACKUP_DATE"			, ExdevCommonAPI.getToday("yyyyMMddHHmmss"));
+	        		optionMap.put("sessionVo"			, sessionVo);
 	        		
 	        		// Table에 해당하는 Column읽어온다.
 	            	Map lm = (Map)commonDao.getObject("common.getExcelUploadColumnList", optionMap);
