@@ -1,0 +1,158 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 baseTableDataList	: []	
+		,targetTableName	: ""
+		,saveColumnList		: []
+		,close : function(returnData) {
+			if(isEmpty(returnData)) returnData = {};
+			C_POP.close(returnData);
+		 }
+		,save : function() {
+
+			const saveList = <@popupId>.<@popupId>_editor.getGridData("all");
+			
+			const hiddenGridInstancd = <@popupId>.<@popupId>_orgHiddenGrid.getGridInstance();
+			
+			const targetCell = hiddenGridInstancd.getSelectedCells();
+			
+			$.each(saveList, function() {
+				const item = this;
+				if(in_array(item.COLUMN_ID, <@popupId>.saveColumnList)) {
+					hiddenGridInstancd.setCellToColumn(targetCell, item.COLUMN_VAL, item.COLUMN_ID);
+				}
+			});
+			C_POP.confirm('저장 하시겠습니까?', function() {
+				<@popupId>.<@popupId>_orgHiddenGrid.save(function() {
+					
+					C_POP.alert('저장되었습니다.');
+					
+					<@popupId>.cload({reload : "Y"});
+					
+				}, "merge");
+			});
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(sendParm) {
+
+		let gridParm 		= sendParm.gridParm;
+		
+		let targetRowData 	= sendParm.targetRowData;
+		
+		gridParm.gridType = "hidden"
+		
+		if(isEmpty(targetRowData)) {
+			targetRowData = {};
+		}
+		gridParm.tableDataList = [targetRowData];
+
+		C_COMP.import("<@popupId>_orgHiddenGrid", "component_compGrid", { gridParm : gridParm }, function() {});		
+		
+		let orgGridParm = gridParm;
+
+		<@popupId>.targetTableName = orgGridParm.tableName;
+		
+		let newGridParm = {
+			 columnMap : {
+				  "COLUMN_ID"	: { headerText : "항목ID", hidden : "Y"														}
+				 ,"COLUMN_NM"	: { headerText : "항목명", width : "30%", readOnly : "Y", tdStyle : "background:#F4F5F9"	}
+				 ,"COLUMN_VAL"	: { headerText : "항목값", width : "70%", align : "left"									}
+			 }
+			,primaryKeyList		: ["COLUMN_ID"]
+			,ordernum			: "hide"
+			,headerTitle		: "<@gridHeaderTitle>"
+		}
+
+		let cellDataTypeList = [];		
+		$.each(gridParm.columnMap, function(key, obj) {
+			let item 		= obj;
+			item.key 		= key;
+			item.columnId 	= "COLUMN_VAL";
+			cellDataTypeList.push(item);
+		});
+		newGridParm.cellConfig = {
+			cellDataTypeList : cellDataTypeList
+		}
+		
+		let mode = "<@mode>";
+		
+		if(isEmpty(mode)) mode = "R";
+		if		(mode == "R") {
+			newGridParm.readOnly 	= "Y";
+			$("#<@popupId>_savebtn").hide();
+		} else {
+			newGridParm.updateOnly 	= "Y";
+		}
+		
+		newGridParm.tableDataList	= [];
+		let hideRowList = []
+		$.each(gridParm.columnMap, function(columnId, obj) {
+			if(obj.noSave != "Y" && obj.columnType != "button") {
+				const columnVal = nvl(targetRowData[columnId], "");
+				const item = { "COLUMN_ID" : columnId, "COLUMN_NM" : obj.headerText, "COLUMN_VAL" : columnVal};
+				newGridParm.tableDataList.push(item);
+				<@popupId>.saveColumnList.push(columnId);
+			}
+			if(obj.hidden == "Y") {
+				hideRowList.push({COLUMN_ID : "COLUMN_NM", VALUE : obj.headerText});
+			}
+		});
+		
+		<@popupId>.baseTableDataList = newGridParm.tableDataList;
+		
+		C_COMP.import("<@popupId>_editor", "component_compGrid",{gridParm : newGridParm} , function() {});		
+
+		<@popupId>.<@popupId>_editor.hideRow(hideRowList);
+	});
+</script>
+
+
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm"><@popupTitle></h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" onclick="C_POP.normalSize('<@popupId>')">
+            </button>
+            <!-- <button type="button" class="win-full" onclick="C_POP.fullSize('<@popupId>')"> -->
+            <button type="button" class="win-full" onclick="C_POP.maxSize('<@popupId>')">
+            
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <!-- body start -->
+        <div class="modal-body">
+			<div class="tb-card-allwrap col10">
+				<div class="card-inwrap">
+					<div class="card-cnt-wrap">
+						<div class="explan-table-allwrap">
+							<compnent id="<@popupId>_orgHiddenGrid"></compnent>
+							<compnent id="<@popupId>_editor"></compnent>
+	                    </div>
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn" 		onclick="<@popupId>.save()" id="<@popupId>_savebtn"	>저장</button>
+          <button type="button" class="btn outline-btn mr20" 	onclick="<@popupId>.close()"						>닫기</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+</div>                      
+<!-- modal-popup end -->

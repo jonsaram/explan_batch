@@ -1,0 +1,54 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 loadComponent : function(parm) {
+			let tparm = {
+				 tableName 		: "TBL_EXP_BUYER_BRAND"
+				,valueColumn	: "BRAND_ID"
+				,nameColumn		: "BRAND_NM"
+				,orderColumnList: ["BRAND_ID"]
+				,filterMap		: {"BUYER_ID" : G_VAL.session.BUYER_ID}
+			} 
+			let brandList = C_COM.makeCodeListFromTable(tparm);
+			
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "system.getLoginUserList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_LOGIN_USER"
+					,columnMap 		: {
+					     "LOGIN_ID"	    : { headerText : "로그인ID"	}
+					    ,"BUYER_ID"	    : { headerText : "고객ID"	}
+					    //,"BUYER_NM"	    : { headerText : "고객명"	}
+					    ,"BRAND_ID"	    : { headerText : "브랜드ID"	,columnType : "selectbox", selectBoxCodeList : brandList }
+					    //,"BRAND_NM"	    : { headerText : "브랜드명"	}
+					    ,"STORE_ID"	    : { headerText : "가맹점CD"	}
+					    //,"STORE_NM"	    : { headerText : "가맹점명"	}
+					    ,"LOGIN_NM"	    : { headerText : "사용자명"	}
+					    ,"HP_NUM"	    : { headerText : "전화번호"	}
+					    ,"PASSWD"	    : { headerText : "비밀번호"	}
+					}
+					,primaryKeyList		: ["LOGIN_ID"			]
+					,searchColumnList	: ["LOGIN_ID"			]
+					,orderColumnList 	: ["BUYER_ID", "BRAND_ID", "STORE_ID"]
+				 }
+			}
+			C_COMP.import("<@pageId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_editor"></compnent>    
+    <!-- table area end -->
+</page-component>

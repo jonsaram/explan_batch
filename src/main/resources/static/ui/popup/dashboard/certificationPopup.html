@@ -1,0 +1,162 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@popupId> = {
+         parm   : {}
+        ,ARRY_CODE_ID : []
+        ,close : function() {
+            C_POP.close();
+         }
+        ,loadList : function() {
+
+            /* 기업인증 */
+            let requestParm = {};
+            requestParm["buyerId"]    = G_VAL.session.BUYER_ID;
+            requestParm["comCodeId"]  = "CORPORATE_CERTIFICATION";
+            requestParm["grpCodeId"]  = "CERTIFICATION";
+            requestParm["comCode"]    = "CERTIFICATION_COMPLETE";
+            
+            let propertyParm = {
+                 queryId        : "dashboardCertification.getCrtInfo"
+                ,requestParm    : requestParm
+            }
+            
+            C_COM.requestQuery(propertyParm, function(resultData) {
+            	var rparm = {
+                        targetId       : "<@popupId>_tableId"
+                       ,list           : resultData.data
+                    }
+                    C_COM.renderHtml("<@popupId>", rparm);
+            	
+                for (var i=0; i<resultData.data.length; i++){
+                	<@popupId>.ARRY_CODE_ID.push(resultData.data[i].CODE_ID);
+                 }
+               
+             });         
+         }
+        ,save : function() {
+        	
+        	for (var i = 0; i < <@popupId>.ARRY_CODE_ID.length; i++) {
+        		
+        		var codeId   = <@popupId>.ARRY_CODE_ID[i];
+        	    var infoData = $("#"+<@popupId>.ARRY_CODE_ID[i]).val();
+                
+                let requestParm = {};
+                requestParm["SP_CSTM_ID"]  = "starasset";
+                requestParm["BUYER_ID"]    = G_VAL.session.BUYER_ID;;
+                requestParm["GRP_CODE_ID"] = "CERTIFICATION";
+                requestParm["CODE_ID"]     = codeId;
+                requestParm["INFO_DATA"]   = infoData;
+                
+                let parm = {
+                    queryId        : "dashboardCertification.setCrtInfo"
+                   ,requestParm    : requestParm
+                       
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                   //<@popupId>.loadList();
+                });
+        	    
+        	}
+       	
+            <@popupId>.close();
+            
+         }
+        
+    }
+    // Popup Load가 완료된후 실행 된다.
+    C_POP.onLoadPopup("<@popupId>", function(parm) {
+        
+        <@popupId>.parm = parm;
+        <@popupId>.loadList();   
+        
+    });
+</script>
+<style>
+input[type="password"] {
+    font-family: sans-serif; 
+}
+</style>
+    <!-- modal-popup start full-modal-dialog-->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 700px;">
+        <div class="modal-content">
+            <!-- header start -->
+            <div class="modal-header srch-pop-inwrap">
+                <h5 class="modal-title col7 col8-md col7-sm" id="<@popupId>_loginTitle">기업인증</h5>
+                <!-- button start -->
+                <div class="txt-r col3 col2-md col3-sm">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="<@popupId>.close()">
+                    <span class="pop-cls" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <!-- button end -->
+            </div>
+            <!-- header end -->
+    
+            <!-- body start -->
+            <div class="modal-body">
+            <div class="body-inwrap">
+    
+                <div class="display-between">
+                    <div class="card-tit" id="<@popupId>_cardTitle"><@title1></div>
+                </div>
+                <!-- table area start -->
+                <div class="tb-card-allwrap03 col10">
+                    <div class="card-inwrap">
+                        <div id="tb-scroll" class="card-cnt-wrap">
+                            <!-- table start -->
+                            <table class="tb-wr-wrap tb-read-wrap company-wh col10">
+                                <colgroup>
+                                    <col>
+                                    <col>
+                                </colgroup>
+                                <form  autocomplete="off">
+                                <tbody id="<@popupId>_tableId">
+                                    <script type="text/x-jsrender" id="<@popupId>_tableId_template"> 
+                                        {{for list}}            
+                                            <tr>
+                                                <th class="col2 col2-md col2-sm col1-xs">{{:CODE_ID_NM}}</th>
+                                                <td class="col2 col2-md col2-sm col9-xs">
+                                                    <select id="{{:CODE_ID}}" class="form-control form-control-sm col10">
+                                                        {{if INFO_DATA == "COMPLETED" }}
+                                                            <option value="COMPLETED" selected>인증</option>
+                                                            <option value="INCOMPLETE">미인증</option>
+                                                        {{/if}}
+                                                        {{if INFO_DATA == "INCOMPLETE" }}
+                                                            <option value="COMPLETED" >인증</option>
+                                                            <option value="INCOMPLETE" selected>미인증</option>
+                                                        {{/if}}
+                                                    </select>
+                                                </td>                                            
+                                            </tr>
+                                        {{/for}}          
+                                    </script>
+                                    <script type="text/x-jsrender" id="<@popupId>_tableId_noData_template">    
+                                         <tr>    
+                                             <td colspan=2>자료가 없습니다.</td>    
+                                         </tr>
+                                    </script>
+                                </tbody>
+                                </form>
+                            </table>
+                            <!-- table end -->
+                        </div>
+                    </div>
+                </div>
+                <!-- table area end -->
+                <!-- 결재 상신 내용 end -->
+    
+            </div>        
+            </div>
+            <!-- body end -->
+    
+            <!-- footer start -->
+            <div class="modal-footer">
+                <button type="button" class="btn flat-btn" onclick="<@popupId>.save()">저 장</button>
+                <button type="button" class="btn outline-btn mr20" data-dismiss="modal" onclick="<@popupId>.close()">취 소</button>
+            </div>
+            <!-- footer end -->
+        </div>
+        </div>
+    </div>                      
+    <!-- modal-popup end -->

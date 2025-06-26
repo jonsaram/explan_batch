@@ -1,0 +1,587 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@pageId> = {
+	paMap : G_VAL.PAGE_AUTH_MAP["<@pageId>"]
+	,contractItem 	: {}	
+	,selectedList : []
+	,RESULT_INSERTED_CNT : 0 /* RESULT 테이블에 입력된 CONTRACT 갯수 */
+	,pageInit : () =>{
+		
+	}	
+	,searchList : function(){
+
+		const requestParm = {	CONTRACT_ID	: <@pageId>.contractItem.CONTRACT_ID 
+								, RESULT_ID : <@pageId>.contractItem.RESULT_ID
+								, GUBUN : 'MNG'
+							};
+		
+		let parm = {
+			queryId        	: "result.getResultList"
+			,requestParm    : requestParm
+		}
+        C_COM.requestQuery(parm, function(resultData) {
+
+			<@pageId>.selectedList = resultData.data;
+        	
+			let REMAINING_SUM_LIST = [];
+        	let no = 0,resultId='';
+        	let TOTAL_ROW = {"INCOME":0,"COST_PRICE":0,"ORG_SELLING_PRICE":0,"PAYMENT":0,"RATE":0,"REAL_PROFIT":0};
+        	let RESULT_ID = '';
+        	let resultIdCnt = 0;
+			let LAST_RESULT_ID = '';
+			let EXEC_RATE = 0;
+			let CALC_EXEC_RATE = [];
+			let calcRESULT_ID = '';
+			let calcResultId = '';
+			let ResultIdRows = {}
+        	resultData.data.forEach( (row,idx) => {
+
+        		RESULT_ID = row["RESULT_ID"];
+        		<@pageId>.selectedList[idx] = row;
+        		
+        		if( row["RESULT_ID"] != resultId){
+        			resultId = row["RESULT_ID"];
+	       			resultIdCnt++;
+	       			TOTAL_ROW["INCOME"] += isNaN(Number(row["INCOME"])) ? 0 : Number(row["INCOME"]);
+	       			TOTAL_ROW["COST_PRICE"] += isNaN(Number(row["COST_PRICE"])) ? 0 : Number(row["COST_PRICE"]);
+	       			TOTAL_ROW["ORG_SELLING_PRICE"] += isNaN(Number(row["ORG_SELLING_PRICE"])) ? 0 : Number(row["ORG_SELLING_PRICE"]);
+	       			TOTAL_ROW["REAL_PROFIT"] += isNaN(Number(row["REAL_PROFIT"])) ? 0 : Number(row["REAL_PROFIT"]);        			
+        			row['RN'] = ++no;
+        		}else{
+        			row['RN'] = no;
+        		}
+        		
+        		REMAINING_SUM_LIST.push( row.REMAINING_SUM);
+
+        		const RELATION_TYPE 	= row.RELATION_TYPE;
+        		if( RELATION_TYPE =="EXECUTE"){
+        			EXEC_RATE	 = row["RATE"];
+        		}
+        		if( RELATION_TYPE =="COWORK"){
+        			row["RATE"]	= (row["RATE"] * EXEC_RATE) /100;
+        		}
+        		TOTAL_ROW["RATE"] 		+= isNaN(Number(row["RATE"])) ? 0 : Number(row["RATE"]);
+				TOTAL_ROW["PAYMENT"] 	+= isNaN(Number(row["PAYMENT"])) ? 0 : Number(row["PAYMENT"]);
+				
+				LAST_RESULT_ID = !isEmpty(row["LAST_RESULT_ID"]) ? row["LAST_RESULT_ID"] :'';
+				
+        	    // 실행수수료율 계산을 위해 
+        	    calcRESULT_ID = row["RESULT_ID"];
+
+        	    if (calcRESULT_ID !== calcResultId) {
+
+        	        if (!isEmpty(ResultIdRows)) {
+        	            CALC_EXEC_RATE.push(ResultIdRows);
+        	        }
+
+        	        ResultIdRows = {
+        	            "RESULT_ID": calcRESULT_ID,
+        	            "rows": [{USER_ID: row.USER_ID, RELATION_TYPE:row.RELATION_TYPE, RATE : row.RATE}]
+        	        };
+
+        	        calcResultId = calcRESULT_ID;
+        	    } else {
+        	        ResultIdRows["rows"].push({USER_ID: row.USER_ID, RELATION_TYPE:row.RELATION_TYPE, RATE : row.RATE});
+        	    }
+        	});
+       
+			//마지막 ResultIdRows 객체를 CALC_EXEC_RATE에 추가
+			if (!isEmpty(ResultIdRows)) {
+			    CALC_EXEC_RATE.push(ResultIdRows);
+			}
+			
+			//실행 수수료율 계산.
+			CALC_EXEC_RATE.forEach( execRate =>{
+				
+				let coworkRates =0;
+				let executeRate =0;
+				let susuRyoRate =0;
+				execRate["rows"].forEach( row =>{
+					if( row.RELATION_TYPE == 'EXECUTE')susuRyoRate = Number(row.RATE);
+				})
+				
+				execRate["rows"].forEach( row =>{
+					if( row.RELATION_TYPE == 'COWORK') coworkRates += ( (Number(row.RATE) / susuRyoRate) * 100 );
+				})
+				const newExecteRate = 100-coworkRates;
+				execRate["rows"].forEach( row =>{
+					if( row.RELATION_TYPE == 'EXECUTE') row.RATE = ( susuRyoRate * newExecteRate / 100 );
+				})
+
+				
+			})
+		
+			// 실행수수료율 SET.
+        	resultData.data.forEach( (row,idx) => {
+        		
+        		row["LAST_RESULT_ID"] = row["RESULT_ID"] == LAST_RESULT_ID ?  LAST_RESULT_ID :'';
+        		<@pageId>.RESULT_INSERTED_CNT = row["RESULT_INSERTED_CNT"];
+        		
+        		if( row.RELATION_TYPE == "EXECUTE" ){
+        			const sameResultIdRows 	= CALC_EXEC_RATE.filter( arr => arr.RESULT_ID == row.RESULT_ID);
+        			const sameExecuteRow 	= sameResultIdRows[0]["rows"].find( row => row.RELATION_TYPE == "EXECUTE");
+        			row.RATE = sameExecuteRow.RATE;
+        		}
+        		
+        	});
+        	
+       		
+        	let rparm = {
+           			targetId   : "<@pageId>_resultList"
+					,list       : resultData.data
+			}
+			C_COM.renderHtml("<@pageId>", rparm);
+       	
+        	mergeTableTD('<@pageId>_resultList', {startIdx : 14, endIdx : 16, startRowIdx : 1});
+        	mergeTableTD('<@pageId>_resultList', {startIdx : 1, endIdx : 7, startRowIdx : 1});
+        	
+    		if( <@pageId>.selectedList.length > 0 ){
+    			
+    			<@pageId>.contractItem.REMAINING_SUM = Math.min( ...REMAINING_SUM_LIST );
+    			
+				//if( <@pageId>.contractItem.REMAINING_SUM == 0){
+					
+	    			//실적입력에서 실적 등록 버튼 나오지 않는 경우 => 월자문 : 실행완료 / 일회성 : 계약만기
+	    			let isAfter = false,isCompleted = false;
+	    			if( dayjs(<@pageId>.contractItem.EXPIRE_DATE ).isAfter(dayjs())) isAfter = true;
+	    			if( <@pageId>.contractItem["PROCESS_STATE"].indexOf("COMPLETED") > -1) isCompleted = true;
+	    			
+	    		// 20240805 위성열 // 실적 등록 버튼 제어 보류	
+				//	if( <@pageId>.contractItem.CONSULTING_TYPE == "MONTHLY"	&& isCompleted		)$("#<@pageId>_regResult").hide();
+				//	if( <@pageId>.contractItem.CONSULTING_TYPE == "ONCE"	&& isAfter			)$("#<@pageId>_regResult").hide();
+				//}
+				
+				let totalORGSP 		= Number(TOTAL_ROW["ORG_SELLING_PRICE"]).toFixed(2);	totalORGSP 		= totalORGSP.replace(/\.00$/, "");
+				let totalRATE 		= Number((TOTAL_ROW["RATE"] / resultIdCnt)).toFixed(2);	totalRATE 		= totalRATE.replace(/\.00$/, "");
+				let totalPAYMENT 	= Number(TOTAL_ROW["PAYMENT"]).toFixed(2);				totalPAYMENT 	= totalPAYMENT.replace(/\.00$/, "");
+				let totalPROFIT		= Number(TOTAL_ROW["REAL_PROFIT"]).toFixed(2);			totalPROFIT		= totalPROFIT.replace(/\.00$/, "");
+				
+	 			const trTemplate = $("#<@pageId>_resultList_total_template").render({ INCOME 			: addComma(Number(TOTAL_ROW["INCOME"]))
+	 																				, COST_PRICE 		: addComma(Number(TOTAL_ROW["COST_PRICE"]))
+	 																				, ORG_SELLING_PRICE : addComma(totalORGSP)
+	 																				, RATE 				: totalRATE
+	 																				, PAYMENT 			: addComma(totalPAYMENT)
+	 																				, REAL_PROFIT		: addComma(totalPROFIT)
+	 																				});
+				$("#<@pageId>_resultList").append(trTemplate);
+    		}
+			<@pageId>.setHandler();
+			
+			//$("#<@pageId> button .icon_trash").hide()
+		});
+	}
+	,updateItem : (param) => {
+
+		const requestParm = param ? param : {} ;
+
+		const paymentInfo 	= requestParm.paymentInfo 	|| [];
+		const constInfo		= requestParm.costInfo		|| [];
+		const resultInfo	= requestParm.resultInfo;
+		
+		let exeCnt = 0
+		paymentInfo.forEach( item => {
+			exeCnt++;
+			
+			item.CONTRACT_ID = resultInfo.CONTRACT_ID;
+			item.RESULT_ID   = resultInfo.RESULT_ID;
+			var parm = {
+						queryId 	: "result.updatePaymentItem"
+					   ,requestParm	: item
+			}
+			
+			C_COM.requestQuery(parm, function(resultData) {
+				
+                if (resultData.state === 'S') {
+                	exeCnt--;
+                	if(exeCnt == 0) alert('저장되었습니다.');
+    			} else {
+                	alert('저장이 실패 되었습니다.');
+    			}
+			});				
+	    
+		})
+		
+		const constInfoLength = constInfo.length;
+		if( constInfoLength >  0){
+		
+    		constInfo.forEach( (item, index ) => {
+				
+				var parm = {
+							queryId 	: "result.updateCostItem"
+						   ,requestParm	: item
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					
+	                if (resultData.state === 'S') {
+	                		                	
+	                	if( constInfoLength <= (index+1) )
+	                		<@pageId>.updateResultItem(resultInfo);	
+	                }
+				});				
+			})		
+		}else{
+			
+			<@pageId>.updateResultItem(resultInfo);	
+		}
+	}
+	,updateResultItem : (resultInfo) =>{
+		var parm = {
+				queryId 	: "result.updateResultItem"
+			   ,requestParm	: resultInfo
+			}
+	
+			C_COM.requestQuery(parm, function(resultData) {
+	            if (resultData.state === 'S') {
+
+	            	<@pageId>.searchList();
+	            }
+		});
+	}
+	,deleteItem : (delKey) => {
+			
+			var parm = {
+					 queryId 		: "result.deleteResultTabSeries"
+					,requestParm	: delKey
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				 <@pageId>.searchList();
+			});				
+	}
+	,deleteOne : (key) =>{
+			
+ 		const CONTRACT_ID	= key.split("||")[0];
+ 		const RESULT_ID		= key.split("||")[1];
+ 		<@pageId>.deleteItem({CONTRACT_ID:CONTRACT_ID,RESULT_ID:RESULT_ID})
+ 		
+	}
+	,setHandler : () => {
+		
+	    $("#<@pageId>_constractSel").off().on('click',function(){
+	    	
+			<@pageId>.openSelectPopup();
+
+	    })
+		
+	    $("#<@pageId>_regResult").off().on('click',function(){
+
+	    	const contractId = <@pageId>.contractItem.CONTRACT_ID;
+	    	if( !contractId ){
+	    		
+				C_POP.alert('실적입력을 위해 해당 계약을 먼저 선택해 주십시오.');
+				return;
+	    		
+	    	}
+/*
+			//20240805 위성열 //	실행 완료 되어도 실정 등록 할수 있도록 주석 처리	    	
+			if( <@pageId>.contractItem["PROCESS_STATE"].indexOf("COMPLETED") > -1 )
+			{
+				C_POP.alert('실행 완료된 계약은 실적 등록 할 수 없습니다.');
+				return;
+			}
+*/
+	    	
+	    	// remainingCost to reload
+			
+			const requestParm = {CONTRACT_ID : contractId  , PA_ROLE : <@pageId>.paMap.ROLE_ID  };
+			var parm = {
+					 queryId 		: "contract.getContractList"
+					,requestParm	: requestParm
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+
+				<@pageId>.contractItem =  resultData.data[0];
+
+				<@pageId>.openUpdatePopup();
+			});
+
+	    })
+
+ 	    $("[id='<@pageId>_delete']").off().on('click',function(){
+ 	    	
+ 	    	const key = $(this).attr("key");
+	    	C_POP.confirm('선택하신 실적정보를 삭제 하시겠습니까?', function() {
+
+				<@pageId>.deleteOne(key);
+
+			});
+	    })
+	    
+	}
+	,openSelectPopup : () => {
+
+		let param = [];	
+
+		C_POP.open('popup_contract_contractSearchPopup', {}, function(retData) {
+
+			if(isValid(retData)){
+				const requestParm = {CONTRACT_ID : retData.CONTRACT_ID   , PA_ROLE : <@pageId>.paMap.ROLE_ID  };
+				
+				var parm = {
+						 queryId 		: "contract.getContractList"
+						,requestParm	: requestParm
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+
+					<@pageId>.contractItem =  resultData.data[0];
+
+					$("#<@pageId>_contract").hide().text(<@pageId>.contractItem.CONTRACT_ID+" "+<@pageId>.contractItem.PROCESS_STATE);	
+					
+					Object.entries(<@pageId>.contractItem).forEach( item =>{
+						
+						const key	= item[0],value = item[1];
+						const val	= key == "TOTAL_COST" ? addComma( value ) : value;
+						$("#<@pageId>_items #"+ key).html(val);
+						
+					});
+					
+					<@pageId>.searchList();
+				});
+				
+			}
+			
+		});
+		
+	}
+	,openUpdatePopup : (RESULT_ID) => {
+
+		let mode = "I";
+		let param = "";
+		if( !isEmpty(RESULT_ID) )
+		{
+			
+			param 	= <@pageId>.selectedList.find( row => row.RESULT_ID == RESULT_ID);
+			
+			if( param.RESULT_ID !=  param.LAST_RESULT_ID){
+				
+				mode 	= "V";
+				
+			}else{
+				
+				mode 	= "U";
+				
+			}
+			
+		}
+
+		let goPopup = false;
+		if( mode == "I"){
+
+			const today = dayjs();
+			const expireDate = dayjs(<@pageId>.contractItem.EXPIRE_DATE);
+			
+			const isExpired = today.isAfter(expireDate);
+			if( isExpired){ 
+				
+		    	C_POP.confirm('계약만료일이 지난 실적을 입력하시겠습니까?', function() {
+
+		    		goPopup = true;
+
+				});
+		    	
+			}else{
+				goPopup = true;
+			}
+		}else{
+			
+			goPopup = true;			
+		}
+		
+		if( goPopup ){
+
+			let resultInsertedCnt ; //실적 입력 횟수 ( 계약 / 실적 조회시 조회된것중 큰것 저장.)
+			if( <@pageId>.contractItem.RESULT_INSERTED_CNT >  <@pageId>.RESULT_INSERTED_CNT ){
+				resultInsertedCnt = <@pageId>.contractItem.RESULT_INSERTED_CNT;
+			}else{
+				resultInsertedCnt = <@pageId>.RESULT_INSERTED_CNT;	
+			}
+			 
+	 		C_POP.open('popup_result_resultUpdatePopup', {	  mode		:	mode
+	 												, resultItem		:	param 
+	 												, contractItem 		:	<@pageId>.contractItem 
+	 												, resultInsertedCnt : 	resultInsertedCnt}
+				, function(retData) {
+					setTimeout( ()=>{<@pageId>.searchList();},1000)
+					
+					
+			});
+		}
+	}
+}
+// Page Load가 완료된후 실행 된다.
+C_PM.onLoadPage("<@pageId>", function() {
+
+	<@pageId>.setHandler();
+	
+});
+// History back으로 이동해왔을 경우 이루틴이 실행된다.
+C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+});
+</script> 
+<div class="cont_wrap">
+	<div class="cont_top">
+		<h2><i class="icon_bullet"></i>실적 관리</h2>
+		<div id="<@pageId>_contract"></div>
+	</div>
+
+	<section class="sec_wrap list" style="height:calc(100% - 43px);">
+		<!-- search area -->
+		<div class="search_area mt0">
+			<div class="fl">
+				<span class="tit01 fl lh33">계약 정보</span>
+				<a href="javascript:void(0)" id="<@pageId>_constractSel" class="btn fl">계약 선택</a>
+			</div>
+		</div>
+		<div class="tbl01 row">
+			<table>
+				<caption>표 캡션</caption>
+				<colgroup>
+					<col style="width:100px;">
+					<col>
+					<col style="width:100px;">
+					<col>
+				</colgroup>
+				<tbody id="<@pageId>_items">
+					<tr>
+						<th scope="row">고객 ID</th>
+						<td id="BUYER_ID"></td>
+						<th scope="row">고객명</th>
+						<td id="BUYER_NM"></td>
+					</tr>
+					<tr>
+						<th scope="row">담당자</th>
+						<td id="USER"></td>
+						<th scope="row">계약금액</th>
+						<td id="TOTAL_COST"></td>
+					</tr>
+					<tr>
+						<th scope="row">상담일</th>
+						<td id="CONTACT_DATE"></td>
+						<th scope="row">계약일</th>
+						<td id="CONTRACT_DATE"></td>
+					</tr>
+					<tr>
+						<th scope="row">만료일</th>
+						<td id="EXPIRE_DATE"></td>
+						<th scope="row">계약 유형</th>
+						<td id="CONSULTING_TYPE_NM"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- search area -->
+		<div class="search_area mt25">
+			<div class="fl">
+				<span class="tit01 fl lh33">실적 리스트</span>
+				<a href="javascript:void(0)" id="<@pageId>_regResult" class="btn fl">실적 등록</a>
+			</div>
+		</div>
+		<!-- 테이블 -->
+		<div class="tbl01 col tbl_scroll" style="height:calc(100% - 330px);">
+				<table>
+					<caption>실적 리스트</caption>
+					<colgroup>
+						<col style="width:40px;"/>
+						<col style="width:110px;"/>
+						<col style="width:100px;"/>
+						<col style="width:110px;" span="3" />
+						<col style="width:120px;"/>
+						<col style="width:90px;" span="5" />
+						<col style="width:120px;"/>
+						<col style="width:120px;"/>
+						<col style="width:40px;"/>
+						<col style="width:40px;"/>
+					</colgroup>
+					<thead>
+						<tr>
+							<th scope="col" rowspan="2">순번</th>
+							<th scope="col" rowspan="2">계약금액</th>
+							<th scope="col" rowspan="2">입금일</th>
+							<th scope="col" rowspan="2">입금액</th>
+							<th scope="col" rowspan="2">잔금</th>
+							<th scope="col" rowspan="2">비용</th>
+							<th scope="col" rowspan="2">순매출</th>
+							<th scope="col" colspan="7">수수료 산출 내역</th>
+							<th scope="col" rowspan="2"><i class="icon_pen"></i></th>
+							<th scope="col" rowspan="2"><i class="icon_trash"></i></th>
+						</tr>
+						<tr>
+							<th scope="col">사원ID</th>
+							<th scope="col">사원이름</th>
+							<th scope="col">등급/직위</th>
+							<th scope="col">역할</th>
+							<th scope="col">수수료율(%)</th>
+							<th scope="col">수수료(원)</th>
+							<th scope="col">순이익</th>
+						</tr>
+					</thead>
+					<tbody id="<@pageId>_resultList">
+					</tbody>
+					<script type="text/x-jsrender" id="<@pageId>_resultList_template">
+						{{for list}}
+							<tr name="<@pageId>_tr_{{:#index}}">
+								<td	{{:RESULT_ID}}>{{:RN}}														</td>
+								<td class="tr"	title="{{numb:TOTAL_COST}}"			>{{numb:TOTAL_COST}}		</td>
+								<td				title="{{:RESULT_DATE}}"			>{{:RESULT_DATE}}			</td>
+								<td class="tr"  title="{{numb:INCOME}}"				>{{numb:INCOME}}			</td>
+								<td class="tr"	title="{{numb:REMAINING_SUM}}"		>{{numb:REMAINING_SUM}}		</td>
+								<td class="tr"	title="{{numb:COST_PRICE}}"			>{{numb:COST_PRICE}}		</td>
+								<td class="tr"	title="{{numb:ORG_SELLING_PRICE}}"	>{{numb:ORG_SELLING_PRICE}}	</td>
+								<td				title="{{:USER_ID}}"				>{{:USER_ID}}				</td>
+								<td				title="{{:USER_NM}}"				>{{:USER_NM}}				</td>
+								<td				title="{{:GRADE_NM}}"				>{{:GRADE_NM}}				</td>
+								<td				title="{{:RELATION_TYPE_NM}}"		>{{:RELATION_TYPE_NM}}		</td>
+								<td				title="{{:RATE}}"					>{{:RATE}}					</td>
+								<td class="tr"	title="{{numb:PAYMENT}}"			>{{numb:PAYMENT}}			</td>
+								<td class="tr"	title="{{numb:REAL_PROFIT}}"		>{{numb:REAL_PROFIT}}<!--{{:RN}}--></td>
+
+			 					<td >
+									<button onclick="javascript:<@pageId>.openUpdatePopup('{{:RESULT_ID}}')">
+									<i class="icon_pen"></i>
+									</button>
+								</td>
+
+								<td >
+<!-- 실행 완료일때 저장 버튼 안나오는 기능 보류
+									{{if LAST_RESULT_ID != "" }}
+									<button id="<@pageId>_delete" key='{{:CONTRACT_ID}}||{{:RESULT_ID}}'>
+									<i class="icon_trash"></i>
+									</button>
+									{{/if}}
+-->
+									<button id="<@pageId>_delete" key='{{:CONTRACT_ID}}||{{:RESULT_ID}}'>
+									<i class="icon_trash"></i>
+									</button>
+								</td>
+
+						{{/for}}
+					</script>
+					<script type="text/x-jsrender" id="<@pageId>_resultList_noData_template">	
+						<tr>	
+							<td colspan=16>자료가 없습니다.</td>	
+						</tr>
+					</script>
+					<script type="text/x-jsrender" id="<@pageId>_resultList_total_template">	
+						<tr style="background-color:#F2F3FF !important;">
+							<td></td>
+							<td class="tr"></td>
+							<td></td>
+							<td class="tr">{{:INCOME}}</td>
+							<td class="tr"></td>
+							<td class="tr">{{:COST_PRICE}}</td>
+							<td class="tr">{{:ORG_SELLING_PRICE}}</td>
+							<td colspan="4">계</td>
+							<td>{{:RATE}}%</td>
+							<td class="tr">{{:PAYMENT}}</td>
+							<td class="tr">{{:REAL_PROFIT}}</td>
+							<td></td>
+							<td></td>
+						</tr>	
+					</script>
+				</table>
+			</div>
+		</div>
+	</section>
+</div>

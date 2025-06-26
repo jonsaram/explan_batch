@@ -1,0 +1,371 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 currentSelectDataFst : {}	
+		,sendParm			  : {}
+		,companyId			  : "<@companyId>"
+		,companyProductList	  : []
+		,mstProductList	  	: []
+		,gridParmFst		  : {}
+		,close : function(returnData) {
+			C_POP.close({reload : "Y"});
+		 }
+		,maxSize : function() {
+			C_POP.maxSize('<@popupId>');		
+		 }
+		,normalSize : function() {
+			C_POP.normalSize('<@popupId>');		
+		 }
+		,saveFst	: function() {
+			C_POP.confirm('저장하시겠습니까?', function() {
+				<@popupId>["tableEditorPopupFst"].save(function(returnData) {
+					C_POP.alert('저장되었습니다.');
+				});
+			});
+		 }
+		,saveSnd	: function() {
+			C_POP.confirm('저장하시겠습니까?', function() {
+				<@popupId>["tableEditorPopupSnd"].save(function(returnData) {
+					C_POP.alert('저장되었습니다.');
+				});
+			});
+		 }
+		,reloadFst : function(companyId) {
+			if(isEmpty(companyId)) companyId = <@popupId>.companyId;			
+
+			let searchValue = $("#<@popupId> #searchValueFst").val();
+			
+			let requestQuery = <@popupId>.gridParmFst.requestQuery;
+			
+			let parm  = {
+				 searchWhereMap : {
+					 "A.COMPANY_ID" 	: companyId	 
+				 }
+				,searchValue	: searchValue 
+			}
+			<@popupId>["tableEditorPopupFst"].reload(parm);
+		 }
+		,reloadSnd 	: function() {
+			let searchValue = $("#<@popupId> #searchValueSnd").val();
+			<@popupId>["tableEditorPopupSnd"].reload({ searchValue : searchValue });
+		 }
+		,setMaterialsCompanyList : function(brandId, callback) {
+			if(isEmpty(brandId)) {
+				C_POP.alert('Brand ID가 필요합니다.');
+				return;
+			}
+			var parm = {
+				 queryId 		: "common.getMaterialsCompanyList"
+				,requestParm	: {BRAND_ID : brandId}
+			}
+	        C_COM.requestQuery(parm, function(resultData) {
+	        	let selectList = C_COM.makeCodeList(resultData.data, "COMPANY_ID", "COMPANY_NM");
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: "<@popupId>_materialsCompanyList"
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "single");
+	    		
+	    		if(selectList.length > 0 ) {
+	    			if(typeof callback == "function") callback(selectList[0]); 
+	    		}
+	        });
+		 }
+		,changeCompany : function(selectDom) {
+			let companyId = $(selectDom).find("option:selected").attr("value");
+			<@popupId>.companyId = companyId;
+			<@popupId>.reloadFst(companyId);
+		 }
+		,setMappingMeterials : function(materialsCd) {
+			let gridInstance = <@popupId>.tableEditorPopupFst.getGridInstance();
+			let selectCells = gridInstance.getSelectedCells();
+			let targetDom = selectCells[0];
+			gridInstance.setCellToColumn(targetDom, materialsCd, "MATERIALS_CD");
+		 }
+		,makeQty : function() {
+			let gridInstance 	= <@popupId>.tableEditorPopupFst.getGridInstance();
+			
+			const companyProductList = C_GRID.getGridMainData(gridInstance.gridId)
+
+			$.each(companyProductList, function() {
+				const item = this;
+				
+				if(!in_array(item.MST_UNIT, ["g", "kg"])) return true;
+				
+				if(isValid(item.CONVERSION_QUANTITY)) return true;
+				
+				let cvqty = extractWeight(item.PRODUCT_NM, item.MST_UNIT);
+				
+				if(isEmpty(cvqty) || cvqty == 0 ) return true;
+				
+				let mapData = {
+					 PRODUCT_ID 			: item	["PRODUCT_ID"		]
+					,COMPANY_ID				: item	["COMPANY_ID"		]
+					,CONVERSION_QUANTITY	: cvqty
+				}
+				gridInstance.setRowDataByPk(mapData);
+			});
+		 }
+		,productAutoMapping : function() {
+
+			let gridInstance 	= <@popupId>.tableEditorPopupFst.getGridInstance();
+			let mstGridInstance = <@popupId>.tableEditorPopupSnd.getGridInstance();
+			
+			const companyProductList = C_GRID.getGridMainData(gridInstance.gridId)
+			
+			$.each(companyProductList, function() {
+				const item = this;
+				
+				if(isValid(item.MATERIALS_CD) || isEmpty(item.PRODUCT_NM)) return true;
+				
+				$.each(<@popupId>.mstProductList, function() {
+					const mstItem = this;
+
+					let productNm 		= item.PRODUCT_NM;
+					let mstProductNm	= mstItem.MATERIALS_NM;  
+					
+					if(isEmpty(mstProductNm) ) return true;
+					
+					productNm = productNm.replaceAll("면세", "");
+	
+					let rate = getSimilarity(productNm, mstProductNm);
+					
+					if( rate >= 60) {
+						let mapData = {
+							 PRODUCT_ID 			: item		["PRODUCT_ID"		]
+							,COMPANY_ID				: item		["COMPANY_ID"		]
+							,MATERIALS_CD			: mstItem	["MATERIALS_CD"		]
+						}
+						gridInstance.setRowDataByPk(mapData);
+					}
+				});
+			});
+		 }
+		
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(sendParm) {
+		let brandId = G_VAL.session.BRAND_ID;
+		
+		<@popupId>.setMaterialsCompanyList(brandId, function(obj) {
+			if(isEmpty(obj)) {
+				C_POP.alert('물류회사 등록이 필요합니다.');
+				return;
+			}
+			<@popupId>.companyId = sendParm.companyId;
+			
+			C_UICOM.setSingleBox("<@popupId>_materialsCompanyList", <@popupId>.companyId);
+		});
+		
+		<@popupId>.gridParmFst = {
+			 requestQuery	: {
+				  queryId		: "headerManage.getMaterialsCompanyProductList"
+				 ,requestParm	: {}
+			 }
+			,tableName		: "TBL_EXP_FOOD_COMPANY_PRODUCT"
+			,columnMap 		: {
+				 "PRODUCT_ID"         	: { headerText : "상품ID"	,hidden 	:"Y"		, ifNewAutoSet : "random"								}   
+				,"COMPANY_ID"         	: { headerText : "업체ID"	,hidden 	:"Y"		, default : <@popupId>.companyId						} 
+				,"PRODUCT_CD"       	: { headerText : "상품코드" ,width 		: "130px"       													} 
+				,"PRODUCT_NM"         	: { headerText : "상품명"   ,width 		: "180px"	, align 	: "left"    								} 
+				,"UNIT_PRICE"          	: { headerText : "단가"     ,width 		: "80px"	, dataType 	: "number" 									}
+				,"UNIT"		          	: { headerText : "판매단위" ,width 		: "70px"															}
+				,"CONVERSION_QUANTITY"	: { headerText : "변환용량" ,width 		: "110px"	, dataType 	: "number" 									}
+				,"MATERIALS_CD"       	: { headerText : "상품CD"   ,width 		: "130px"															}	     
+				,"MST_MATERIALS_NM"     : { headerText : "상품명"   ,width 		: "150px"	,readOnly	: "Y"										}    
+				,"MST_UNIT"       		: { headerText : "단위"   																					}     
+				,"MST_PRODUCT_CLASS"    : { headerText : "Class"    ,width 		: "80px"	,readOnly 	: "Y"	, columnType : "selectbox", useCodeId : "PRODUCT_CLASS"}
+				//,"MST_UNIT"             : { headerText : "단위"    										}
+				//,"MST_CONVERSION"       : { headerText : "환산"    										}
+				//,"MST_UNIT_PRICE"       : { headerText : "단가"    										}
+			 }
+			,addColumnMap	: {
+				noSave : {
+					 "MST_MATERIALS_NM" 	: "Y"
+					,"MST_UNIT" 			: "Y"
+					,"MST_PRODUCT_CLASS" 	: "Y"
+				}
+			 }
+			,headerTextGroup	: {
+				"Master 식자재" : [ 
+					 "MATERIALS_CD"     
+					,"MST_MATERIALS_NM" 
+					,"MST_UNIT" 
+					,"MST_PRODUCT_CLASS"
+				]
+			 }
+			,columnConfig : {
+				 onChangeCell : {
+					"MATERIALS_CD"	: {
+						 func :function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+							if(isValid(rowData.MATERIALS_CD)) {
+								let mstGridInstance = <@popupId>.tableEditorPopupSnd.getGridInstance();
+								let mstItem = mstGridInstance.getRowDataByPk({MATERIALS_CD : rowData.MATERIALS_CD}	);
+								gridObj.setCellToColumn(cellObj, mstItem.MATERIALS_NM	, "MST_MATERIALS_NM"		);
+								gridObj.setCellToColumn(cellObj, mstItem.UNIT			, "MST_UNIT"				);
+								gridObj.setCellToColumn(cellObj, mstItem.PRODUCT_CLASS	, "MST_PRODUCT_CLASS"		);
+							} else {
+								gridObj.setCellToColumn(cellObj, "", "MST_MATERIALS_NM"		);
+								gridObj.setCellToColumn(cellObj, "", "MST_UNIT"				);
+								gridObj.setCellToColumn(cellObj, "", "MST_PRODUCT_CLASS"	);
+							} 
+						 }						
+					}
+				 }
+			 }
+			,primaryKeyList		: ["PRODUCT_ID", "COMPANY_ID"]
+			,searchColumnList	: ["A.PRODUCT_CD", "A.PRODUCT_NM", "A.MATERIALS_CD", "B.MATERIALS_NM", "A.UNIT"]
+			,orderColumnList 	: ["D.SORT_ORDER", "PRODUCT_CD"]
+			,searchWhereMap		: {"A.COMPANY_ID" : <@popupId>.companyId }
+			,rowCntId			: "<@popupId>_rowCntFst"
+			,useRuntimeLoad		: 100
+		}
+		
+		let gridParmSnd = {
+			requestQuery	: {
+				  queryId		: "headerManage.getMaterialsMasterList"
+				 ,requestParm	: {}
+			 }
+			,tableName		: "TBL_EXP_FOOD_MATERIALS_MASTER"
+			,columnMap 		: {
+				 "MATERIALS_MASTER_ID" 			: { headerText : "RECIPE_ID" 	, hidden : "Y", ifNewAutoSet : "random"				}
+				,"BRAND_ID"            			: { headerText : "BRAND_ID"     , hidden : "Y", "default" 	: G_VAL.session.BRAND_ID}
+				,"MATERIALS_CD"        			: { headerText : "자재CD"  	, width	 : "180px"									}
+				,"MATERIALS_NM"        			: { headerText : "자재명"  	, width	 : "180px"									}
+				,"PRODUCT_CLASS"       			: { headerText : "자재구분"		, columnType : "selectbox", useCodeId : "PRODUCT_CLASS" }
+				,"UNIT"                			: { headerText : "단위(g/ea)"													}
+				,"CONVERSION_UNIT_PRICE"		: { headerText : "단가"    	, dataType : "number"								}
+			 }
+			,columnConfig 	: {
+			 }
+			,rowConfig		: {
+				onDblClickRow : function(rowObj) {
+					<@popupId>.setMappingMeterials(rowObj.MATERIALS_CD);
+				}
+			 }
+			,primaryKeyList		: ["MATERIALS_CD"]
+			,searchColumnList	: ["MATERIALS_CD", "MATERIALS_NM"]
+			,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID }
+			,orderColumnList 	: ["B.SORT_ORDER", "MATERIALS_CD"]	
+			,rowCntId 			: "<@popupId>_rowCntSnd"
+			//,checkbox			: "show"
+			//,ordernum			: "hide"
+			,readOnly			: "Y"
+		};
+		
+		C_COMP.import("tableEditorPopupFst", "component_compGrid",{gridParm : <@popupId>.gridParmFst} , function(tableList) {
+			C_COMP.import("tableEditorPopupSnd", "component_compGrid",{gridParm : gridParmSnd} , function(tableList2) {
+				dwrite(tableList2);
+				<@popupId>.mstProductList = tableList2;
+			});		
+		});		
+	});
+</script>
+<!-- modal-popup start -->
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="full-modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm">물류 식자재 편집</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" style="display:none">
+            </button>
+            <button type="button" class="win-full" style="display:none">
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <!-- body start -->
+        <div class="modal-body">
+          <div class="body-inwrap display-row-nowrap-md"> <!-------------------- 테이블 좌, 우 배치 시 -- 이 부분에 클래스명 추가 ( display-row-nowrap-md ) // 테이블 하나의 경우 클래스명 추가 불필요 -------------------->
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col6 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+                        <div class="table-allwrap display-column"> <!-------------------- 이 부분에 클래스명 추가 ( display-column ) -------------------->
+                            <div class="card-tit-wrap">
+                                <div class="card-tit">물류 식자재 List</div>
+                            </div>
+                            <div class="display-between display-sm-between deco-line pt10 pl10 pr10 pb5">
+                                <div class="col4-md col10-sm display-h-end mb5">
+									<span class="col2-sm w150px mb3">가맹점</span>
+						            <select class="form-control form-control-sm w300px col6-sm mr20" id="<@popupId>_materialsCompanyList" onChange="<@popupId>.changeCompany(this)">
+						            </select>                
+									<span class="col2-sm w150px mb3">검색어</span>
+									<input type="text" class="form-control form-control-sm mr5" id="searchValueFst" onEnter="<@popupId>.reloadFst()">
+									<button class="srch-btn" type="button" onclick="<@popupId>.reloadFst()">검 색</button>
+								</div>
+                                <div class="display-w-end col4 col4-md col10-sm mb5">
+                                  <span class="col2-sm w120px txt-r mr10">Total : <span class="txt-red" id="<@popupId>_rowCntFst"></span></span>              
+                                  <button class="flat-btn col2-sm mr5" type="button" onclick="<@popupId>.productAutoMapping()" title="식자재 자동 Mapping">AtCnt</button>
+                                  <button class="flat-btn col2-sm mr5" type="button" onclick="<@popupId>.makeQty()" title="변환용량 자동 Setting">setQtt</button>
+                                  <button class="flat-btn col2-sm" type="button" onclick="<@popupId>.saveFst()">저장</button>
+                                </div>
+                            </div>
+                            <div class="table-inwrap-scroll"> <!-------------------- 이 부분에 div + 클래스명 추가 ( table-inwrap-scroll ) -------------------->
+								<!-- table start -->
+								<compnent id="tableEditorPopupFst"></compnent>    
+								<!-- table end -->        
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col4 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+                        <div class="table-allwrap display-column"> <!-------------------- 이 부분에 클래스명 추가 ( display-column ) -------------------->
+                            <div class="card-tit-wrap">
+                                <div class="card-tit" id="sndGridTitle">마스터 식자재 List</div>
+                            </div>
+                            <div class="display-between display-sm-between deco-line pt10 pl10 pr10 pb5">
+                                <div class="col4-md col10-sm display-h-end mb5">
+                                  <span class="col2-sm w80px mb3">검색어</span>
+                                  <input type="text" class="form-control form-control-sm mr5" id="searchValueSnd" onEnter="<@popupId>.reloadSnd()">
+                                  <button class="srch-btn" type="button" onclick="<@popupId>.reloadSnd()">검 색</button>       
+                                </div>
+                                
+                                <div class="display-w-end col4 col4-md col10-sm mb5">
+                                  <span class="col2-sm w120px txt-r mr10">Total : <span class="txt-red" id="<@popupId>_rowCntSnd"></span></span>
+                                  <!--              
+                                  <button class="flat-btn col2-sm" type="button" onclick="<@popupId>.saveSnd()">저장</button>
+                                  -->
+                                </div>
+                                
+                            </div>
+                            <div class="table-inwrap-scroll"> <!-------------------- 이 부분에 div + 클래스명 추가 ( table-inwrap-scroll ) -------------------->
+								<!-- table start -->
+								<compnent id="tableEditorPopupSnd"></compnent>    
+								<!-- table end -->        
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+          </div>        
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn" onclick="C_COM.showHelp({helpType : 'POPUP', helpTitle : '물류 식자재 편집'})">도움말</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- modal-popup end -->

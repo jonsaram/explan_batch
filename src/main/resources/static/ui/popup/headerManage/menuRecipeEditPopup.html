@@ -1,0 +1,430 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 sendParm			  : {}
+		,selectedMenuId		  : "-"
+		,recipeMap			  : {}
+		,close : function(returnData) {
+			if(isEmpty(returnData)) returnData = { reload : "Y" };
+			C_POP.close(returnData);
+		 }
+		,autoMapping : function() {
+			C_POP.confirm("메뉴 레시피 연결 정보가 없는 메뉴를 대상으로 자동연결을 진행 하시겠습니까?", function() {
+				
+				var parm = {
+					queryGroup : [
+						 // 메뉴 레시피 연결정보 중 메뉴 연결 정보가 없는 가비지 삭제
+						 {
+							 queryId 		: "headerManage.deleteMenuRecipeGabageAboutMenu"
+							,requestParm	: {}
+						 }
+						 // 메뉴 레시피 연결정보 중 레시피 연결 정보가 없는 가비지 삭제
+						,{
+							 queryId 		: "headerManage.deleteMenuRecipeGabageAboutMenu"
+							,requestParm	: {}
+						 }
+						,{
+							 queryId 		: "headerManage.brandMenuMasterListNoConnectRecipe"
+							,requestParm	: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+						 }
+						,{
+							 queryId 		: "headerManage.recipeList"
+							,requestParm	: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+						 }
+					]
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					const menuList 		= resultData.data["headerManage.brandMenuMasterListNoConnectRecipe"	];
+					const recipeList 	= resultData.data["headerManage.recipeList"							];
+					
+					let updateList = [];
+					$.each(menuList, function() {
+						const menuItem = this;
+						let crate = 60;
+						let updateItem;
+						$.each(recipeList, function() {
+							const recipeItem = this;
+							let rate = getSimilarity(menuItem.MENU_NM, recipeItem.RECIPE_NM);
+							if(rate > crate) {
+								updateItem = {
+									 MENU_RECIPE_ID : C_COM.getUniqueId() 
+									,BRAND_MENU_ID 	: menuItem.BRAND_MENU_ID 
+									,BRAND_ID      	: menuItem.BRAND_ID 
+									,BRAND_MENU_CD 	: menuItem.BRAND_MENU_CD 
+									,MENU_NM 		: menuItem.MENU_NM
+									,RECIPE_ID		: recipeItem.RECIPE_ID 
+									,RECIPE_CD      : recipeItem.RECIPE_CD
+									,RECIPE_NM      : recipeItem.RECIPE_NM
+								}
+								
+								if(rate == 100) return false;
+								crate = rate;
+							}
+						});
+						if(isValid(updateItem))	updateList.push(updateItem);
+					});
+					if(isValid(updateList) && updateList.length > 0) {
+						var parm = {
+							 queryId 			: "headerManage.updateMenuRecipeAutoSet"
+							,requestParmList	: updateList
+						}
+						C_COM.requestQuery(parm, function(resultData) {
+							dalert(resultData);
+						});
+					}
+				});  
+				
+			});
+		 }
+		,setGrid1 : function() {
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_BRAND_MENU_MASTER"
+					,columnMap 		: {
+						 "BRAND_MENU_ID"	: { headerText : "그룹ID"	,hidden : "Y"	}
+						,"BRAND_MENU_CD"	: { headerText : "메뉴CD"					}
+						,"MENU_NM"			: { headerText : "메뉴명"	,align : "left"	}
+						//,"GROUP_1"			: { headerText : "분류1"					}
+						//,"GROUP_2"			: { headerText : "분류2"					}
+					 }
+					,columnConfig 	: {
+					 }
+					,rowConfig		: {
+						onClickRow : function(rowData) {
+							if(isEmpty(rowData)										) return;
+							if(isEmpty(rowData.BRAND_MENU_ID)						) return;
+							if(<@popupId>.selectedMenuId == rowData.BRAND_MENU_ID	) return;
+							<@popupId>.selectedMenuId = rowData.BRAND_MENU_ID;
+							<@popupId>.gridComp2.reload();
+						}
+					 }
+					,primaryKeyList		: ["BRAND_MENU_ID"			]
+					,searchColumnList	: ["BRAND_MENU_CD","MENU_NM"]		// Table 지정인경우 적용
+					,orderColumnList 	: ["MENU_NM"				]
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+					,readOnly 			: "Y"
+
+				 }
+				,gridTitle : "Master 메뉴 목록"
+				,addButtonList : [
+					{
+						 title 		: "자동연결"
+						,onClick	: function() {
+							<@popupId>.autoMapping();
+						 }  
+					}
+				 ]
+			}
+			
+			
+			
+			C_COMP.import("gridComp1", "component_compGridWithSearch",sendParm , function(tableList) {
+				
+				if(tableList.length > 0) {
+					<@popupId>.selectedMenuId = tableList[0].BRAND_MENU_ID;
+				} else {
+					<@popupId>.selectedMenuId = "-";
+				}
+				<@popupId>.setGrid2();
+				
+				<@popupId>.gridComp1.defaultSelectCell();
+
+			});		
+			
+		 }
+		,setGrid2 : function() {
+
+			let sendParm2 = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "headerManage.getMenuRecipeImportList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_MENU_RECIPE"
+					,columnMap 		: {
+						 "MENU_RECIPE_ID" 		: { headerText : "MENU_RECIPE_ID"	,hidden : "Y", ifNewAutoSet : "random"}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"BRAND_MENU_ID" 		: { headerText : "BRAND_MENU_ID"	,hidden : "Y"	}
+						,"BRAND_MENU_CD" 		: { headerText : "BRAND_MENU_CD"	,hidden : "Y"	}
+						,"RECIPE_ID" 			: { headerText : "RECIPE_ID"		,hidden : "Y"	}
+						,"RECIPE_CD" 			: { headerText : "레시피CD"			             	}
+                        ,"RECIPE_NM"        	: { headerText : "레시피명"         ,noSave : "Y", align : "left" }
+                        ,"CONVERSION_UNIT_PRICE": { headerText : "단가"             ,noSave : "Y", readOnly : "Y", dataType : "number", fix : "2"	}
+                        ,"QUANTITY"         	: { headerText : "수량"                          	}
+                        ,"RECIPE_PRICE"        	: { headerText : "원가"				,noSave : "Y", readOnly : "Y", dataType : "number", fix : "2"
+                        							,initSetData : function(cellText, rowData) {
+                        								const cup = nvl(rowData.CONVERSION_UNIT_PRICE	, 0);
+                        								const qtt = nvl(rowData.QUANTITY				, 0);
+                        								return cup * qtt; 
+                        							}
+                        						  }
+					 }
+					,columnConfig 	: {
+						onChangeCell : {
+							"RECIPE_CD"	: {
+								 //execInit 	: "Y"
+								 func 			: function(gridObj, rowIdx, colIdx, cellObj) {	
+									let grid1RowData 	= <@popupId>.gridComp1.getSelectedRowData();
+									if(isEmpty(grid1RowData)) return;
+									let brandMenuId		= grid1RowData.BRAND_MENU_ID;								
+									let brandMenuCd		= grid1RowData.BRAND_MENU_CD;									
+									let dataObj 		= C_GRID.getDataFromCell(cellObj);
+									let recipeCd 		= dataObj.value;
+									if(isValid(<@popupId>.recipeMap[recipeCd])) {
+										let recipeId	= <@popupId>.recipeMap[recipeCd].RECIPE_ID;
+										let recipeNm	= <@popupId>.recipeMap[recipeCd].RECIPE_NM;
+										if(isValid(recipeId)) gridObj.setCellToColumn(cellObj, brandMenuId 	,"BRAND_MENU_ID");
+										if(isValid(recipeId)) gridObj.setCellToColumn(cellObj, brandMenuCd 	,"BRAND_MENU_CD");
+										if(isValid(recipeId)) gridObj.setCellToColumn(cellObj, recipeId 	,"RECIPE_ID"	);
+										if(isValid(recipeId)) gridObj.setCellToColumn(cellObj, recipeNm 	,"RECIPE_NM"	);
+										<@popupId>.setGrid3Checkbox();
+									}
+								 }						
+							 }
+							,"QUANTITY" : {
+								func 			: function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									
+									let setVal = nvl(rowData.CONVERSION_UNIT_PRICE, 0) * nvl(rowData.QUANTITY, 0);
+									
+									gridObj.setCellToColumn(cellObj, setVal 	,"RECIPE_PRICE");
+
+									const divInfo = <@popupId>.divInfo;
+									
+									const list = gridObj.getGridData();
+									
+									const divId = divInfo.divId;
+									
+									let sum = 0;
+									$.each(list, function() {
+										sum += Number(nvl(this.RECIPE_PRICE, 0));
+									});
+									
+									$(`#${divId} #RECIPE_PRICE`).html(addComma(sum));
+									
+
+								}
+							 }
+						}
+					 }
+					,primaryKeyList		: ["MENU_RECIPE_ID"]
+					,searchColumnList	: ["C.RECIPE_CD", "RECIPE_NM"]		
+					,orderColumnList 	: ["C.RECIPE_CD"]
+					,searchWhereMap		: { 
+						 "A.BRAND_ID" 		: G_VAL.session.BRAND_ID
+						,"A.BRAND_MENU_ID" 	: function() { 
+							return <@popupId>.selectedMenuId; 
+						 }
+					 }
+					,rowConfig : {
+						onDeleteRow : function(rowDom, rowData) {
+							//dalert(rowData);
+							<@popupId>.setGrid3Checkbox();
+						}
+					 }
+					,onLoad			: function(tableList) {
+						<@popupId>.setGrid3Checkbox();
+					 }
+					,addBottomRow	: {
+						 title		  	: "<b>원가 합계</b>"
+						,targetColumn 	: ["RECIPE_PRICE"]
+						,baseType		: ""
+						,mergeColumnCnt	: 0
+						,userDefineFn	: {
+							"RECIPE_PRICE" : function(tableList, compObj, divInfo) {  // divInfo는 출력되는 화면의 Dom 관련 ID 정보임.
+								<@popupId>.divInfo = divInfo;
+								let sum = 0
+								$.each(tableList, function() {
+									sum += nvl(this.CONVERSION_UNIT_PRICE * this.QUANTITY, 0);
+								})
+								return addComma(sum);
+							}
+						 }
+					 }
+					
+				 }
+				,gridTitle : "메뉴 연결 레시피 목록"
+				,hideSearchBox : "Y"				
+			}
+
+			C_COMP.import("gridComp2", "component_compGridWithSearch",sendParm2 , function(tableList) {
+
+			});		
+		 }
+		,setGrid3 : function() {
+			let sendParm3 = {
+				gridParm : {
+					 tableName		: "VIEW_RECIPE_PRICE"
+					,columnMap 		: {
+						 "RECIPE_ID"     		: { headerText : "레시피ID"	, hidden : "Y"   }
+						,"RECIPE_CD"     		: { headerText : "레시피CD"   				 }
+						,"RECIPE_NM"     		: { headerText : "레시피명"	, align : "left" }
+						,"CONVERSION_UNIT_PRICE": { headerText : "단가"		, dataType : "number", fix : "2"	}
+					 }
+					,columnConfig 		: {
+
+					 }
+					,rowConfig		: {
+						onChangeCheckBoxState : function(state, rowData) {
+
+							let grid2Object = <@popupId>["gridComp2"].getGridInstance();
+
+							if(state) {
+								rowData.QUANTITY = "1";
+								grid2Object.addNewRow(rowData);
+							} else {
+								// Grid2에 해당Row 삭제
+								let parm = {
+									searchList : [
+										{ column : "RECIPE_CD", searchVal : rowData.RECIPE_CD }
+									]
+								}
+								let tdCellList = grid2Object.searchCellList(parm);
+								
+								if(isValid(tdCellList)) {
+									grid2Object.deleteRow(tdCellList);	
+									
+									const grid2Obj = <@popupId>["gridComp2"].getGridInstance();
+
+									grid2Obj.trigger( "onChangeCell", "QUANTITY" );
+								}
+							}
+							let cnt = <@popupId>["gridComp2"].refreshTotalCnt();
+						}
+					 }
+					,primaryKeyList		: ["RECIPE_ID"				]
+					,searchColumnList 	: ["RECIPE_CD", "RECIPE_NM"	]
+					,searchWhereMap		: {BRAND_ID : G_VAL.session.BRAND_ID}
+					,orderColumnList 	: ["RECIPE_NM"				]
+					,checkbox			: "show"
+					,allCheckHide		: "Y"
+					,readOnly			: "Y"
+					,onLoad				: function() {
+						<@popupId>.setGrid3Checkbox();
+					 }
+				 }
+				,gridTitle : "레시피 목록"
+				,onSearch : function(searchWord) {
+					//alert(searchWord);
+				 }
+			}
+
+			C_COMP.import("gridComp3", "component_compGridWithSearch",sendParm3 , function(tableList) {
+				<@popupId>.recipeMap = arrayToMap(tableList, "RECIPE_CD");
+			});		
+
+		 }
+		,setGrid3Checkbox : function() {
+			// Grid2 Data
+			let grid2TableList = <@popupId>["gridComp2"].getGridData("view");
+			let grid3Instance  = <@popupId>["gridComp3"].getGridInstance();
+			
+			if(isEmpty(grid2TableList) || isEmpty(grid3Instance)) return;
+			
+			grid3Instance.setAllCheckBox(false);
+			
+			$.each(grid2TableList, function() {
+				let parm = {
+					searchList : [
+						{
+							 column 	: "RECIPE_CD"
+							,searchVal	: this.RECIPE_CD 
+						}
+					]
+				}
+				let tdCellList = grid3Instance.searchCellList(parm);
+				$.each(tdCellList, function() {
+					grid3Instance.setCheckBox(this, true);	
+				});
+			});
+		 }
+		
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(parm) {
+		
+		////////////////////// 첫번째 그리드 ////////////////////////////////////
+		<@popupId>.setGrid1();
+
+		////////////////////// 세번째 그리드 ////////////////////////////////////
+		<@popupId>.setGrid3();
+		
+	
+	
+	});
+</script>
+<!-- modal-popup start -->
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="full-modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm">메뉴 레시피 연결 편집</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" style="display:none">
+            </button>
+            <button type="button" class="win-full" style="display:none">
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <!-- body start -->
+        <div class="modal-body">
+          <div class="body-inwrap display-row-nowrap-md"> <!-------------------- 테이블 좌, 우 배치 시 -- 이 부분에 클래스명 추가 ( display-row-nowrap-md ) // 테이블 하나의 경우 클래스명 추가 불필요 -------------------->
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col3 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp1"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col4 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp2"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col3 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp3"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+
+          </div>        
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn" onclick="C_COM.showHelp({helpType : 'POPUP', helpTitle : '메뉴 레시피 연결 편집'})">도움말</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+</div>                      
+  <!-- modal-popup end -->
+  

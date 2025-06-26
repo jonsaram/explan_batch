@@ -1,0 +1,319 @@
+@charset "UTF-8";
+
+.explan-grid-cell {
+    user-select: none;
+}
+.explan-selected {
+    background-color: #EAEAF4!important;
+}
+.explan-selected-tr {
+    background-color: #F8F8FF;
+}
+.explan-layer-popup {
+    position: absolute;
+    width: 200px;
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+}
+.explan-menu-item {
+    margin-bottom: 4px;
+}
+.explan-menu-item:hover {
+    background-color: lightblue;
+}
+.explan-inactive {
+    pointer-events: none; /* 클릭 이벤트 등 모든 포인터 상호작용 비활성화 */
+    opacity: 0.7; /* 시각적으로 비활성화된 느낌을 주기 위해 투명도 조정 */
+}
+
+.explan-menuactive {
+	color : #0099C0
+}
+
+.explan-noTextSelect {
+    user-select: none; /* 웹킷 기반 브라우저를 위한 속성 */
+    -moz-user-select: none; /* Firefox를 위한 속성 */
+    -ms-user-select: none; /* IE와 Edge 브라우저를 위한 속성 */
+}
+
+.explan-table-allwrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: auto;
+  overflow-x: auto;
+  overflow-y : auto;
+  height: 530px;
+}
+
+.explan-mxhgt150 {
+	min-height: 150px !important;
+	height: 150px !important;
+}
+
+.explan-mxhgt170 {
+	min-height: 170px !important;
+	height: 170px !important;
+}
+
+.explan-mxhgt180 {
+	min-height: 180px !important;
+	height: 180px !important;
+}
+
+.explan-mxhgt200 {
+	min-height: 200px !important;
+	height: 200px !important;
+}
+
+.explan-mxhgt300 {
+  	min-height: 300px !important;
+	height: 300px !important;
+}
+
+.explan-mxhgt400 {
+  	min-height: 400px !important;
+	height: 400px !important;
+}
+
+.explan-mxhgt500 {
+  	min-height: 500px !important;
+	height: 500px !important;
+}
+
+/* 오버레이 스타일  */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99999999;
+    display: none; /* 기본적으로 숨김 */
+}
+
+/* 로딩 스피너 스타일 */
+.spinner-border {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3rem;
+    height: 3rem;
+    color: #ffffff;
+    animation: spin 1s linear infinite; /* 애니메이션 추가 */
+}
+.explan-hd {
+	display : none
+}
+
+.explan-dot-underline {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: rgba(0, 0, 0, 0.4); /* 50% 투명한 검정색 */
+    text-underline-offset: 4px; /* 2px 떨어지게 설정 */
+}
+
+/* 위성열 20250407 */
+.explan-board-allwrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: auto;
+  overflow-x: hidden;
+  overflow-y : auto;
+  height: 270px;
+  font-size : 14px;
+  line-height : 1.6;
+}
+
+.explan-card-allwrap {
+  background-color: #fff;
+  min-height: 270px;
+  max-height: 270px;  
+  border-radius: 3px;
+  box-shadow: 0.1rem 0.3rem 0.4rem rgb(26 29 41 / 9%);  
+  padding: 0 !important;
+  border: 1px solid #b7bbcc;
+  border-bottom: 2px solid #C9CFD7;  
+}
+
+
+/* 회전 애니메이션 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+
+/* common.css 추가 처리*/
+
+.help-text {
+  font-size: 14px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  transform: translateY(15px)
+}
+
+.set-down5 {
+  transform: translateY(5px)
+}
+
+.set-down10 {
+  transform: translateY(10px)
+}
+
+
+
+.normal-right-area {
+  font-size: 14px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+}
+
+/* Summernote content area 높이를 부모에 맞춤 */
+.note-editor {
+    height: 100% !important;
+}
+
+.note-editing-area {
+    height: calc(100% - 38px) !important; /* Adjust for toolbar height */
+}
+
+
+
+
+/* 달력 부분 */
+
+#explan-calendar {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+#explan-header-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#explan-month-year {
+    font-weight: bold;
+    font-size: 16px;
+    margin: 0 10px;
+}
+
+#explan-nav {
+    display: flex;
+    align-items: center;
+}
+
+#explan-nav button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    margin: 0 10px;
+    padding: 0;
+}
+
+#explan-day-names {
+    display: flex;
+    width: 100%;
+}
+
+#explan-day-names div {
+    width: 14%;
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+#explan-dates {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.explan-date-cell {
+    width: 14%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.explan-empty-cell {
+    background: #f0f0f0;
+}
+
+.explan-hide {
+	display:none;
+}  
+  
+.explan-selectbg {
+  background: #e5e5e5;
+}
+ 
+.explan-custom-btn {
+  font-size : 11px;
+  height : 25px;
+  background-color: #EEEEEE;       /* 하얀색 배경 */
+  border: 1px solid #888888;       /* 검은 테두리 */
+  color: black;                    /* 글자 검은색 */
+}
+/* 클릭 시 포커스 스타일 제거 (선택 사항) */
+.explan-custom-btn:focus {
+  background-color: #DEDEDE;       /* 하얀색 배경 */
+  outline: none;
+  box-shadow: none;
+}
+ 
+.explan-icon-arrow {
+    content: "";
+    background: url(../../images/arr-bl.png) no-repeat;
+    background-position: center;
+    display: inline-block;
+    width: 15px;
+    height: 10px;
+    position: absolute; /* 적절히 위치조절 필요 */
+    right: 5px; /* 오른쪽 끝에 배치 */
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer; /* 포인터 커서 */
+}
+
+
+/* 	2026-06-11 
+	김보영 수정
+	모바일 메뉴 스크롤 처리
+	원본 style.css
+*/
+.offcanvas-body {
+    background-color: #fff ;
+    border-top: 1px solid #a5a9b3;
+    border-bottom: 1px solid #c4c7d9;
+    padding: 0;
+}
+
+.panel-group {
+	min-height: 200px;
+    overflow: auto;
+    height: calc(100vh - 100px);
+}
+ .panel {
+  margin-bottom: 0;
+	background-color: #eeeeee90;
+ }

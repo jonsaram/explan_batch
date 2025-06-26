@@ -1,0 +1,747 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var INIT_YEAR, CUR_YEAR, SALE_AMOUNT_GROWTH_RATE_INIT, SALE_AMOUNT_GROWTH_RATE, 
+		PROFIT_GROWTH_RATE_INIT, PROFIT_GROWTH_RATE, REP_RETIREMENT_YEAR,
+		REP_RETIREMENT_AMOUNT, ANNUAL_DIVIDEND_TENYEAR_BEFORE, ANNUAL_DIVIDEND_TENYEAR_AFTER,
+		REP_RETIREMENT_TERM, FIRST_CHART_VAL, SECOND_CHART_VAL, THIRD_CHART_VAL;
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,setYearObject : (obj, loc) => {
+			try{
+				INIT_YEAR = obj['INIT_YEAR'];
+				CUR_YEAR = obj['CUR_YEAR'];
+			} catch(e) {
+				
+			}
+		}
+		,setBasisObject : (obj, loc) => {
+			try{
+				SALE_AMOUNT_GROWTH_RATE_INIT = obj['SALE_AMOUNT_GROWTH_RATE_INIT']; 
+				SALE_AMOUNT_GROWTH_RATE = obj['SALE_AMOUNT_GROWTH_RATE']; 
+				PROFIT_GROWTH_RATE_INIT = obj['PROFIT_GROWTH_RATE_INIT']; 
+				PROFIT_GROWTH_RATE = obj['PROFIT_GROWTH_RATE'];
+				
+				REP_RETIREMENT_YEAR = obj['REP_RETIREMENT_YEAR']; 
+				REP_RETIREMENT_AMOUNT = obj['REP_RETIREMENT_AMOUNT']; 
+				ANNUAL_DIVIDEND_TENYEAR_BEFORE = obj['ANNUAL_DIVIDEND_TENYEAR_BEFORE']; 
+				ANNUAL_DIVIDEND_TENYEAR_AFTER = obj['ANNUAL_DIVIDEND_TENYEAR_AFTER'];
+
+				REP_RETIREMENT_TERM = REP_RETIREMENT_YEAR - INIT_YEAR;
+				
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,showSimulList : (targetId, dataList) => { 
+			const rpm = {
+				 targetId 		: targetId
+				,list			: dataList  
+			}
+			var preYear_sale_amount = 0;
+			var curYear_profilt = [];
+			var preYear_capital = 0;
+			var preYear_micheobun = 0;
+			var yearCount = 0;
+			/**************************************************
+			0:	경과기간		1:	(대표이사 나이)
+			2:	주식수, 		3:	1주당액면가	
+			4:	자산, 			5:	부채
+			6:	자본,			7:	미처분이익잉여금(결손금)
+			8:	매출액,			9:	당기순이익(순손실)
+			10:	매출액증가율, 	11:	순이익율
+			12:	영업권평가액,	13:	1주당순손익가치
+			14:	1주당순자산가치	15:	1주당주식가액
+			16:	플랜 적용 전 기업가치
+			17:	기업가치상승률(전년대비)
+			18: 연간 배당금
+			19: 대표이사 퇴직금
+			20: 배당 플랜 적용 후 기업가치
+			21:	배당&퇴직금 플랜 적용 후 기업가치
+			****************************************************/
+			//매출액({전년 매출액 * 당해년 매출액 증가율} + 당해년 매출액)
+			for(var i=0; i<rpm.list.length; i++){
+				for(var j=0; j<14; j++){
+					if(j==0){
+						eval("rpm.list[0].P_"+(parseInt(INIT_YEAR)+j)+"='기준년도'");
+						eval("rpm.list[1].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+						if(rpm.list[i].ITEM_NAME=='매출액'){
+							preYear_sale_amount = rpm.list[i].AMOUNT;
+						}
+						if(rpm.list[i].ITEM_NAME=='연간배당금'){
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+ANNUAL_DIVIDEND_TENYEAR_BEFORE);
+						}else if(rpm.list[i].ITEM_NAME=='대표이사퇴직금'){
+							if(parseInt(INIT_YEAR)+j == REP_RETIREMENT_YEAR){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+REP_RETIREMENT_AMOUNT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"= 0");
+							}
+						}else{
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[i].AMOUNT);							
+						}
+					}else{
+						/* 3. 부채(부채는 매년 동일함) */
+						if(rpm.list[i].ITEM_NAME=='부채'){
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[i].AMOUNT);
+						/* 8. 매출액 증가율 */
+						}else if(rpm.list[i].ITEM_NAME=='매출액증가율'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+SALE_AMOUNT_GROWTH_RATE_INIT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+SALE_AMOUNT_GROWTH_RATE);
+							}
+						/* 9. 순이익율 */
+						}else if(rpm.list[i].ITEM_NAME=='순이익율'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+PROFIT_GROWTH_RATE_INIT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+PROFIT_GROWTH_RATE);
+							}
+						/* 6. 매출액 = {전년 매출액 * 당해년 매출액 증가율} + 당해년 매출액 */
+						}else if(rpm.list[i].ITEM_NAME=='매출액'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+Math.round((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE_INIT/100))+preYear_sale_amount));
+								preYear_sale_amount = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE_INIT/100)+preYear_sale_amount);
+								curYear_profilt[j] = Math.round(((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE_INIT/100))+preYear_sale_amount)*(PROFIT_GROWTH_RATE_INIT/100));
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+Math.round((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE/100))+preYear_sale_amount));
+								preYear_sale_amount = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE/100)+preYear_sale_amount);
+								curYear_profilt[j] = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE/100)+preYear_sale_amount*(PROFIT_GROWTH_RATE/100));
+							}
+						/* 2: 주식수, 3: 1주당액면가 */
+						}else if(rpm.list[i].ITEM_NAME=='주식수' || rpm.list[i].ITEM_NAME=='1주당액면가'){
+							eval("rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[2].AMOUNT);
+							eval("rpm.list[3].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[3].AMOUNT);
+						/* 0. 경과기간 */
+						}else if(rpm.list[i].ITEM_NAME=='경과기간'){
+							if(parseInt(INIT_YEAR)+j < parseInt(CUR_YEAR)){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='기준년도+"+j+"'");
+							}else if(parseInt(INIT_YEAR)+j==parseInt(CUR_YEAR)){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='당해년도'");
+								yearCount = 0;
+							}else{
+								yearCount += 1;
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='"+yearCount+"년 후'");
+							}
+						/* 18. 연간 배당금 */
+						}else if(rpm.list[i].ITEM_NAME=='연간배당금'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+ANNUAL_DIVIDEND_TENYEAR_BEFORE);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+ANNUAL_DIVIDEND_TENYEAR_AFTER);
+							}
+						/* 19: 대표이사 퇴직금 */
+						}else if(rpm.list[i].ITEM_NAME=='대표이사퇴직금'){
+							if(parseInt(INIT_YEAR)+j == REP_RETIREMENT_YEAR){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+REP_RETIREMENT_AMOUNT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"= 0");
+							}
+						}else{
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+						}
+					}
+				}
+			}
+			/* 9. 당기순이익(순손실) = 당해년 매출액 * 당해년 순이익율 */
+			for(var j=1; j<curYear_profilt.length; j++){
+				eval("rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"="+curYear_profilt[j]);
+				eval("rpm.list[21].P_"+(parseInt(INIT_YEAR)+j)+"="+curYear_profilt[j]+"-((rpm.list[18].P_"+(parseInt(INIT_YEAR)+j)+"+rpm.list[19].P_"+(parseInt(INIT_YEAR)+j)+")/1000)");
+			}
+			/* 6. 자본 = 전해년 자본 + 당기순이익 - (당기 배당금 : 조정률) */
+			for(var j=0; j<14; j++){
+				if(j<1){
+					preYear_capital = eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+				}else{
+					eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"="+(curYear_profilt[j]+preYear_capital));
+					eval("rpm.list[20].P_"+(parseInt(INIT_YEAR)+j)+"="+curYear_profilt[j]+"-rpm.list[18].P_"+(parseInt(INIT_YEAR)+j+"/1000"));
+					preYear_capital = eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+				}
+			}
+			/* 4. 자산 = 부채 + 자본 */
+			for(var j=1; j<14; j++){
+				eval("rpm.list[4].P_"+(parseInt(INIT_YEAR)+j)+"="+"rpm.list[5].P_"+(parseInt(INIT_YEAR)+j)+"+"+"rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+			}
+			/* 7. 미처분이익잉여금(결손금) = 전해년 미처분이익잉여금(결손금) + 당해년 당기순이익 */
+			for(var j=0; j<14; j++){
+				if(j<1){
+					preYear_micheobun = eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j));
+				}else{
+					eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j)+"="+(curYear_profilt[j]+preYear_micheobun));
+					preYear_micheobun = eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j));
+				}
+			}
+			/* 12. 영업권 평가액 = [[{((전전해년 당기순이익*1)+(전해년 당기순이익*2)+(당해년 당기순이익*3))/6}*50%]-(당해년도 자본*10%)]*3.7908 */
+			console.log("영업권 평가액 계산 ====================>");
+			for(var j=0; j<14; j++){
+				var computeStr = "";
+				if(j>1){					
+					computeStr = "Math.round(((((";
+					computeStr += "rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-2));
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-1))+"*2)";
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"*3))/6)*0.5)";
+					computeStr += "-(rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"*0.1))*3.7908)";					
+					eval("rpm.list[12].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+					console.log(computeStr);
+				}else{
+					eval("rpm.list[12].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+			}
+			console.log("영업권 평가액 계산 <====================");
+			/* 13. 1주당순손익가치 = {((전전해년 당기순이익*1)+(전해년 당기순이익*2)+(당해년 당기순이익*3))/6}/(당해년 주식수*당해년1주당액면가) */
+			console.log("1주당순손익가치 계산 ====================>");
+			for(var j=0; j<14; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round((((";
+					computeStr += "rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-2));
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-1))+"*2)";
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"*3))/6)/";
+					computeStr += "(rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"))*10000)";
+					eval("rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+					console.log(computeStr);
+				}else{
+					eval("rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+			}
+			console.log("1주당순손익가치 계산 <====================");
+			/* 14. 1주당순자산가치 = (당해년 자본/당해년 주식수)이 0보다 크면 [(당해년 자본/ 당해년 주식수)*1000]이고 아니면 0  */
+			console.log("1주당순자산가치 ====================>");
+			for(var j=0; j<14; j++){
+				if(j>1){
+					var rtn = eval("Math.round(rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"/+rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*1000)"); 
+					if(rtn>0){
+						eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"="+rtn);
+					}else{
+						eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"=0");
+					}
+				}else{
+					eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(rtn);
+			}
+			console.log("1주당순자산가치 <====================");
+			/* 15. 1주당주식가액 = (당해년 1주당순손익가치*60%)+(당해년 1주당순자산가치*40%)  */
+			console.log("1주당주식가액 ====================>");
+			for(var j=0; j<14; j++){
+				if(j>1){
+					var rtn = eval("Math.round((rpm.list[11].P_"+(parseInt(INIT_YEAR)+j)+"*0.6)+(rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"*0.4))"); 
+					eval("rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"="+rtn);
+				}else{
+					eval("rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(rtn);
+			}
+			console.log("1주당주식가액 <====================");
+			/* 16. 기업가치 = [(당해년 1주당순손익가치*주식수*3)+(당해년 1주당순자산가치*주식수*2)]/5  */
+			console.log("기업가치 ====================>");
+			for(var j=0; j<14; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round(((rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*3)+";
+					computeStr    += "(rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*2))/5/1000)"; 
+					eval("rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(computeStr);
+			}
+			console.log("기업가치 <====================");
+			/* 17. 기업가치상승률(전년대비) = [(당해년 기업가치-전해년도 기업가치)/전해년도 기업가치]*100  */
+			console.log("기업가치상승률(전년대비) ====================>");
+			for(var j=0; j<14; j++){
+				var computeStr = "";
+				if(j>2){
+					computeStr = "Math.round(rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"=((rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"-rpm.list[16].P_"+(parseInt(INIT_YEAR)+(j-1))+")/rpm.list[16].P_"+(parseInt(INIT_YEAR)+(j-1))+")*100*100)/100";
+					eval("rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"='0'");
+				}
+				console.log(computeStr);
+			}
+			console.log("기업가치상승률(전년대비) <====================");
+			
+			console.log(rpm.list);
+			console.log(curYear_profilt);
+			//C_COM.renderHtml("<@compId>", rpm);
+			<@compId>.genColHeadHtml(rpm.list);
+			<@compId>.genBodyDataHtml(rpm.list);
+		}
+		,genColHeadHtml : (list) => {
+			var stepCount = 0;
+			var sHtml	= "<th>사업년도</th>";
+			var keys = Object.keys(list[0]);
+			for(var i=0; i<keys.length; i++){
+				if(keys[i].indexOf("P_")>-1){
+					if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+						stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+						sHtml  += "<th>"+keys[i].substring(2,keys[i].length)+"년</th>";						
+					}
+					stepCount += 1;
+				}
+			}
+			$("#"+"<@compId>_getValueSimulForStdYearHead").html(sHtml);
+		}
+		,genBodyDataHtml : (list) => {
+			var stepCount 	= 0;
+			var sHtml		= "";
+			for(var k=0; k<list.length; k++){
+				if(k==0 || k==6 || k == 18){
+					if(k == 0 || k == 6 || k == 18){
+						sHtml	+= "<tr>";
+					}else{
+						sHtml	+= "<tr class='bg-blue' style='font-weight: bold'>";					
+					}
+					var keys = Object.keys(list[k]);
+					for(var i=0; i<keys.length; i++){
+						var valueStr = 0;
+						if(keys[i].indexOf("P_")>-1){
+							if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+								stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+								if(k == 18){
+									valueStr = eval("list["+k+"]."+keys[i]+"/1000");
+								}else{
+									valueStr = eval("list["+k+"]."+keys[i]);									
+								}
+								if(!isNaN(valueStr)){
+									sHtml  += "<td style='text-align:right'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+								}else{
+									sHtml  += "<td>"+valueStr+"</td>";
+								}
+							}
+							stepCount += 1;
+						}else if(keys[i]=="ITEM_NAME"){
+							sHtml  += "<td>"+list[k].ITEM_NAME+"</td>";
+						}
+					}
+					stepCount 	= 0;
+					sHtml	+= "</tr>";
+				}
+			}
+			for(var k=0; k<list.length; k++){
+				if(k==9 || k == 19){
+					if(k == 9 || k == 19){
+						sHtml	+= "<tr>";
+					}else{
+						sHtml	+= "<tr class='bg-blue' style='font-weight: bold'>";					
+					}
+					var keys = Object.keys(list[k]);
+					for(var i=0; i<keys.length; i++){
+						var valueStr = 0;
+						if(keys[i].indexOf("P_")>-1){
+							if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+								stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+								if(k == 19){
+									valueStr = eval("list["+k+"]."+keys[i]+"/1000");
+								}else{
+									valueStr = eval("list["+k+"]."+keys[i]);									
+								}
+								if(!isNaN(valueStr)){
+									sHtml  += "<td style='text-align:right'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+								}else{
+									sHtml  += "<td>"+valueStr+"</td>";
+								}
+							}
+							stepCount += 1;
+						}else if(keys[i]=="ITEM_NAME"){
+							sHtml  += "<td>"+list[k].ITEM_NAME+"</td>";
+						}
+					}
+					stepCount 	= 0;
+					sHtml	+= "</tr>";
+				}
+			}
+			for(var k=0; k<list.length; k++){
+				if(k==13 || k == 14){
+					if(k == 13 || k == 14){
+						sHtml	+= "<tr>";
+					}else{
+						sHtml	+= "<tr class='bg-blue' style='font-weight: bold'>";					
+					}
+					var keys = Object.keys(list[k]);
+					for(var i=0; i<keys.length; i++){
+						var valueStr = 0;
+						if(keys[i].indexOf("P_")>-1){
+							if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+								stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+								if(k == 19){
+									valueStr = eval("list["+k+"]."+keys[i]+"/1000");
+								}else{
+									valueStr = eval("list["+k+"]."+keys[i]);									
+								}
+								if(!isNaN(valueStr)){
+									sHtml  += "<td style='text-align:right'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+								}else{
+									sHtml  += "<td>"+valueStr+"</td>";
+								}
+							}
+							stepCount += 1;
+						}else if(keys[i]=="ITEM_NAME"){
+							sHtml  += "<td>"+list[k].ITEM_NAME+"</td>";
+						}
+					}
+					stepCount 	= 0;
+					sHtml	+= "</tr>";
+				}
+			}
+			for(var k=0; k<list.length; k++){
+				if(k==16 || k == 20 || k == 21){
+					sHtml	+= "<tr class='bg-blue' style='font-weight: bold'>";					
+					var keys = Object.keys(list[k]);
+					for(var i=0; i<keys.length; i++){
+						var valueStr = 0;
+						if(keys[i].indexOf("P_")>-1){
+							if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+								stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+								if(k == 19){
+									valueStr = eval("list["+k+"]."+keys[i]+"/1000");
+								}else{
+									valueStr = eval("list["+k+"]."+keys[i]);									
+								}
+								if(!isNaN(valueStr)){
+									if(k==16){
+										sHtml  += "<td style='text-align:right' id='<@compId>_first_"+keys[i]+"'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+										FIRST_CHART_VAL = valueStr;
+									}else if(k==20){
+										sHtml  += "<td style='text-align:right' id='<@compId>_second_"+keys[i]+"'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+										SECOND_CHART_VAL = valueStr;
+									}else{
+										sHtml  += "<td style='text-align:right' id='<@compId>_third_"+keys[i]+"'>"+valueStr.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")+"</td>";
+										THIRD_CHART_VAL = valueStr;
+									}
+								}else{
+									sHtml  += "<td>"+valueStr+"</td>";
+								}
+							}
+							stepCount += 1;
+						}else if(keys[i]=="ITEM_NAME"){
+							sHtml  += "<td>"+list[k].ITEM_NAME+"</td>";
+						}
+					}
+					stepCount 	= 0;
+					sHtml	+= "</tr>";
+				}
+			}
+			$("#<@compId>_rep_retire_year").html(REP_RETIREMENT_TERM);
+			$("#<@compId>_getValueSimulForStdYearBody").html(sHtml);
+			$(".<@compId>_reduction_amount").html(Math.round((FIRST_CHART_VAL-THIRD_CHART_VAL)/100000));
+			$(".<@compId>_beadang_amount").html(Math.round((ANNUAL_DIVIDEND_TENYEAR_BEFORE)/100000000));
+			$("#<@compId>_rep_retire_amount").html(Math.round((REP_RETIREMENT_AMOUNT)/100000000));
+			var chartArray = [{
+					        	    name: '플랜 적용 전 기업가치',
+					        	    color: '#00FF00',
+					        	    y: Math.round(FIRST_CHART_VAL/100000)
+					        	}, {
+					        	    name: '배당 플랜 후 기업가치',
+					        	    color: '#FF0000',
+					        	    y: Math.round(SECOND_CHART_VAL/100000)
+					        	}, {
+					        	    name: '배당&퇴직금 플랜 후 기업가치',
+					        	    color: '#0000FF',
+					        	    y: Math.round(THIRD_CHART_VAL/100000)
+					        	    
+					          }];
+			<@compId>.setChart(chartArray);
+		}
+		,createChart 		: (container, chartArray)=><@parentId>._barLeftChart(container, chartArray)
+		,setChart : (chartArray) =>{
+			// 플랜별 기업가치
+			<@compId>.createChart( "<@compId>_reducePlanStock_chart", chartArray);
+		}
+		,selectQueryGroup : function(pmt, callback) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getBasis01"
+						,requestParm		: pmt
+					},
+					{
+						 queryId 			: "valuation.getSimulForYearInfo"
+						,requestParm		: pmt
+					},
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.setBasisObject(resultData.data['financialanalysis.getBasis01'][0],'');
+				<@compId>.showObject(resultData.data['financialanalysis.getBasis01'][0],'');
+				<@compId>.setYearObject(resultData.data['valuation.getSimulForYearInfo'][0],'');
+				
+				if(typeof callback == "function") callback();
+				
+			});
+		 }
+		,selectQueryGroup2 : function(pmt) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "valuation.getValueSimulForStdYearByStock"
+						,requestParm		: pmt
+					},
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.showSimulList("<@compId>_getValueSimulForStdYearByStock", resultData.data['valuation.getValueSimulForStdYearByStock']);
+			});
+		 }
+		,goPage : (compId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( compId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+		}		
+		,setEachColumnValue : (loc, arr ,grp) => {
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+		}
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,generalCompareEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_FIN_ANAL_STOCKHOLDER"
+					,columnMap 		: {
+						 "BUYER_ID" 			: { headerText : "BUYER_ID"	}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"SEQ" 					: { headerText : "연번"	}
+						,"STOCKHOLDER_NM" 		: { headerText : "주요주주"	}
+						,"STOCK_CNT" 			: { headerText : "주식수"	}
+						,"SHARE_RATIO" 			: { headerText : "지분율"	}
+						,"STOCK_KIND" 			: { headerText : "주식종류"	}
+						,"OWNER_RELATIONSHIP" 	: { headerText : "경영실권자와의 관계"	}
+						,"COMPANY_RELATIONSHIP" : { headerText : "회사와의 관계"	}
+						,"BORROWED_NM_YN" 		: { headerText : "차명주주 여부"	}
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }
+					 /*
+					,rowConfig		: {
+						onClickRow : function(rowObj) {
+							dalert(rowObj);
+						}
+					 }
+					,gridConfig : {
+						width : ""	
+					 }
+					 */
+					,primaryKeyList		: ["BUYER_ID", "SEQ"]
+					,searchColumnList	: ["BUYER_ID", "SEQ"]		// Table 지정인경우 적용
+					//,orderColumnList 	: ["GROUP_1 ASC", "GROUP_2 ASC"]				// Table 지정인경우 적용
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					//,readOnly			: "Y"
+					//,gridWidth		: "2000px"
+					,filterWhere		: `BUYER_ID = '${G_VAL.session.BUYER_ID}'`
+				 }
+				,popupTitle : `주주 및 임원`
+				,size 		: "MAX"
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 },
+	}
+
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		//debugger;
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		<@compId>.selectQueryGroup(data, function() {
+			data.INIT_YEAR = INIT_YEAR;
+			data.CUR_YEAR =  CUR_YEAR;
+			<@compId>.selectQueryGroup2(data);
+		});
+		
+		// 20250211 
+		// code by 위성열
+		// Main Widget 처리
+		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+			C_WIDGET.setWidgetState("<@compId>", widgetList);
+		});
+		
+		
+	});
+</script>
+<component>
+<!-- 주식가치 절감효과 area start -->
+<div class="pop_tab_content_box fx-col2 fx-col2-md">
+    <div class="col8 col10-md col10-sm" wgtframe="<@compTemplateId>">
+        <div class="mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+            <div class="biz-subTitle">
+                배당 및 퇴직금 플랜 적용시 주식가치 절감 효과
+                <div class="ml20">
+                    <label class="star-wrap">
+                        <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                        <span class="star"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="biz-date">
+                단위 : 천원
+            </div>
+        </div>     
+        <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">
+            <div class="table-allwrap table-line tb-div-h03">
+                <!-- table start -->
+                <table class="table-inwrap">
+                    <colgroup>
+                        <col width="">
+                        <col width="130px">
+                        <col width="130px">
+                        <col width="130px">
+                        <col width="130px">
+                        <col width="130px">
+                        <col width="130px">
+                    </colgroup>
+                    <thead class="table-thead">
+                        <tr id="<@compId>_getValueSimulForStdYearHead"></tr>
+                    </thead>
+                    <tbody id="<@compId>_getValueSimulForStdYearBody">
+                    </tbody>
+                </table>
+                <!-- table end -->            
+            </div>
+        </div>
+        
+        <div class="mt30 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2" id="<@compTemplateId>_grp2_title">
+            <div class="biz-subTitle">
+                대표 이사 예상 퇴직시점 주식가치 절감 효과
+                <div class="ml20">
+                    <label class="star-wrap">
+                        <input type="checkbox" id="<@compTemplateId>_grp2_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp2')"/>
+                        <span class="star"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="display-row-between display-column-between-md gap10 mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">
+            <div class="display-row-between tab-card-outline col3 col10-md col10-sm">
+                <div class="col4 col2-md col3-sm m10 deco-line-rt biz-bar-img">
+                </div>
+                <div class="col6 col8-md col7-sm m10">
+                    <p class="fs14 fs-w mb10 mt10">대표이사 퇴직시점<br><span id="<@compId>_rep_retire_year"></span>년 후</p>
+                    <p class="fs14 txt-red"><span class="fs26"><span class="<@compId>_reduction_amount"></span></span>억원 절감 효과</p>
+                </div>
+            </div>
+            <div class="display-row-between tab-card-outline col7 col10-md col10-sm">
+                <div class="col9 col9-md col9-sm display-column-center p20">
+						<figure class="highcharts-figure2 mt45">
+					    	<div class="chart8" id="<@compId>_reducePlanStock_chart" style="width:100%; height:140px;display:block;"></div>
+						</figure>
+                </div>
+            </div>
+        </div>                        
+    </div>                          
+    <div class="col2 col10-md col10-sm tab-card-outline w240" wgtgrp="<@compTemplateId>">
+        <div class="add-file-wrap">
+            <div class="biz-subTitle">Check Point</div>
+        </div>
+        <div class="checkpoint-wrap">
+            <h4 class="checkpoint-subTitle">배당 및 퇴직금 플랜 체크사항</h4>
+            <p>배당플랜 통해 매년 <span class="<@compId>_beadang_amount"></span>억원씩 주주 배당을 꾸준히 실행하여 미처분이익잉여금 증가 속도를 조절하고, 임원퇴직금 플랜을 통해 퇴직급여 <span id="<@compId>_rep_retire_amount"></span>억원을 비용으로 인식한 결과 순손익가치와 순자산가치를 감소시켜 대표이사 퇴직시점 기존 예상 기업가치보다 <span class="<@compId>_reduction_amount"></span>억원 낮추는 효과를 기대할 수 있습니다.</p>
+            <h4 class="checkpoint-subTitle mt20">연간 배당금 가정</h4>
+            <p>매년 <span class="<@compId>_beadang_amount"></span>억원씩 중간 배당으로 현금 배당한다고 가정합니다.</p>
+            <h4 class="checkpoint-subTitle mt20">대표이사 퇴직금 가정</h4>
+            <p>임원 퇴직소득 보상 플랜에 적용된 대표 이사의 퇴직금 가정 값을 적용합니다.</p>
+        </div>
+    </div>               
+</div>
+
+<!-- 주식가치 절감효과 area end -->
+</component>

@@ -1,0 +1,598 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		simulationType :'byDate', 
+		loadComponent : function(selectList) {
+			
+			const end 		= getToday(8, "-");
+			const start 	= getAddMonth(end, -12);
+			
+			let tparm = {
+				 tableName 		: "TBL_EXP_BRAND_MENU_MASTER"
+				,valueColumn	: "BRAND_MENU_CD"
+				,nameColumn		: "MENU_NM"
+				,orderColumnList: ["MENU_NM"]
+				,filterMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID}
+			} 
+			let brandMenuList = C_COM.makeCodeListFromTable(tparm);
+			
+			// SeachBox영역
+			let sendParm = {
+				optionConfig		: {
+					searchComponentList : [
+						 {
+							 searchCompId		: "sbox2"
+							,type				: "singleSelectBoxByFilter"	
+							,title				: "가맹점"
+							,firstItem			: ["", "전체"]
+							,optionList 		: selectList
+							,defaultVal			: G_VAL.current.storeId
+							,onChange			: function(selectVal, thisObj) {
+								G_VAL.current.storeId = selectVal;
+							 }
+						 }
+						,{
+							 searchCompId		: "sbox3"
+							,type				: "singleSelectBox"	
+							,title				: "시뮬레이션Type"
+							,optionList 		: [["byDate", "월별"], ["byMenu", "메뉴별"], ]
+							,onChange			: function(selectVal, thisObj) {
+								<@compId>.simulationType = selectVal;
+							 }
+						 }
+						,{
+							 searchCompId		: "sbox4"
+							,type				: "term"	
+							,title				: "검색기간"
+							,defaultVal			: {start : start, end : end}
+						 }
+					]
+				 }
+				,callbackSearchButton : function(retDataMap) {
+					<@compId>.execSimulation();
+				 }
+			}
+			C_COMP.import("<@compId>_searchBox", "component_common_compSearchBox",sendParm , function(retData) {
+				dalert(retData);
+			});
+			
+			<@compId>.brandMenuConfig();
+			
+			// Grid영역
+			<@compId>.ingredientConfig();
+			
+			//<@compId>.execSimulation();
+			
+		 } 
+		,brandMenuConfig : function() {
+			
+			let compData = <@parentId>.<@compId>_searchBox.getCompData();
+			
+			<@compId>.sendParm = {
+				 gridParm : {
+					 tableName		: "TBL_EXP_BRAND_MENU_MASTER"
+					,columnMap 		: {
+						 "BRAND_MENU_CD": { headerText : "메뉴CD"	, hidden : "Y", 													}
+						,"MENU_NM"		: { headerText : "메뉴명"	, readOnly : "Y"													}
+						,"SELLING_PRICE": { headerText : "판매가격"	, readOnly : "Y", dataType : "number", fix : 2						}
+						,"RATE_CONFIG"	: { headerText : "증감율(%)", readOnly : "N", dataType : "number", fix : 2	,noSave : "Y", default : 100	}
+						,"PRICE_CONFIG"	: { headerText : "설정가격"	, readOnly : "N", dataType : "number", fix : 2	,noSave : "Y", default : function(cellText, rowData) {
+								return rowData.SELLING_PRICE;
+						 	}
+						 }
+					 }
+					,columnConfig 	: {
+						 onChangeCell : {
+							"RATE_CONFIG"	: {
+								func : function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const rc = rowData.SELLING_PRICE * rowData.RATE_CONFIG / 100;
+									gridObj.setCellToColumn(cellObj, rc, "PRICE_CONFIG"	);
+									
+									if(rowData.RATE_CONFIG == 100) 	$(cellObj).css("background", "#FFFFFF");
+									else							$(cellObj).css("background", "#FFEFEF");
+									
+								}
+							}
+							,"PRICE_CONFIG"	: {
+								func : function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const rc = Math.round(rowData.PRICE_CONFIG / rowData.SELLING_PRICE * 1000) / 10;
+									gridObj.setCellToColumn(cellObj, rc, "RATE_CONFIG"	);
+									
+									if(rowData.RATE_CONFIG == 100) 	$(cellObj).css("background", "#FFFFFF");
+									else							$(cellObj).css("background", "#FFEFEF");
+									
+								}
+							}
+						 }
+					 }
+					,rowConfig		: {
+						onChangeCheckBoxState : function(state, rowData) {
+							
+							let gridData = <@parentId>.<@compId>_brandMenuGrid.getGridData("checked");
+							
+							let selectedBrandMenuList = [];
+							
+							$.each(gridData, function() {
+								selectedBrandMenuList.push(this.BRAND_MENU_CD);
+							});
+	
+							<@compId>.ingredientConfig(selectedBrandMenuList);							
+							
+						}
+					 }
+					,primaryKeyList		: ["BRAND_MENU_ID"]
+					,searchColumnList	: ["MENU_NM"]
+					,searchWhereMap		: { BRAND_ID : G_VAL.session.BRAND_ID }
+					,orderColumnList 	: ["MENU_NM"]
+					,checkbox			: "show"
+					//,checkboxType		: "single"
+				 }
+			}
+			C_COMP.import("<@compId>_brandMenuGrid", "component_compGrid",<@compId>.sendParm , function() {});
+		 }
+		,ingredientConfig : function(brandMenuList) {
+			
+			if(isEmpty(brandMenuList) || brandMenuList.length == 0 ) brandMenuList = undefined;
+			
+			let compData = <@parentId>.<@compId>_searchBox.getCompData();
+
+			<@compId>.sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getIngredientMstList"
+						 ,requestParm	: {
+							 brandMenuList : brandMenuList
+						  }
+					 }
+					,columnMap 		: {
+						 "INGREDIENT_CD"        		: { headerText : "자재CD"  		, hidden : "Y"			}
+						,"INGREDIENT_NM"        		: { headerText : "식재료명"		, readOnly : "Y"		}
+						,"CONVERSION_UNIT_PRICE"		: { headerText : "단가(원)"	 	, readOnly : "Y", dataType : "number", fix : 2			}
+						,"RATE_CONFIG"					: { headerText : "증감율(%)"	, readOnly : "N", dataType : "number", fix : 2	, default : 100	}
+						,"PRICE_CONFIG"					: { headerText : "설정단가"		, readOnly : "N", dataType : "number", fix : 2	, default : function(cellText, rowData) {
+								return rowData.CONVERSION_UNIT_PRICE;
+						 	}
+						}
+						,"PRODUCT_CLASS_NM"				: { headerText : "자재구분"		, readOnly : "Y"		}
+					 }
+					,columnConfig		: {
+						 onChangeCell : {
+							 "RATE_CONFIG"	: {
+								func : function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const pc = rowData.CONVERSION_UNIT_PRICE * rowData.RATE_CONFIG / 100;
+									gridObj.setCellToColumn(cellObj, pc, "PRICE_CONFIG"	);
+									
+									if(rowData.RATE_CONFIG == 100) 	$(cellObj).css("background", "#FFFFFF");
+									else							$(cellObj).css("background", "#FFEFEF");
+									
+								}
+							 }
+						 }
+					 }
+					,primaryKeyList		: ["INGREDIENT_CD"]
+					,searchColumnList	: ["INGREDIENT_CD", "INGREDIENT_NM"]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,orderColumnList 	: ["B.SORT_ORDER", "INGREDIENT_CD"]
+				 }
+			}
+			C_COMP.import("<@compId>_ingredientGrid", "component_compGrid",<@compId>.sendParm , function() {});
+			
+			var productClassList = C_COM.getCodeList("PRODUCT_CLASS");
+			
+			var multiboxList = { 
+				 data 			: productClassList
+			 	,targetId 		: "<@compId>_productClass"
+			 	//,defaultValList	: ["PRIME", "RECMD"]
+			 	,onConfirm		: function(valList) {
+			 		let plist = []
+			 		if(isValid(valList) && valList.length > 0) {
+			 			$.each(valList, function() {
+			 				plist.push(this.val);
+			 			});
+			 		}
+			 		const updateParm = {
+			 			searchWhereMap : {
+			 				PRODUCT_CLASS : valList
+			 			}	
+			 		}
+			 		<@parentId>.<@compId>_ingredientGrid.reload(updateParm);
+			 	 }
+			}
+			C_UICOM.makeSelectBox(multiboxList, "multi");
+			
+		 }
+		,execSimulation : function() {
+			
+			let brandMenuList = <@parentId>.<@compId>_brandMenuGrid.getGridData("checked");
+			
+			if(brandMenuList.length == 0 ) {
+				C_POP.alert('본사메뉴설정에서 항목을 선택하세요.');
+				return;
+			}
+			let ingredientList = <@parentId>.<@compId>_ingredientGrid.getGridData("change");
+			
+			let compData = <@parentId>.<@compId>_searchBox.getCompData();
+			
+			if(ingredientList.length == 0 ) ingredientList.push({INGREDIENT_CD : "NA", PRICE_CONFIG : "0"});
+			
+			let queryId = "simulation.getMarginList";
+			if(<@compId>.simulationType == 'byMenu' ){queryId = "simulation.getMarginMenuList";}
+			
+	        let parm = {
+	            queryId        : queryId
+	           ,requestParm    : {
+	        	    brandMenuList	: brandMenuList
+	        	   ,ingredientList	: ingredientList
+	        	   ,barndId			: G_VAL.session.BRAND_ID
+	        	   ,storeId			: G_VAL.current.storeId
+	        	} 
+	        }
+	        
+	        if(isValid(compData.sbox4.start	)) parm.requestParm.startDate 	= compData.sbox4.start	; 
+	        if(isValid(compData.sbox4.end	)) parm.requestParm.endDate 	= compData.sbox4.end	; 
+	        
+	        C_COM.requestQuery(parm, function(retData) {
+		        let dataList = []
+	        	$.each(retData.data, function(idx) {
+	        		let item = this
+	        		item.YYYYMM = `${item.YEAR}-${item.MONTH}`;
+	        		dataList.push(item);
+	        	});
+				<@compId>.makeChart(dataList);
+	        });
+		 }
+		,makeChart : function(dataList) {
+			/*
+			let parm = {
+				 categories 		: []
+				,salesList			: []
+				,currentCostList	: []
+				,smulateCostList	: []
+				,currentMarginList	: []
+				,smulateMarginList	: []
+				,marginChangeRate	: []
+			
+			}
+			*/
+			let parm = {
+				 categories 		: []
+				,marginRate			: []
+				,marginSmRate		: []
+				,marginChangeRate	: []
+				,marginNujukChgVal	: []
+			
+			}
+			
+			if( <@compId>.simulationType == "byDate"){
+				
+				let marginNujukChgValSum = 0
+				$.each(dataList, function() {
+					/*
+					parm.categories			.push(this.YYYYMM	);
+					parm.salesList			.push(this.SALES	);
+					parm.currentCostList	.push(this.MCOST	);
+					parm.smulateCostList	.push(this.MCOST_SM	);
+					parm.currentMarginList	.push(this.MARGIN	);
+					parm.smulateMarginList	.push(this.MARGIN_SM);
+					*/
+					
+					parm.categories			.push(this.YYYYMM	);
+					
+					const marginRate 	= Math.round(this.MARGIN 		/ this.SALES * 1000) / 10;
+					const marginSmRate	= Math.round(this.MARGIN_SM 	/ this.SALES * 1000) / 10;
+					const marginChangeRate = marginSmRate - marginRate;
+					
+					marginNujukChgValSum += (this.MARGIN_SM - this.MARGIN)
+
+					parm.marginRate			.push(marginRate);
+					parm.marginSmRate		.push(marginSmRate);
+					parm.marginChangeRate	.push(marginChangeRate);
+					parm.marginNujukChgVal	.push(marginNujukChgValSum);
+					
+				});
+				
+				$('#<@compId>_chart').highcharts({
+				    title: {
+				        text: ''
+				    },
+				    xAxis: {
+				        categories: parm.categories
+				    },
+				    yAxis:[ {
+				        labels: {
+				            formatter: function () {
+				                return this.value + "%";
+				            },
+				            style: {
+				                color: '#8A8C92',
+				                fontFamily: 'Noto Sans KR',
+				                fontSize: '11px'
+				            }
+				        },
+				        title: {
+				            text: ''
+				        }
+				    },
+				    { // 오른쪽 Y축 (보조축)
+			            labels: {
+			                formatter: function () {
+			                    return this.value.toLocaleString() + "원"; // 예: 금액 단위
+			                },
+			                style: {
+			                    color: '#8A8C92',
+			                    fontFamily: 'Noto Sans KR',
+			                    fontSize: '15px'
+			                }
+			            },
+			            title: { text: '' },
+			            opposite: true // 오른쪽에 위치
+					}				    
+				    ],
+				    tooltip: {
+				        shared: true,
+				        formatter: function() {
+				        	 if (this.series.name === '누적마진손익액') {
+								return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}원`;
+				        	 }else{
+								return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}%`;	 
+				        	 }
+				        }
+				    },
+				    plotOptions: {
+				        series: {
+				            dataLabels: {
+				                enabled: true,
+				                formatter: function() {
+				                	 if (this.series.name === '누적마진손익액') {
+										return this.y.toLocaleString('en-US') + '원';
+				                	 }else{
+										return this.y.toLocaleString('en-US') + '%';	 
+				                	 }
+				                }
+				            },
+				            borderRadius: '25%'
+				        }
+				    },
+				    series: [{
+				        type: 'spline',
+				        name: '마진증감률',
+				        data: parm.marginChangeRate
+				    },
+				    {
+				        type: 'spline',
+				        name: '현재마진률',
+				        data: parm.marginRate,
+				    },
+				    {
+				        type: 'spline',
+				        step: 'left',
+				        name: '추정마진률',
+				        data: parm.marginSmRate,
+				        marker: {
+				            lineWidth: 2,
+				            lineColor: Highcharts.getOptions().colors[3],
+				            fillColor: 'white'
+				        }
+				    },
+				    {
+				        type: 'column',
+				        step: 'left',
+				        name: '누적마진손익액',
+				        data: parm.marginNujukChgVal,
+				        yAxis: 1, // 이 부분을 추가하여 오른쪽 y축을 사용하도록 설정
+				        marker: {
+				            lineWidth: 2,
+				            lineColor: Highcharts.getOptions().colors[3],
+				            fillColor: 'white'
+				        }
+				    }]
+				});
+			}else if( <@compId>.simulationType == "byMenu"){
+				
+				let marginNujukChgValSum = 0
+				$.each(dataList, function() {
+
+					let  categories			= isValid(this.MENU_NM)	? this.MENU_NM : this.YYYYMM ;
+					
+					parm.categories			.push(categories	);
+					
+					let marginRate 		= Math.round(this.MARGIN 		/ this.SALES * 1000) / 10;
+					const marginSmRate	= Math.round(this.MARGIN_SM 	/ this.SALES * 1000) / 10;
+					let marginChangeRate= marginSmRate - marginRate;
+					
+					marginNujukChgValSum += (this.MARGIN_SM - this.MARGIN)
+
+					if( marginChangeRate < 0 ){
+						marginRate = marginRate + marginChangeRate;
+					}
+					
+					parm.marginRate			.push(marginRate);
+					parm.marginSmRate		.push(marginSmRate);
+					parm.marginChangeRate	.push(marginChangeRate);
+					parm.marginNujukChgVal	.push(marginNujukChgValSum);
+					
+				});
+				
+				$('#<@compId>_chart').highcharts({
+				    title: { text: '' },
+				    xAxis: {
+				        categories: parm.categories
+				    },
+				    yAxis: [
+				        {
+				            labels: {
+				                formatter: function () {
+				                    return this.value + "%";
+				                },
+				                style: {
+				                    color: '#8A8C92',
+				                    fontFamily: 'Noto Sans KR',
+				                    fontSize: '15px'
+				                }
+				            },
+				            title: { text: '' }
+				            ,
+				            stackLabels: {
+				                enabled: true,
+				                format: '{total}%',
+				                style: {
+				                    fontSize: '15px'
+				                }
+				            }
+				        },],
+				    tooltip: {
+				        shared: true,
+				        formatter: function() {
+				            return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')} %`;
+				        }
+				    },
+				    plotOptions: {
+				        series: {
+				            dataLabels: {
+				                enabled: true,
+				                formatter: function() {
+				                    return this.y.toLocaleString('en-US') + '%';
+				                }
+				            },
+				            borderRadius: '25%'
+				        },
+				        column: {
+				            stacking: 'normal',
+				            dataLabels: {
+				                enabled: true,
+				                formatter: function() {
+				                	
+				                	let tail = '%';
+				                	
+				                    return (this.color == 'red' ? '-' : '') + Number(Math.abs(this.point.y).toFixed(1))+ tail; // 데이터 레이블에 '-' 추가
+				                },
+				                style: {
+				                    color: 'white', // Change to your desired color
+				                    fontSize: '12px', // Set your desired font size here
+				                    fontWeight: 'normal', // Set font weight if needed
+				                    textOutline: 'none' // Remove the outline
+				                }			                
+				            }
+				        }
+				    },
+				    series: [
+				        {
+				            type: 'column',
+				            name: '마진증감률',
+				            color: '#000000',
+				            data: parm.marginChangeRate.map(value => ({
+				                y: Math.abs(value),
+				                color: value >= 0 ? 'green' : 'red',
+				            })),
+				            stack: '마진',
+				            zIndex: 1 // 항상 위에 위치
+				        },
+				        {
+				            type: 'column',
+				            name: '현재마진률',
+				            color: '#544fc5',
+				            data: parm.marginRate,
+				            stack: '마진',
+				            zIndex: 0 // 항상 아래에 위치
+				        },
+				    ],
+				    legend:{
+				    	useHTML: true,
+				        itemStyle: {
+				            fontSize: '15px',
+				            lineHeight: '20px' // 아이콘과 텍스트의 수직 정렬을 맞추기 위해 line-height 추가
+				        },			    	
+	 			    	labelFormatter: function(){
+
+				    		if( this.name == "마진증감률"){
+				    	           return `
+				                   <span style="display: flex; align-items: center; margin-top: -2px;">
+				                       마진(<span style="color: green;">&#9679;</span>증<span style="color: red;">&#9679;</span>감)률
+				                   </span>`;					    		
+				    		}else{
+				    	           return `
+				                   <span style="display: flex; align-items: center; margin-top: -2px;">
+				                   현재마진률
+				                   </span>`;						    			
+				    		}	
+				        },
+				    }
+				}); 				
+			}
+			
+		 }//makeChart
+		,menuFilter : function(word) {
+			let filterMap = { MENU_NM : word }
+			<@parentId>.<@compId>_brandMenuGrid.filter(filterMap);
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);
+		});
+	});
+</script>
+<component>
+
+	<!-- search filter box start -->
+	<compnent id="<@compId>_searchBox"></compnent>    
+
+
+    <div class="display-column">
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md">
+            <div class="col5 col10-md col10-sm">
+                <div class="col10-md col10-sm tab-card-outline h100 mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">본사 메뉴 설정</div>
+							<div class="card-btn">
+								Filter <input type='text' onKeyup="<@compId>.menuFilter(this.value)"/>
+							</div>
+                        </div>
+						<div class="card-cnt-wrap">
+							<div class="table-allwrap explan-mxhgt300">
+								<compnent id="<@compId>_brandMenuGrid"></compnent>    
+							</div>
+						</div>
+                    </div>
+                </div>
+            </div> 
+            <div class="col5 col10-md col10-sm">
+                <div class="col10-md col10-sm tab-card-outline h100 mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">식자재 단가 설정</div>
+							<component id="<@compId>_productClass"></component>
+                        </div>
+						<div class="card-cnt-wrap">
+							<div class="table-allwrap explan-mxhgt300">
+								<compnent id="<@compId>_ingredientGrid"></compnent>    
+							</div>
+						</div>
+                    </div>
+                </div>
+            </div>
+        </div> 
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md">
+            <div class="col10-gap col10-md col10-sm">
+                <div class="col10-md col10-sm tab-card-outline h100 mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">Margin Simulation Chart</div>
+                        </div>
+                        <div class="card-cnt-wrap">
+                            <div class="card-cnt-wrap p20">
+                                <div id="<@compId>_chart" width="100%" height="280px"></div>
+                            </div> 
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</component>

@@ -1,0 +1,143 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 sampleVal : "예제 페이지입니다."
+		,sampleFunction : function() {
+			alert(<@pageId>.sampleVal);	
+		 }	
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+		<@pageId>.sampleFunction();
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+          <!-- card 01 start -->
+          <div class="card-allwrap col5-gap mb-lg-25 col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <div class="card-tit-wrap">
+                <div class="card-tit">분류별 매출액</div>
+                <div class="card-btn">
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                </div>
+              </div>
+              <div class="card-cnt-wrap p20">
+                <img src="images/bar-chart.svg" alt="" width="100%">
+              </div>
+            </div>
+          </div>
+          <!-- card 01 end -->
+
+          <!-- card 02 start -->
+          <div class="card-allwrap col5-gap mb-lg-25 col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <div class="card-tit-wrap">
+                <div class="card-tit">분류별 매출액</div>
+                <div class="card-btn">
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                  <button class="" type="button">신규등록</button>
+                </div>
+              </div>
+              <div class="card-cnt-wrap">
+                <div class="table-allwrap tb-div-h">
+                  <!-- table start -->
+                  <table class="table-inwrap">
+                    <colgroup>
+                      <col width="25%">
+                      <col width="25%">
+                      <col width="*">
+                      <col width="*">                     
+                    </colgroup>
+                    <thead class="table-thead">
+                      <tr>
+                        <th scope="col">가맹점ID</th>
+                        <th scope="col">점포위치</th>
+                        <th scope="col">가맹점명</th>
+                        <th scope="col">전화번호</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr> 
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>    
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr> 
+                      <tr>
+                        <td>가맹점ID</td>
+                        <td>가맹점명</td>
+                        <td>전화번호</td>
+                        <td>점포위치</td>                    
+                      </tr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+                    </tbody>
+                  </table>
+                  <!-- table end -->            
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- card 02 end -->
+</page-component>

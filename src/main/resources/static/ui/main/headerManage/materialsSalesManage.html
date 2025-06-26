@@ -1,0 +1,130 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 
+		 loadComponent : function(selectList) {
+			var parm = {
+				 queryId 		: "common.getCompanyProductList"
+				,requestParm	: { BRAND_ID : G_VAL.session.BRAND_ID}
+			}
+			let resultData = C_COM.requestQuery(parm);
+			
+			let productList = C_COM.makeCodeList(resultData.data, "PRODUCT_CD", "PRODUCT_NM");
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getMaterialsSalesList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_FOOD_MATERIALS_SALES"
+					,columnMap 		: {
+						  "MATERIALS_SALES_ID"     : { headerText : "식자재매출ID"    , hidden : "Y", ifNewAutoSet : "random"	}
+						 ,"PRODUCT_ID"             : { headerText : "상품ID"          , hidden : "Y"}
+						 ,"COMPANY_ID"             : { headerText : "업체ID"          , hidden : "Y"}
+						 ,"STORE_ID"               : { headerText : "지점ID"          , hidden : "Y", default : ()=>{ return G_VAL.current.storeId }	}
+						 ,"COMPANY_NM"             : { headerText : "업체명"          , noSave : "Y", readOnly : "Y" }
+						 ,"MATERIALS_CD"           : { headerText : "자재CD"       								 }
+						 ,"PRODUCT_CD"             : { headerText : "상품CD"          								 }
+						 ,"PRODUCT_NM"  	       : { headerText : "상품명"          , noSave : "Y", readOnly : "Y" ,width : "250px"}
+						 ,"YEAR"                   : { headerText : "년"              , hidden : "Y", initSetData : "-" 	}
+						 ,"MONTH"                  : { headerText : "월"              , hidden : "Y", initSetData : "-" 	}
+						 ,"DAY"                    : { headerText : "일"              , hidden : "Y", initSetData : "-" 	}
+						 ,"YYYYMMDD"			   : { headerText : "거래일"          , dataType : "date", saveType : "text" 				}	
+						 ,"UNIT_PRICE"             : { headerText : "단가"            , dataType : "number"	}
+						 ,"UNIT" 		           : { headerText : "단위"     		  , noSave : "Y", readOnly : "Y"  }
+						 ,"CONVERSION_QUANTITY"    : { headerText : "단위수량" 		  , dataType : "number"	, noSave : "Y", readOnly : "Y" 	}
+						 ,"QUANTITY"               : { headerText : "수량"            , dataType : "number"									}
+						 ,"CHANGE_QUANTITY"    	   : { headerText : "환산수량"        , dataType : "number"	, noSave : "Y", readOnly : "Y" 
+							 						  ,initSetData : function(cellText, rowData) {
+							 							 return rowData.CONVERSION_QUANTITY * rowData.QUANTITY; 
+							 						   }	
+													 }
+					 }
+					,columnConfig 	: {
+						onChangeCell : {
+							 "YYYYMMDD"	: { 
+								func : function(gridObj, rowIdx, colIdx, cellObj) {
+									let cellVal 	= $(cellObj).attr("value");
+									let spdt = cellVal.split("-");
+									gridObj.setCellToColumn(cellObj, spdt[0], "YEAR"	);
+									gridObj.setCellToColumn(cellObj, spdt[1], "MONTH");
+									gridObj.setCellToColumn(cellObj, spdt[2], "DAY"	);
+					 			}						
+						  	 }
+							,"PRODUCT_CD" : {
+								func : function(gridObj, rowIdx, colIdx, cellObj) {
+									let cellVal 	= $(cellObj).attr("value");
+									let productInfo = <@pageId>.productInfoMap[cellVal];
+									if(isEmpty(productInfo)) return;
+									gridObj.setCellToColumn(cellObj, productInfo.PRODUCT_ID, "PRODUCT_ID"	);
+									gridObj.setCellToColumn(cellObj, productInfo.COMPANY_ID, "COMPANY_ID"	);
+									gridObj.setCellToColumn(cellObj, productInfo.COMPANY_NM, "COMPANY_NM"	);
+									gridObj.setCellToColumn(cellObj, productInfo.PRODUCT_NM, "PRODUCT_NM"	);
+									gridObj.setCellToColumn(cellObj, productInfo.UNIT_PRICE, "UNIT_PRICE"	);
+									gridObj.setCellToColumn(cellObj, productInfo.UNIT	   , "UNIT"	);
+									gridObj.setCellToColumn(cellObj, productInfo.CONVERSION_QUANTITY	   , "CONVERSION_QUANTITY"	);
+								}
+							 }
+						}
+					 }
+					,rowConfig 		: {
+					 }
+					,primaryKeyList		: ["MATERIALS_SALES_ID"]
+					,searchColumnList	: ["COMPANY_NM", "STORE_NM", "PRODUCT_NM", "B.MATERIALS_CD"]		// Table 지정인경우 적용
+					,orderColumnList 	: ["COMPANY_NM", "PRODUCT_CD", "YYYYMMDD", "PRODUCT_CD"] // ORDER BY에 사용
+					,searchWhere		: { BRAND_ID : G_VAL.session.BRAND_ID	}
+					,useRuntimeLoad		: 100
+				}
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "A.STORE_ID"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisComp) {
+								G_VAL.current.storeId = selectVal;
+								thisComp.reload();
+							}
+						 }
+						,{
+							 type			: "multiSelectBox"	
+							,title			: "상품명"
+							,whereColumn	: "B.MATERIALS_CD"
+							,optionList 	: productList
+						 }					
+					]
+				 }		
+				
+			}
+			C_COMP.import("<@pageId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@pageId>.loadComponent(selectList);
+		});
+		
+		var parm = {
+	        queryId 		: "headerManage.getMaterialsCompanyProductList"
+	       ,requestParm		: {	BRAND_ID : G_VAL.session.BRAND_ID	}
+		}
+		C_COM.requestQuery(parm, function(resultData) {
+			if(resultData.state == "S") {
+				<@pageId>.productInfoMap = arrayToMap(resultData.data, "PRODUCT_CD");
+			}
+		});
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_tableGrid"></compnent>    
+    <!-- table area end -->
+</page-component>

@@ -1,0 +1,124 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@popupId> = {
+         close : function(returnData) {
+            if(isEmpty(returnData)) returnData = {};
+            C_POP.close(returnData);
+         }
+        ,reload : function() {
+            let searchValue = $("#<@popupId> #searchValue").val();
+            let updateItem = {searchValue : searchValue}
+            <@popupId>.<@popupId>_table.reload(updateItem);
+         }
+    }
+    // Popup Load가 완료된후 실행 된다.
+    C_POP.onLoadPopup("<@popupId>", function(data) {
+        let sendParm = {
+                gridParm : {
+                     requestQuery   : {
+                          queryId       : "common.getLoginUserList"
+                         ,requestParm   : {
+                                             "USER_TYPE":G_VAL.session.USER_TYPE
+                                            ,"USER_ID" :G_VAL.session.USER_ID
+                                            ,"BUYER_ID":G_VAL.session.BUYER_ID
+                                            ,"BRAND_ID":G_VAL.session.BRAND_ID
+                                            ,"STORE_ID":G_VAL.session.STORE_ID
+                                        }
+                     }  
+                    ,columnMap      : {
+                         "USER_TYPE"        : { headerText : "USER_TYPE", hidden : "Y"  }
+                        ,"LOGIN_ID"         : { headerText : "사용자 ID"}
+                        ,"LOGIN_NM"         : { headerText : "사용자명" }
+                        ,"BUYER_ID"         : { headerText : "BUYER_ID" , hidden : "Y"  }
+                        ,"BUYER_NM"         : { headerText : "고객명"  }
+                     }
+                    ,rowCntId           : "<@popupId>_rowCnt"
+                    ,primaryKeyList     : ["LOGIN_ID"           ]
+                    ,searchColumnList   : ["LOGIN_ID","LOGIN_NM","BUYER_NM"       ]   // Table 지정인경우 적용
+                    ,orderColumnList    : ["BUYER_NM"     ]   // Table 지정인경우 적용
+                    ,columnConfig       : {
+                        onDblClickCell : function(columnId, rowData) {
+                            <@popupId>.close(rowData);
+                        }
+                     }
+                    ,rowConfig      : {
+                        onClickRow : function(rowData) {
+                        }
+                     }
+                    ,readOnly   : "Y"
+                 }              
+/*              ,editButtonTitle : "결재상신"
+                ,callbackEditButton : function(parm) {
+                    C_POP.open("popup_appr_approval", {size : "MAX"}, function(retData){
+                        //dalert(retData);
+                    });
+                } */
+
+        }
+        C_COMP.import("<@popupId>_table", "component_compGrid",sendParm , function() {});       
+    });
+</script>
+
+
+
+<!-- modal-popup start -->
+<div class="modal fade" tabindex="-1" role="dialog"
+    aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <!-- header start -->
+            <div class="modal-header srch-pop-inwrap">
+                <h5 class="modal-title col9 col8-md col7-sm">프로젝트/계약 선택</h5>
+                <!-- button start -->
+                <div class="txt-r col1 col2-md col3-sm">
+                    <button type="button" class="win-fullcls"
+                        onclick="C_POP.normalSize('<@popupId>')"></button>
+                    <button type="button" class="win-full"
+                        onclick="C_POP.maxSize('<@popupId>')"></button>
+                    <button type="button" class="close" aria-label="Close"
+                        onclick="<@popupId>.close()">
+                        <span class="pop-cls" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <!-- button end -->
+            </div>
+            <!-- header end -->
+
+            <div class="modal-body">
+                <!-- table area start -->
+                <div class="tb-card-allwrap col10 col10-md col10-sm mt10">
+                    <div class="card-inwrap">
+                        <div id="tb-scroll" class="card-cnt-wrap">
+                            <div class="table-allwrap display-column">
+                                <!-------------------- 이 부분에 클래스명 추가 ( display-column ) -------------------->
+                                <div class="display-between display-sm-between deco-line pt10 pl10 pr10 pb5">
+                                    <div class="col4-md col10-sm display-h-end mb5">
+                                        <span class="col2-sm w80px mb3">프로젝트/게약 리스트</span> <input type="text" class="form-control form-control-sm mr5" id="searchValue" onEnter="<@popupId>.reload()">
+                                        <button class="srch-btn" type="button" onclick="<@popupId>.reload()">검 색</button>
+                                    </div>
+
+                                    <div class="display-w-end col4 col4-md col10-sm mb5">
+                                        <span class="col2-sm w120px txt-r mr10">Total : <span class="txt-red" id="<@popupId>_rowCnt"></span></span>
+                                    </div>
+                                </div>
+                                <div class="table-inwrap-scroll">
+                                    <!-------------------- 이 부분에 div + 클래스명 추가 ( table-inwrap-scroll ) -------------------->
+                                    <!-- table start -->
+                                    <compnent id="<@popupId>_table"></compnent>
+                                    <!-- table end -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- table area end -->
+            </div>
+            <!-- footer start -->
+            <div class="modal-footer">
+                <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close('2222')">Close</button>
+            </div>
+            <!-- footer end -->
+        </div>
+    </div>
+</div>
+<!-- modal-popup end -->

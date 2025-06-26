@@ -1,0 +1,58 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@popupId> = {
+          delete : function() {
+              <@popupId>.<@popupId>_compScheduleUpdate.delete();
+          } 	
+         ,save : function() {
+              <@popupId>.<@popupId>_compScheduleUpdate.save();
+          } 
+         ,close : function(returnData) {
+            if(isEmpty(returnData)) returnData = {};
+            C_POP.close("BBB");
+         }
+    }
+    // Popup Load가 완료된후 실행 된다.
+    C_POP.onLoadPopup("<@popupId>", function(data) {
+
+        let requestParm = {};
+        requestParm["scheduleId"]  = data["scheduleId"];
+        requestParm["today"]       = data["today"];
+        
+        C_COMP.import("<@popupId>_compScheduleUpdate", "popup_sched_updateSchedulePopupComponent",data , function() {});
+    });
+</script>
+
+<!-- 구매 일정 추가 - modal-popup start -->
+<div class="modal" data-bs-backdrop="static">
+  <div class="modal-dialog modal02 modal-dialog-centered">
+    <div class="modal-content">
+      <!-- header start -->
+      <div class="modal-header srch-pop-inwrap">
+        <h5 class="modal-title col8 col8-md col7-sm">캘린더 일정수정</h5>
+        <!-- button start -->
+        <div class="txt-r col2 col2-md col3-sm">
+          <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+            <span class="pop-cls" aria-hidden="true"></span>
+          </button>
+        </div>
+        <!-- button end -->
+      </div>
+      <!-- header end -->
+      <div class="container"></div>
+
+      <!-- tab content-wrap start -->
+      <div class="tab-allwrap">
+        <compnent id="<@popupId>_compScheduleUpdate"></compnent>
+      </div>
+      <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn" onclick="<@popupId>.delete()">Delete</button>
+          <button type="button" class="btn outline-btn" onclick="<@popupId>.save()">Save</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+      <!-- footer end -->
+    </div>
+  </div>
+</div>                      
+<!-- 구매 일정 추가 - modal-popup end -->

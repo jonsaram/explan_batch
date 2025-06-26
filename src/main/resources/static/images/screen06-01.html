@@ -1,0 +1,2222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
+  <script src="js/jquery-3.4.1.slim.min.js"></script>
+  <script src="js/bootstrap-4.4.1.min.js"></script>
+  <script src="js/jquery-ui-1.11.4.min.js"></script>
+  <script src="js/jstree-3.2.1.min.js"></script>
+  <script src="js/summernote-0.8.9-bs4.js"></script>
+  <script src="js/popper-1.11.0.min.js"></script>
+  <script src="js/bootstrapEdit.js"></script>
+  <script src="js/script.js"></script>
+  <script src="js/common.js"></script>
+  
+  <link rel="stylesheet" href="css/jstree-3.2.1.min.css">
+  <link rel="stylesheet" href="css/summernote-0.8.9-bs4.css">
+  <link rel="stylesheet" href="css/bootstrap-4.4.1.min.css">
+  <link rel="stylesheet" href="css/common.css"> 
+  
+  <!-- 아래 스크립트는 bootstrap modal 팝업 위에 모달 팝업 띄우기 위해 필요함
+
+        -- 부트스트랩은 모달 창 위에 모달 창 띄우는 것을 "사용자 경험에 좋지 않다" 는 이유에서 이런 기능이 없음
+        -- 요구 사항을 구현하기 위해 낮은 버젼의 부트스트랩 추가와 화면 최하단에 스크립트를 추가함
+
+  -->
+  <script src="js/jquery.min.js"></script>
+  <script src="js/bootstrap-3.3.6.min.js"></script> 
+
+<style>
+</style>
+
+  <title>admin screen</title>
+</head>
+
+<body class="main-bg">
+
+<!-- modal-popup start -->
+<div class="modal fade" id="myModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+
+  <!-- 아래 팝업 사이즈 조정 시 - 인라인 스타일 적용
+
+        -- 단위 px 로 작업 시 반응형 웹 및 멀티 디바이스 적용은 무시 됨
+        -- 단위 % 로 적용 시 팝업 프레임은 반응형 웹 및 멀티 디바이스 적용은 가능하나 안의 컴텐츠는 깨짐.        
+           ( 이유: 반응형 웹은 브라우져 사이즈를 인식하여 각 컴포넌트의 사이즈, 위치, 간격 등를 재조정 하게 됨.
+                   ex) 브라우져가 pc 사이즈 화면에서 팝업 프레임 사이즈를 모바일 사이즈로 작업 했을 시 안의 구성 요소에 따라 각 컴포넌트가 깨지게 됨
+            )
+  -->
+      <div class="modal-content resize-modal" 
+           style=" max-width: px !important; min-width: px !important; min-height: px !important; max-height: px !important;">  <!-- 모달 팝업 사이즈 - 인라인 스타일로 조정(클래스 resize-modal 동시 적용) -->
+
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle">㈜메가 커피 / 구매 상품명</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls">
+            </button>
+            <button type="button" class="win-full">
+            </button>
+
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"  aria-hidden="true">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <div class="container"></div>
+
+        <!-- body start -->
+        <div class="modal-body">
+          <div class="body-inwrap">
+  
+            <!-- 구매 목록 start -->
+            <div class="buy-file-allwrap tb-card-allwrap col10 col10-md col10-sm col10-xs">
+              <div class="buy-file-wrap">
+                <div class="card-tit">구매 목록</div>
+              </div>
+              <div class="buy-file-inwrap">
+                  <div class="buy-Waiting-wrap-inwrap p10 col10 col10-md col10-sm">
+                      <div class="col25 col5-md col5-sm col10-xs">
+                          <a href="">스타 에셋 / 커피 3상자 구매</a>
+                          <a href="">스타 에셋 / 커피 3상자 구매</a>
+                          <a href="">스타 에셋 / 커피 3상자 구매</a>
+                          <a href="">스타 에셋 / 커피 3상자 구매</a>
+                          <a href="">스타 에셋 / 커피 3상자 구매</a>
+                      </div>
+                      <div class="col25 col5-md col5-sm col10-xs">
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                      </div>
+                      <div class="col25 col5-md col5-sm col10-xs">
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                      </div>
+                      <div class="col25 col5-md col5-sm col10-xs">
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                          <a href="">빈스페이스 / 부자재 10상자 구매</a>
+                      </div>                                      
+                  </div>
+              </div>
+            </div>
+            <!-- 구매 목록 end -->
+    
+            <!-- 구매일정 + 메모하기 + todo list + 메모입력 area start -->
+            <div class="mem-allwrap01 mt20">
+  
+                  <div class="display-column col5 col10-md col10-sm col10-xs">
+                      <!-- 구매 일정 start -->
+                      <div class="add-file-allwrap tb-card-allwrap mb10 h-fixed">
+                          <div class="add-file-wrap">
+                              <div class="card-tit">구매 일정</div>
+                              <div class="card-btn">
+                                  <a data-toggle="modal" href="#myModal2" class="btn">등록</a>
+                              </div>
+                          </div>
+                          <div class="add-file-inwrap">
+                              <div class="add-file-list">
+                                  <li><span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매</li>
+                                  <li><span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매</li>
+                                  <li><span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매</li>
+                                  <li><span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매</li>                                                                               
+                              </div>
+                          </div>
+                      </div>
+                      <!-- 구매 일정 end -->
+  
+                      <!-- todo list start -->
+                      <div class="add-file-allwrap tb-card-allwrap h-fixed">
+                          <div class="add-file-wrap">
+                              <div class="card-tit">TO-DO List</div>
+                              <div class="card-btn col7">
+                                  <div class="card-btn col10 display-row">
+                                      <input type="text" class="form-control form-control-sm col8 mr5">
+                                      <button class="col2" type="button" data-toggle="modal" data-target="#myModal01">등록</button>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="add-file-inwrap">
+                              <div class="add-file-list">
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>
+                                  <li class="display-between">
+                                      <div>
+                                          <span class="buy-date mr10">2024-07-07 12:34</span>빨대 1000매 구매 
+                                      </div>
+                                      <div class="mr10">
+                                          <input type="checkbox" class="buy-cnt-check">
+                                          <button type="button" class="add-file-cls"></button>
+                                      </div>
+                                  </li>                                                                                                                                                                                                                                         
+                              </div>
+                          </div>
+                      </div>
+                      <!-- todo list end -->
+                  </div>
+  
+                  <!-- 메모 하기 start -->
+                  <div class="msg-allwrap tb-card-allwrap h-fixed01 col5 col10-md col10-sm col10-xs" >
+                    <div class="msg-wrap">
+                      <div class="card-tit">메모 하기</div>
+                    </div>
+                    <div class="msg-inwrap01 h-fixed02">
+                      <div class="msg-list ">
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="col10 msg-cnt vh-scr">여기는 메시지를 쓰는 곳입니다.<br>
+                              메시지가 잘 써지는지 확인 바랍니다. 메시지 입니다.
+                              </div>
+                          </li>
+                        </div>
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="col10 msg-cnt vh-scr">여기는 메시지를 쓰는 곳입니다.<br>
+                              메시지가 잘 써지는지 확인 바랍니다. 메시지 입니다.
+                              </div>
+                          </li>
+                        </div>                    
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="col10 msg-cnt">여기는 메시지를 쓰는 곳입니다.<br>
+                              메시지가 잘 써지는지 확인 바랍니다. 메시지 입니다.
+                              </div>
+                          </li>
+                        </div>
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="col10 msg-cnt">여기는 메시지를 쓰는 곳입니다.<br>
+                              메시지가 잘 써지는지 확인 바랍니다.
+                              </div>
+                          </li>
+                        </div>
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="msg-cnt-text-modify mb10">
+                              <textarea id="" name="" rows="2" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder=""></textarea>
+                              <div class="msg-text-modify-btn">
+                                  <button class="" type="button mr5">수정</button>
+                              </div>
+                            </div>
+                          </li>
+                        </div>
+                        <div class="msg-box">
+                          <div class="msg-info">
+                            <div>
+                              <span class="msg-date">2024-08-08 12:30</span>
+                              <span class="msg-name">위성열</span>
+                            </div>
+                            <div>
+                              <button class="msg-del"></button>
+                              <button class="msg-edit"></button>
+                            </div>
+                          </div>
+                          <li>
+                            <div class="col10 msg-cnt">여기는 메시지를 쓰는 곳입니다.<br>
+                              메시지가 잘 써지는지 확인 바랍니다. 메시지 입니다.
+                             </div>
+                          </li>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="msg-wrap">
+                      <div class="card-tit">메모 입력</div>
+                      <div class="card-btn">
+                        <input type="submit" value="등록" class="btn">
+                      </div>                  
+                    </div>
+                    <div class="msg-inwrap02">
+                      <textarea id="" name="" rows="" cols="" class="msg-textarea"></textarea> 
+                    </div>
+                  </div>
+                  <!-- 메모 하기 end -->
+  
+            </div>
+            <!-- 구매일정 + 메모하기 + todo list + 메모입력 area end -->
+          </div>        
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn mr20" data-dismiss="modal">Close</button>
+          <!-- <a href="#" data-dismiss="modal" class="btn">Close</a> -->
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- modal-popup end -->
+
+<!-- 구매 일정 추가 - modal-popup start -->
+  <div class="modal fade " id="myModal2" data-bs-backdrop="static">
+    <div class="modal-dialog modal02 modal-dialog-centered">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col8 col8-md col7-sm">구매 일정 추가</h5>
+          <!-- button start -->
+          <div class="txt-r col2 col2-md col3-sm">
+            <button type="button" class="win-fullcls">
+            </button>
+            <button type="button" class="win-full">
+            </button>
+            <button type="button" class="close" data-dismiss="modal"aria-hidden="true">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+        <div class="container"></div>
+
+        <div class="modal-body">
+          <table class="col10">
+            <colgroup>
+              <col>
+              <col>
+            </colgroup>
+            <tbody>
+              <tr>
+                <th class="col3 col3-sm col10-xs">제목</th>
+                <td class="col7 col7-sm col10-xs"><input type="text" class="form-control form-control-sm col10"></td>
+              </tr>
+              <tr>
+                <th>업무 유형</th>
+                <td>
+                  <select class="form-control form-control-sm col10">
+                    <option>그 외 업무</option>
+                    <option>그 외 업무</option>
+                    <option>그 외 업무</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <th>일정</th>
+                <td style="display: flex; flex-direction: row; justify-content: space-between;">
+                  <input type="date" class="form-control form-control-sm col3 calender-form">
+                  ~
+                  <input type="date" class="form-control form-control-sm col3 calender-form">
+                  <select class="form-control form-control-sm col3">
+                    <option>반복 안 함</option>
+                    <option>반복 안 함</option>
+                    <option>반복 안 함</option>
+                  </select>               
+                </td>
+              </tr>
+              <tr>
+                <th>시간</th>
+                <td style="display: flex; flex-direction: row; justify-content: space-between;">
+                  <select class="form-control form-control-sm col2 mr5">
+                    <option>00</option>
+                    <option>00</option>
+                    <option>00</option>
+                  </select>
+                  <select class="form-control form-control-sm col2 mr5">
+                    <option>00</option>
+                    <option>00</option>
+                    <option>00</option>
+                  </select>
+                  <span class="mr5">~</span>
+                  <select class="form-control form-control-sm col2 mr5">
+                    <option>01</option>
+                    <option>01</option>
+                    <option>01</option>
+                  </select>
+                  <select class="form-control form-control-sm col2 mr10">
+                    <option>00</option>
+                    <option>00</option>
+                    <option>00</option>
+                  </select>
+                  <span class="col2 ml-10 mt5"><input type="checkbox"> 종일</span>
+                </td>
+              </tr>
+              <tr>
+                <th>위치</th>
+                <td><input type="text" class="form-control form-control-sm col10"></td>
+              </tr>
+              <tr>
+                <th>프로젝트</th>
+                <td><input type="text" class="form-control form-control-sm col10 search-form"></td>
+              </tr> 
+              <tr>
+                <th>공개 여부</th>
+                <td>
+                  <select class="form-control form-control-sm col3">
+                    <option>비공개</option>
+                    <option>비공개</option>
+                    <option>비공개</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <th>설명 추가</th>
+                <td><textarea id="" name="" rows="6" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder="설명 추가"></textarea></td>
+              </tr>                                                                                                          
+            </tbody>
+          </table>
+        </div>
+        <!-- footer start -->
+        <div class="modal-footer">
+            <!-- <a href="#" data-dismiss="modal" class="btn">Close</a> -->
+          <button type="button" class="btn outline-btn mr5" data-dismiss="modal">취소</button>
+          <button type="button" class="btn flat-btn mr20" data-dismiss="modal">저장</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- 구매 일정 추가 - modal-popup end -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <!-- top-skin start -->
+  <header class="header-allwrap fixed-top">
+
+    <!-- logo + pnb start -->
+    <section class="pnb-allwrap">
+      <div class="pnb-inwrap">
+        <!-- logo start -->
+        <div class="logo-lg">
+          <a href="screen01.html">
+            <img src="images/logo.png" alt="" title="company logo">
+          </a>
+        </div>
+        <!-- logo end -->
+        <!-- pnb menu start -->
+        <div class="pnb-wrap">
+          <a href="screen10.html">결재상신popup</a>
+          <a href="screen11.html">결재상세popup</a>
+          <a href="screen12.html">fullSize-popup</a>
+          <a href="screen13.html">popup-sample</a>
+        </div>
+        <!-- pnb menu end -->
+        <!-- notice + admin button start -->
+        <div class="pnb-btn-wrap">
+          <button type="button" class="notice-btn mr15">
+            <span class="notice-badge">
+              9
+            </span>
+          </button>
+          <div class="admin-btn-wrap">
+            <button type="button" class="admin-btn">운영자</button>
+            <ul class="admin-sub-wrap">
+              <li><a class="admin-menu" href="#">내 정보 보기</a></li>
+              <li><a class="admin-menu" href="#">비밀번호 변경</a></li>
+              <li><a class="admin-menu" href="#">로그아웃</a></li>
+            </ul>
+          </div>
+        </div>
+        <!-- notice + admin button end -->
+      </div>
+    </section>
+    <!-- logo + pnb end -->
+
+    <!-- nav area start -->
+    <nav class="gnb-allwrap">
+      <div class="gnb-inwrap gnb-sm-inwrap">
+        <!-- side-pannel logo start -->
+        <a class="gnb-sm-logo" href="screen01.html">
+          <img src="images/sublogo.svg" alt="" width="110px" title="">
+        </a>
+        <button type="button" class="slide-notice-btn mr25 ml-auto">
+          <span class="slide-notice-badge">
+            9
+          </span>
+        </button>
+        <!--  side-pannel logo end -->
+
+        <!-- gnb + lnb start -->
+        <div class="gnb-wrap">
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">가맹점관리</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen02.html">가맹점관리</a></li>
+                <li><a class="lnb-menu" href="screen02.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen02.html">2depth menu</a></li>
+              </ul>
+          </div>
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">원료/부자재 관리</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen03.html">원료/부자재 관리</a></li>
+              </ul>
+          </div>
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">구매폴더관리</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen05.html">구매폴더관리</a></li>
+                <li><a class="lnb-menu" href="screen05.html">구매폴더관리</a></li>
+                <li><a class="lnb-menu" href="screen05.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen05.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen05.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen05.html">2depth menu</a></li>
+              </ul>
+          </div>
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">구매진행현황</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen06.html">구매진행현황</a></li>
+                <li><a class="lnb-menu" href="screen06.html">구매진행현황</a></li>
+                <li><a class="lnb-menu" href="screen06.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen06.html">2depth menu</a></li>
+              </ul>
+          </div>
+          <div class="gnb-nav">              
+            <a class="gnb-menu" href="#!">구매관리Popup</a>
+            <ul class="lnb-wrap">
+              <li><a class="lnb-menu" href="screen06-01.html">구매관리Popup</a></li>
+              <li><a class="lnb-menu" href="screen06-01.html">구매관리Popup</a></li>
+              <li><a class="lnb-menu" href="screen06-01.html">2depth menu</a></li>
+              <li><a class="lnb-menu" href="screen06-01.html">2depth menu</a></li>
+            </ul>
+        </div>          
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">구매폴더Popup</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen06-02.html">구매폴더Popup</a></li>
+                <li><a class="lnb-menu" href="screen06-02.html">구매폴더Popup</a></li>
+                <li><a class="lnb-menu" href="screen06-02.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen06-02.html">2depth menu</a></li>
+              </ul>
+          </div>
+          <div class="gnb-nav">
+              <a class="gnb-menu" href="#!">공지사항</a>
+              <ul class="lnb-wrap">
+                <li><a class="lnb-menu" href="screen07.html">공지사항</a></li>
+                <li><a class="lnb-menu" href="screen07.html">2depth menu</a></li>
+                <li><a class="lnb-menu" href="screen07.html">2depth menu</a></li>
+              </ul>
+          </div>
+        </div>
+        <!-- gnb + lnb end -->
+
+        <!-- navbar-toggler-icon start -->
+        <div class="sidebar-overlay sidebar-animate-opacity left_overlay"></div>
+        <a href="javascript:void(0)" id="myModal" class="side_btn fl bnt_open gnb-sm-toggle" onclick="left_slide_open()"></a>
+        <!-- navbar-toggler-icon end -->
+
+        <!-- side-pannel start -->
+        <div class="sidebar collapse sidebar-animate-left left-slide-pannel-nav left-slidebar">
+          <!-- header + close button start -->
+          <div class="side-header">
+            <img src="images/logo.png" class="ml20" width="130px" title="company logo">
+            <a href="javascript:void(0)" class="bnt-close close-btn fr" title="Close Sidemenu"></a>
+          </div>
+          <!-- header + close button end -->
+
+          <!-- body content start -->
+          <div class="offcanvas-body">
+            <!-- login + logout start -->
+            <div class="slide-login-wrap">
+              <div class="slide-in-wrap">
+                <div class="slide-login-btn">
+                  운영자님
+                </div>
+              </div>
+              <div class="slide-in-wrap ">
+                <button type="button" class="slide-logout-btn mr5">로그아웃</button>
+              </div>
+            </div>
+            <!-- login + logout end -->
+            <!-- gnb + lnb start -->
+            <div id="accordion">
+              <ul class="accordion_bar">
+                  <li>
+                      <a href="#" class="inquiry_datail_bar">
+                          <span class="inquiry_datail_bar_q">*</span>
+                          <span class="inquiry_datail_bar_title">가맹점관리</span>
+                      </a>
+                      <section class="inquiry_datail_bar_content">
+                          <a href="screen02.html" class="inquiry_datail_content_a">
+                              <span class="inquiry_datail_bar_a">-</span>
+                              <span class="inquiry_datail_bar_a_p">가맹점관리</span>
+                          </a>
+                          <a href="screen02.html" class="inquiry_datail_content_a">
+                              <span class="inquiry_datail_bar_a">-</span>
+                              <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                          </a>
+                          <a href="screen02.html" class="inquiry_datail_content_a">
+                              <span class="inquiry_datail_bar_a">-</span>
+                              <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                          </a>
+                      </section>
+                  </li>
+                  <li>
+                      <a href="#" class="inquiry_datail_bar">
+                          <span class="inquiry_datail_bar_q">*</span>
+                          <span class="inquiry_datail_bar_title">원료/부자재 관리</span>
+                      </a>
+                      <section class="inquiry_datail_bar_content">
+                        <a href="screen03.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">원료/부자재 관리</span>
+                        </a>
+                        <a href="screen03.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                        <a href="screen03.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                    </section>
+                  </li>
+                  <li>
+                      <a href="#" class="inquiry_datail_bar">
+                          <span class="inquiry_datail_bar_q">*</span>
+                          <span class="inquiry_datail_bar_title">구매폴더관리</span>
+                      </a>
+                      <section class="inquiry_datail_bar_content">
+                        <a href="screen05.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">구매폴더관리</span>
+                        </a>
+                        <a href="screen05.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                        <a href="screen05.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                    </section>
+                  </li>
+                  <li>
+                      <a href="#" class="inquiry_datail_bar">
+                          <span class="inquiry_datail_bar_q">*</span>
+                          <span class="inquiry_datail_bar_title">구매진행현황</span>
+                      </a>
+                      <section class="inquiry_datail_bar_content">
+                        <a href="screen06.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">구매진행현황</span>
+                        </a>
+                        <a href="screen06.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                        <a href="screen06.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                    </section>
+                  </li>
+                  <li>
+                      <a href="#" class="inquiry_datail_bar">
+                          <span class="inquiry_datail_bar_q">*</span>
+                          <span class="inquiry_datail_bar_title">구매관리Popup</span>
+                      </a>
+                      <section class="inquiry_datail_bar_content">
+                        <a href="screen06-01.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">구매관리Popup</span>
+                        </a>
+                        <a href="screen06-01.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                        <a href="screen06-01.html" class="inquiry_datail_content_a">
+                            <span class="inquiry_datail_bar_a">-</span>
+                            <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                        </a>
+                    </section>
+                  </li>
+                  <li>
+                    <a href="#" class="inquiry_datail_bar">
+                        <span class="inquiry_datail_bar_q">*</span>
+                        <span class="inquiry_datail_bar_title">구매폴더Popup</span>
+                    </a>
+                    <section class="inquiry_datail_bar_content">
+                      <a href="screen06-02.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">구매폴더Popup</span>
+                      </a>
+                      <a href="screen06-02.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                      </a>
+                      <a href="screen06-02.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                      </a>
+                  </section>
+                  </li>
+                  <li>
+                    <a href="#" class="inquiry_datail_bar">
+                        <span class="inquiry_datail_bar_q">*</span>
+                        <span class="inquiry_datail_bar_title">공지사항</span>
+                    </a>
+                    <section class="inquiry_datail_bar_content">
+                      <a href="screen07.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">공지사항</span>
+                      </a>
+                      <a href="screen07.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                      </a>
+                      <a href="screen07.html" class="inquiry_datail_content_a">
+                          <span class="inquiry_datail_bar_a">-</span>
+                          <span class="inquiry_datail_bar_a_p">2depth-menu01</span>
+                      </a>
+                  </section>
+                  </li>
+                </ul>
+            </div>
+            <!-- gnb + lnb end -->
+            <!-- pnb-menu start -->
+            <div class="slide-pnb">
+              <!-- pnb-menu start -->
+                <a href="#" class="login-info-btn my-info">내 정보 보기</a>
+                <a href="#" class="login-info-btn my-pw">비밀번호 변경</a>
+              <!-- pnb-menu end -->
+              <a href="#" class="slide-pnb-btn">인트라넷</a>
+              <a href="#" class="slide-pnb-btn">가맹점운영 SYSTEM</a>
+              <a href="#" class="slide-pnb-btn">경영 SYSTEM</a>
+              <a href="#" class="slide-pnb-btn">회계 SYSTEM</a>
+            </div>
+            <!-- pnb-menu end -->
+          </div>
+          <!-- body content end -->
+        </div>
+        <!-- side-pannel end -->
+
+      </div>
+    </nav>
+    <!-- nav area end -->
+
+  </header>
+  <!-- top-skip end -->
+
+  <!-- breadcrumb start -->
+  <div class="breadcrumb-allwrap mt90">
+    <nav class="breadcrumb-inwrap">
+      <ol class="breadcrumb">
+        <li><a href="screen01.html" class="home">Home</a></li>
+        <li><a href="#">가맹점 관리</a></li>
+        <li><a href="#">가맹점 리스트</a></li>
+      </ol>
+    </nav>
+  </div>
+  <!-- breadcrumb end -->
+
+  <!-- body-contents start -->
+  <section class="body-allwrap body-sub-bg mt90-md">
+    <div class="body-inwrap mt40 mb40">
+        
+        <!-- sub title + button start -->
+        <div class="sub-tit-allwrap mb10">
+          <!-- title start -->
+          <div class="sub-tit-lg">구매 관리 Popup</div>
+        </div>
+        <!-- sub title + button end -->
+
+        <!-- content area start -->
+        <div class="mt20"> 
+
+          <div class="card-btn">
+            <button class="" type="button" data-toggle="modal">구매 관리 Popup</button>
+          </div>
+          <br>
+          <br>
+          <div class="tb-card-allwrap col10 mt10">
+            <div class="card-inwrap">
+              <div id="tb-scroll" class="card-cnt-wrap">
+                <div class="table-allwrap ">
+                  <!-- table start -->
+                  <table class="table-inwrap">
+                    <colgroup>
+                      <col width="60px">
+                      <col width="200px">
+                      <col width="*">
+                      <col width="200px">
+                      <col width="200px">                    
+                      <col width="200px">
+                      <col width="200px">                    
+                    </colgroup>
+                    <thead class="table-thead">
+                      <tr>
+                        <th scope="col"><input type="checkbox"></th>
+                        <th scope="col">가맹점ID</th>
+                        <th scope="col" class="hide-area">점포위치</th>
+                        <th scope="col" class="hide-area">가맹점명</th>
+                        <th scope="col">전화번호</th>
+                        <th scope="col">점포위치</th>
+                        <th scope="col">전화번호</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox" disabled="disabled">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10" disabled="disabled">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10" disabled="disabled">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form" disabled="disabled">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form" disabled="disabled">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10" disabled="disabled">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02" disabled="disabled">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02" disabled="disabled">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                            <input type="radio" class="vt02">
+                            <label>라벨명</label>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>  
+                      <tr>
+                        <td>
+                            <input type="checkbox">
+                        </td> 
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm col10 search-form">
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm col10 calender-form">
+                        </td>
+                        <td>
+                            <select class="form-control form-control-sm col10">
+                                <option>Small select</option>
+                                <option>Small select</option>
+                                <option>Small select</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="outline-btn" type="button">완료결재</button>
+                        </td>                      
+                      </tr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+                    </tbody>
+                  </table>
+                  <!-- table end -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- content area end -->
+    </div>
+</section>
+<!-- body-contents end -->
+
+<!-- footer start -->
+<footer class="footer-allwrap footer-bg">
+    <div class="footer-inwrap footer-md-inwrap footer-sm-inwrap pt20 pb20">
+        <div class="col3 col10-md col10-sm footer-menu-wrap">
+          <a href="" class="logo-sm">
+            <img src="images/logo.png" alt="" class="" width="100px">
+          </a>
+          <div class="footer-menu mt10">
+            <a href="#">인트라넷</a>
+            <a href="#">가맹점 운영 SYSTEM</a>
+            <a href="#">경영 SYSTEM</a>
+            <a href="#">회계 SYSTEM</a>
+          </div>
+        </div>
+        <div class="col3 col5-md col10-sm footer-info">
+          <dt class="footer-tit">상호명 </dt>
+          <dd class="footer-cnt">주식회사 빈스페이스</dd>
+          <dt class="footer-tit">대표자명</dt>
+          <dd class="footer-cnt">조민기</dd>
+          <dt class="footer-tit">사업장 주소</dt>
+          <dd class="footer-cnt">14593 경기도 부천시 상일로 14-19 1층 (상동)</dd>
+        </div>
+        <div class="col3 col5-md col10-sm footer-info">
+          <dt class="footer-tit">사업자 등록번호</dt>
+          <dd class="footer-cnt">769-87-01832</dd>
+          <dt class="footer-tit">통신판매업 신고번호 </dt>
+          <dd class="footer-cnt">2023-경기부천-0214 [사업자정보확인]</dd>
+          <dt class="footer-tit">개인정보보호책임자 </dt>
+          <dd class="footer-cnt">조민기</dd>
+        </div>
+    </div>
+</footer>
+<!-- footer end -->
+
+
+<script>
+    $(function() {
+        $('#openBtn').click(function() {
+            $('#myModal').modal({
+                show: true
+            })
+        });
+    
+        $(document).on({
+            'show.bs.modal': function() {
+                var zIndex = 1040 + (10 * $('.modal:visible').length);
+                $(this).css('z-index', zIndex);
+                setTimeout(function() {
+                    $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+                }, 0);
+            },
+            'hidden.bs.modal': function() {
+                if ($('.modal:visible').length > 0) {
+                    setTimeout(function() {
+                        $(document.body).addClass('modal-open');
+                    }, 0);
+                }
+            }
+        }, '.modal');
+    });
+</script>
+
+<script type="text/javascript">
+    $("#accordion .accordion_bar").accordion();
+</script>
+</body>
+</html>

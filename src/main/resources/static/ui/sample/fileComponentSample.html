@@ -1,0 +1,138 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+	    <!-- breadcrumb start -->
+	    <div class="breadcrumb-allwrap mb30">
+	        <nav class="breadcrumb-inwrap">
+	            <ol class="breadcrumb">
+	                <li><a href="screen01.html" class="home">Home</a></li>
+	                <li><a href="#">가맹점 관리</a></li>
+	                <li><a href="#">가맹점 리스트</a></li>
+	            </ol>
+	        </nav>
+	    </div>
+	    <!-- breadcrumb end -->
+	    
+	    <!-- sub title + button start -->
+	    <div class="sub-tit-allwrap mb10">
+	        <!-- title start -->
+	        <div class="sub-tit col8 col8-md col6-sm">게시글 작성</div>
+	        <!-- button start -->
+	        <div class="col2 col2-md col4-sm display-w-end">
+	            <button class="outline-btn mr5" type="button">취 소</button>
+	            <button class="flat-btn" type="button" onclick="location.href='screen07.html'">등 록</button>
+	        </div> 
+	    </div>
+	    <!-- sub title + button end -->
+	
+	<!---------------------------------- 컴포넌트 카피 + 대체 시작 영역 -------------------------------------->                
+	
+	    <!-- table area start -->
+	    <div class="tb-card-allwrap01 col10 mt10">
+	        <div class="card-inwrap">
+	          <div id="tb-scroll" class="card-cnt-wrap p20">
+	              <!-- table start -->
+	              <table class="tb-wr-wrap col10 col10-xs">
+	                  <colgroup>
+	                    <col>
+	                    <col>
+	                  </colgroup>
+	                  <tbody>
+	                    <tr>
+	                      <th class="col1 col2-sm col10-xs">제 목</th>
+	                      <td class="col9 col8-sm col10-xs">
+	                          <input type="text" class="form-control form-control-sm col10">
+	                      </td>
+	                    </tr>                      
+	                    <tr>
+	                      <th>내 용</th>
+	                      <td>
+	                          <textarea id="summernote"></textarea>
+	                      </td>
+	                    </tr> 
+	                    <tr>
+	                      <th>첨부파일</th>
+	                      <td id=xxx>
+	                          <div class="tb-wr-addfile col0 col10-md col10-sm col10-xs">
+	                              <div class="add-file-wrap">
+	                                  <div class=""></div>
+	                                  <div class="card-btn">
+	                                    <button class="" type="button">등록</button>
+	                                  </div>
+	                                </div>
+	                                <div class="add-file-list">
+	                                  <li>
+	                                    <span class="col8 add-file-txt"><a href="#">커피매출내역.xls</a></span>
+	                                    <span class="col2 add-file-data">211.6 kb</span>
+	                                    <span class="col"><button type="button" class="add-file-cls"></button></span>
+	                                  </li>
+	                                  <li>
+	                                    <span class="col8 add-file-txt"><a href="#">커피매출내역.xls</a></span>
+	                                    <span class="col2 add-file-data">211.6 kb</span>
+	                                    <span class="col"><button type="button" class="add-file-cls"></button></span>
+	                                  </li>
+	                                  <li>
+	                                    <span class="col8 add-file-txt"><a href="#">커피매출내역.xls</a></span>
+	                                    <span class="col2 add-file-data">211.6 kb</span>
+	                                    <span class="col"><button type="button" class="add-file-cls"></button></span>
+	                                  </li>  
+	                                  <li>
+	                                      <span class="col8 add-file-txt"><a href="#">커피매출내역.xls</a></span>
+	                                      <span class="col2 add-file-data">211.6 kb</span>
+	                                      <span class="col"><button type="button" class="add-file-cls"></button></span>
+	                                    </li>                                                                                                                      
+	                                </div>
+	                            </div>
+	                      </td>
+	                    </tr>                                                                                                        
+	                  </tbody>
+	                </table>
+	              <!-- table end -->
+	          </div>
+	        </div>
+	      </div>
+	    <!-- table area end -->
+	
+	    <!-- Page navigation start -->
+	    <nav class="pagination-allwrap mt30">
+	        <ul class="pagination-inwrap">
+	            <li class="page-item">
+	                <a class="page-link" href="#" aria-label="Previous">
+	                    <span aria-hidden="true"></span>
+	                </a>
+	            </li>
+	            <li class="page-item"><a class="page-link" href="#">1</a></li>
+	            <li class="page-item"><a class="page-link" href="#">2</a></li>
+	            <li class="page-item"><a class="page-link" href="#">3</a></li>
+	            <li class="page-item active"><a class="page-link" href="#">4</a></li>
+	            <li class="page-item"><a class="page-link" href="#">5</a></li>
+	            <li class="page-item"><a class="page-link" href="#">6</a></li>
+	            <li class="page-item"><a class="page-link" href="#">7</a></li>
+	            <li class="page-item"><a class="page-link" href="#">8</a></li>
+	            <li class="page-item"><a class="page-link" href="#">9</a></li>
+	            <li class="page-item">
+	                <a class="page-link" href="#" aria-label="Next">
+	                    <span aria-hidden="true"></span>
+	                </a>
+	            </li>
+	        </ul>
+	    </nav>
+	    <!-- Page navigation end -->
+	
+	<!---------------------------------- 컴포넌트 카피 + 대체 끝 영역 -------------------------------------->                
+	<!-- body-incontents end -->
+
+</page-component>

@@ -1,0 +1,72 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 isValid : false
+		,retData : {}	
+		,memberSearchPopup : function() {
+
+			let value = $("#<@compId>_val").val();
+			value= value.split("(")[0].trim();
+			
+			let param = {autoRtn:true, gubun:'<@gubun>', searchText:value } ;
+			const gubun = isEmpty(param.gubun)? 'USER_ID' : param.gubun ; 
+
+			C_POP.open('popup_common_consultingSearchPopup', {param:param, gubun:gubun}, function(retData) {
+
+	    		<@compId>.retData = retData;
+	    		<@compId>.setInput(retData);
+
+			});			
+			
+		 } 
+		,handleKeyPress : (event, gubun) => {
+			if (event.key === 'Enter') {
+				let value = event.target.value;
+				value= value.split("(")[0].trim();
+				
+				let param = {autoRtn:true, gubun:'<@gubun>', searchText:value } ;
+				const gubun 	= isEmpty(param.gubun)? 'USER_ID' : param.gubun ;   
+				C_POP.open('popup_common_consultingSearchPopup', {param:param, gubun:gubun}, function(retData) {
+			   	
+			   		<@compId>.retData = retData;
+			   		<@compId>.setInput(retData);
+			   		<@compId>.isValid = true;
+			   	})
+			}else{
+			   	<@compId>.isValid = false;
+			}
+		}
+		,handleInput : (event) => {
+			<@compId>.isValid = false;
+		}
+		,setInput : (retData) => {
+			const itemId	= retData["<@gubun>_ID"];
+			const itemNm	= retData["<@gubun>_NM"];
+
+			if( itemId ){
+				$("#<@compId>_val").val(itemNm+ " ("+itemId+")");
+			}
+
+    		C_COMP.callback("<@compId>", retData);
+		 }
+		,getRetData : function() {
+			return <@compId>.retData;	
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		if(isValid(data.defaultInfo)) {
+			<@compId>.setInput(data.defaultInfo);
+			<@compId>.isValid = true;
+		}
+	});
+</script>
+<div>
+	<input type="text" id="<@compId>_val" 
+		placeholder="<@placeholder>" 
+		onkeypress="<@compId>.handleKeyPress(event)" 
+		oninput="<@compId>.handleInput(event)"
+		class="form-control form-control-sm col10 search-form"
+		onclick="<@compId>.memberSearchPopup();" />
+</div>

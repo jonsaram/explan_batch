@@ -1,0 +1,340 @@
+<!-- 
+    - 사용 방법
+    
+    var parm = {
+         GRP_FILE_ID    : [고유ID]
+        ,OWNER_CD       : [사용Type ID]                               // => 공통 코드로 관리됨. GRP_CODE_ID = FILE_USE_TYPE
+        ,mode           : "R"                                       // => R : Read Only         /       M : 등록 수정 가능
+        ,allowExt       : ["jpg", "jpeg", "png", "gif", "bmp"]      // => 사용 가능 확장자 설정 / 생략시 모두 허용
+        ,buttonName     : "이미지선택"                               // => 나타나는 버튼 명 정의 / 생략시 파일선택이 기본으로 나타남 
+    }
+    
+    
+    
+    C_COMP.import("importFilemng", "component_compFilemng",parm , function(fileId) {
+        
+    });
+-->
+
+
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@compId> = {
+         GRP_FILE_ID    : "<@GRP_FILE_ID>"
+        ,OWNER_CD       : ""
+        ,mode           : ""
+        ,convertToPdf   : ""
+        ,allowExt       : []
+        ,filesArr       : []
+        ,fileList       : []
+        ,init : function(GRP_FILE_ID, OWNER_CD) {
+            if(isValid(GRP_FILE_ID) && isValid(OWNER_CD)) {
+                <@compId>.GRP_FILE_ID   = GRP_FILE_ID   ;
+                <@compId>.OWNER_CD      = OWNER_CD      ;
+            }
+            var parm = {
+                 queryId        : "Filemng.getFileList"
+                ,requestParm    : {
+                     GRP_FILE_ID    : <@compId>.GRP_FILE_ID
+                    ,OWNER_CD       : <@compId>.OWNER_CD
+                }
+            }
+            C_COM.requestQuery(parm, function(resultData) {
+            	
+                <@compId>.fileList = resultData.data;
+                <@compId>.viewFileList(resultData.data);
+                // 읽기모드인경우
+                if(<@compId>.mode == "R") {
+                    $("#<@compId>_button").hide();
+                }
+                
+                C_COMP.callback("<@compId>", <@compId>.fileList);
+            });
+            
+            <@compId>.filesArr = [];            
+            
+         }
+        ,getFileList : function() {
+            return <@compId>.fileList;
+         }
+        ,viewFileList : function(list) {
+        	
+		   list = 	list.map( obj=> ({
+			   				...obj,
+			   				MODE: <@compId>.mode
+			   		}));
+        	
+           let rparm = {
+                targetId   : "<@compId>_fileList"
+               ,list       : list
+           }
+           C_COM.renderHtml("<@compId>", rparm);
+         }
+        ,uploadMultiFile : function () {
+    
+            // 폼데이터 담기
+            var form = document.querySelector("#<@compId>_form");
+            var formData = new FormData(form);
+            
+            formData.append("GRP_FILE_ID"   , <@compId>.GRP_FILE_ID );
+            formData.append("OWNER_CD"      , <@compId>.OWNER_CD    );
+            formData.append("CONVERT_TO_PDF" ,<@compId>.convertToPdf );
+            
+            for (var i = 0; i < <@compId>.filesArr.length; i++) {
+                formData.append("attach_file"   , <@compId>.filesArr[i]);
+                formData.append("FILE_IDS"      , C_COM.makeUniqueId());
+            }
+            C_COM.showLoadingBar();
+            $.ajax({
+                url: '/multiFileUpload.do',
+                method: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    C_COM.hideLoadingBar();
+                    const msg = response.msg;
+                    <@compId>.init();
+                },
+                error: function (xhr, desc, err) {
+                    C_COM.hideLoadingBar();
+                    alert('에러가 발생 하였습니다.');
+                    return;
+                }
+            })
+         }
+        /* 첨부파일 추가 */
+        ,addFile : function(obj){
+
+            <@compId>.addFileWithFiles(obj.files);
+        }
+        ,addFileWithFiles : function(files){
+
+            var maxFileCnt = 5;   // 첨부파일 최대 개수
+            var attFileCnt = document.querySelectorAll('.filebox').length;    // 기존 추가된 첨부파일 개수
+            var remainFileCnt = maxFileCnt - attFileCnt;    // 추가로 첨부가능한 개수
+            var curFileCnt = files.length;  // 현재 선택된 첨부파일 개수
+
+            // 첨부파일 개수 확인
+            if (curFileCnt > remainFileCnt) {
+                alert("첨부파일은 한번에 최대 " + maxFileCnt + "개 까지 첨부 가능합니다.");
+            }
+            let fileRdyCnt = 0
+            let fileEndCnt = 0
+            for (var i = 0; i < Math.min(curFileCnt, remainFileCnt); i++) {
+
+                const file = files[i];
+
+                // 첨부파일 검증
+                if (<@compId>.validation(file)) {
+                    // 파일 배열에 담기
+                    var reader = new FileReader();
+                    fileRdyCnt++;
+                    reader.onload = function () {
+                        fileEndCnt++;
+                        <@compId>.filesArr.push(file);
+                        if(fileRdyCnt == fileEndCnt) <@compId>.execUpload();
+                    };
+                    reader.readAsDataURL(file)
+                } else {
+                    continue;
+                }
+            }
+            // 초기화
+        }
+        ,execUpload : function() {
+            C_POP.confirm("선택한 파일을 업로드 하시겠습니까?", function() {
+                <@compId>.uploadMultiFile();
+                $("#<@compId> input[type=file]").val("");
+            });
+         }
+        /* 첨부파일 검증 */
+        ,validation : function(file){
+            if (file.name.length > 100) {
+                alert("파일명이 100자 이상인 파일은 제외되었습니다.");
+                return false;
+            } else if (file.size > (100 * 1024 * 1024)) {
+                alert("최대 파일 용량인 100MB를 초과한 파일은 제외되었습니다.");
+                return false;
+            } else if (file.name.lastIndexOf('.') == -1) {
+                alert("확장자가 없는 파일은 제외되었습니다.");
+                return false;
+            } else {
+                return true;
+            }
+         }
+        ,selectFile : function() {
+            
+            if(<@compId>.GRP_FILE_ID == "NA") {
+                C_POP.alert('File Component 설정이 필요합니다.\n\nGRP_FILE_ID = "NA" 인 경우 유효한 값을 설정 해주세요.');
+                return;
+            }
+            
+            $("#<@compId>_select").trigger("click");
+         }
+        ,deleteFile : function(fileId) {
+        	
+            if(isEmpty(fileId)) return;
+            
+            C_POP.confirm('파일을 삭제 하시겠습니까?', function() {
+                var parm = {
+                     queryId        : "Filemng.deleteFile"
+                    ,requestParm    : {FILE_ID : fileId}
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                	<@compId>.init();
+                });
+            })
+            
+         }
+        ,deleteDirFile : function(fileId) {
+            
+
+            let formData = new FormData();
+            formData.append("delete_file_list", fileId);
+            
+            $.ajax({
+                url: '/fileDelete.do',
+                method: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    const msg = response.msg;
+                    alert(msg);
+                    <@compId>.init();
+                },
+                error: function (xhr, desc, err) {
+                    alert('에러가 발생 하였습니다.');
+                    return;
+                }
+            })
+            
+         }
+        
+        ,preview : function(fileId, convertYn) {
+            if(isEmpty(fileId)) return;
+            window.open("previewFile.do?FILE_ID="+fileId+"&CONVERT_YN="+convertYn, "_blank");
+            
+         }
+        ,download : function(fileId) {
+            C_POP.confirm('다운로드 받으시겠습니까?', function() {
+                C_COM.fileDownload(fileId);
+                
+            });
+         }
+        ,initDragAndDrop: function(targetDomId) {
+            let targetId = targetDomId;
+            if(isEmpty(targetId)) targetId = '<@compId>';
+
+            var dropArea = document.getElementById(targetId);
+
+            dropArea.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                dropArea.classList.add('drag-over');
+            });
+
+            dropArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropArea.classList.add('drag-over');
+            });
+
+            dropArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dropArea.classList.remove('drag-over');
+            });
+
+            dropArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropArea.classList.remove('drag-over');
+
+                var files = e.dataTransfer.files;
+                // 여기서 addFile과 같은 처리 함수 호출
+                <@compId>.addFileWithFiles(files);
+            });
+         }
+        
+    }
+    // Component Load가 완료된후 실행 된다.
+    C_COMP.onLoadComp("<@compId>", function(parm) {
+    	
+        if(isEmpty(parm.GRP_FILE_ID)) {
+            alert('<@compId> 를 Import할때 GRP_FILE_ID가 필요 합니다.');
+            return;
+        }
+        if(isEmpty(parm.OWNER_CD)) {
+            alert('<@compId> 를 Import할때 OWNER_CD가 필요 합니다.');
+            return;
+        }
+        
+        const url = _WEB_ROOT_URL + '/editImageUpload.do';
+        
+        <@compId>.GRP_FILE_ID   = parm.GRP_FILE_ID  ;
+        <@compId>.OWNER_CD      = parm.OWNER_CD     ;
+        <@compId>.mode          = parm.mode         ;
+        
+        // 기본값을 Y로 해서 PDF 파일변환을 한다.
+        if( parm.mode == "N" ){
+            <@compId>.convertToPdf  = "N";
+        }else{
+            <@compId>.convertToPdf  = "Y";
+        }
+        
+        
+        
+        if(isEmpty(<@compId>.mode)) <@compId>.mode = "R";
+        
+        <@compId>.init();
+        
+        if(parm.title == "NA") {
+            $("#<@compId> #title").hide();
+        } else if(isValid(parm.title)){
+            $("#<@compId> #title").html(parm.title);
+        }
+        
+        // Component 노출 처리
+        if(parm.hideComponent == "Y") {
+            $("#<@compId>").hide();
+        }
+        // 버튼 노출 처리
+        if(parm.hideButton == "Y") {
+            $("#<@compId>_button").hide();
+        }
+
+        // 드래그 앤 드롭 초기화
+        <@compId>.initDragAndDrop(parm.targetDragDrop);
+        
+    });
+</script>
+<component>
+    <form method="POST" id="<@compId>_form" onsubmit="return false;" enctype="multipart/form-data">
+        <input id="<@compId>_select" type="file" onchange="<@compId>.addFile(this);" tabindex="-1" multiple style="display:none"/>
+    </form>
+	<!-- add file start -->
+    <div class="tb-card-allwrap col10" id="<@compId>_drag_drop_area" style="min-height:300px">
+          <div class="add-file-wrap">
+            <div class=""></div>
+            <div class="card-btn">
+              <button class="" type="button" onclick="<@compId>.selectFile()" id="<@compId>_button">파일선택</button>
+            </div>
+          </div>
+          <div class="add-file-list" id="<@compId>_fileList"></div>
+        <script type="text/x-jsrender" id="<@compId>_fileList_template">  
+        {{for list}}
+            <li>
+              <span class="col8 add-file-txt"><a href="javascript:<@compId>.download('{{:FILE_ID}}')">{{:ORG_FILE_NM}}</a>
+              {{if PRE_VIEW_YN == "Y" || CONVERT_YN == "Y" }} 
+			  <button type="button" onclick="<@compId>.preview('{{:FILE_ID}}','{{:CONVERT_YN}}')" id="<@compId>_buttonPreview" class="btn explan-custom-btn btn-sm ml-2">미리보기</button>
+              {{/if}}
+			  </span>
+              <span class="col2 add-file-data">{{toKb:FILE_SIZE}}</span>
+              <span class="col">{{if MODE != "R" }}<button type="button" class="add-file-cls" onclick="<@compId>.deleteFile('{{:FILE_ID}}')"></button>{{/if}}</span>
+            </li>
+        {{/for}}
+        </script>
+        <script type="text/x-jsrender" id="<@compId>_fileList_noData_template">    
+            <li><span class="col10 txt-center">첨부파일이 없습니다.</span></li>
+        </script>
+      </div>
+	<!-- add file end -->
+</component>

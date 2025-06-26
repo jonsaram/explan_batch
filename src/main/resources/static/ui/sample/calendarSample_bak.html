@@ -1,0 +1,330 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		init : function() {
+            var calendarEl = document.getElementById('<@pageId>_calendar');            
+            
+            <@pageId>.calendar = new FullCalendar.Calendar(calendarEl, {
+                height: '100%',
+                expandRows: true,
+                locale: 'ko', // 한국어 설정
+                // slotMinTime: '08:00',
+                // slotMaxTime: '20:00',
+                headerToolbar: {
+                    // left: 'prev,next today',
+                    left: '',
+                    center: 'title',
+                    right: 'timeGridDay,timeGridWeek,dayGridMonth,prev,next'
+                    // right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                },
+
+                views: {
+                    dayGridMonth: { // name of view
+                        titleFormat: { year: 'numeric', month: '2-digit', day: '2-digit' }
+                       // other view-specific options here
+                    }
+                },
+                initialView: 'dayGridMonth',
+                //initialDate: '2024-01-08',  //달력 처음 로드될때 표시되는 날짜
+                navLinks: true, // 요일이랑 날짜 클릭시 일단위,주단위로 보여주는 화면으로 넘어감
+                editable: false, // 드래그해서 수정 가능한지, 길게 확장도 가능
+                selectable: true,
+                nowIndicator: true,
+                dayMaxEvents: true, // "more" 표시 전 최대 이벤트 갯수, true는 셀 높이에 의해 결정
+                dateClick: function(info) {
+                    
+                    let requestParm = {};
+                    requestParm["today"]  = info.dateStr;
+                    
+                    C_POP.open('popup_sched_addSchedulePopup', requestParm, function(obj) {
+                        if( obj.refresh == 'Y' ){
+                        	<@pageId>.getUserInfo();
+                            //<@pageId>.startGetScheduleProc(true);
+                        }
+                    })  
+                  },
+                eventClick : function(obj) {
+
+                    let date = new Date();
+                    let todayPop = date.getFullYear() +
+                              '-' + ( (date.getMonth()+1) <= 9 ? "0" + (date.getMonth()+1) : (date.getMonth()+1) )+
+                              '-' + ( (date.getDate()) <= 9 ? "0" + (date.getDate()) : (date.getDate()) );
+                    
+                   let shareYn = obj.event.extendedProps.shareYn;
+                   let teamYn = obj.event.extendedProps.teamYn;
+                   
+                   const idArr = obj.event.id.split("#");
+                   let requestParm = {};
+                   requestParm["scheduleId"]  = idArr[0];
+                   requestParm["today"]       = todayPop;
+                   requestParm["shareYn"]     = shareYn;
+                   requestParm["teamYn"]      = teamYn;
+                   
+                   if( shareYn == 'Y' || teamYn == 'Y' ){
+                       C_POP.open('popup_sched_dtlSchedulePopup', requestParm, function(obj) {})
+                   }else if( shareYn == 'N'|| teamYn == 'N' ){
+                       
+                       C_POP.open('popup_sched_updateSchedulePopup', requestParm, function(obj) {
+                           if( obj.refresh == 'Y' ){
+                        	   <@pageId>.getUserInfo();
+                               //<@pageId>.startGetScheduleProc(true);
+                           }
+                       })   
+                   }
+                   
+                },
+                
+            });
+            <@pageId>.calendar.render();
+			
+		}
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+		
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+
+		// Grid Load		
+		<@pageId>.init();
+		
+		
+		
+	    const today = new Date();
+	    let currentMonth = today.getMonth();
+	    let currentYear = today.getFullYear();
+
+	    const monthYearDiv = document.getElementById("explan_month-year");
+	    const datesDiv = document.getElementById("explan_dates");
+	    const prevBtn = document.getElementById("explan_prevMonth");
+	    const nextBtn = document.getElementById("explan_nextMonth");
+	    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+
+	    function renderCalendar(month, year) {
+	      // 년/월 표시
+	      monthYearDiv.textContent = `${year}년 ${month + 1}월`;
+
+	      // 요일 이름 보여주기
+	      const dayNamesDiv = document.getElementById("explan_day-names");
+	      dayNamesDiv.innerHTML = '';
+	      dayNames.forEach(day => {
+	        const dayDiv = document.createElement('div');
+	        dayDiv.textContent = day;
+	        dayNamesDiv.appendChild(dayDiv);
+	      });
+
+	      // 날짜들 삭제
+	      datesDiv.innerHTML = '';
+
+	      const firstDay = new Date(year, month, 1).getDay();
+	      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+	      // 빈 칸 채우기
+	      for (let i = 0; i < firstDay; i++) {
+	        const emptyCell = document.createElement('div');
+	        emptyCell.className = 'explan_date-cell explan_empty-cell';
+	        datesDiv.appendChild(emptyCell);
+	      }
+
+	      // 날짜 채우기
+	      for (let i = 1; i <= daysInMonth; i++) {
+	        const dayCell = document.createElement('div');
+	        dayCell.className = 'explan_date-cell';
+
+	        // 오늘 날짜 강조
+	        if (
+	          i === today.getDate() &&
+	          month === today.getMonth() &&
+	          year === today.getFullYear()
+	        ) {
+	          dayCell.style.backgroundColor = '#ffeb3b';
+	          dayCell.style.borderRadius = '50%';
+	        }
+	        dayCell.textContent = i;
+	        datesDiv.appendChild(dayCell);
+	      }
+	    }
+
+	    // 이전 달 버튼 클릭 이벤트
+	    document.getElementById("explan_prevMonth").addEventListener("click", () => {
+	      currentMonth = (currentMonth === 0) ? 11 : currentMonth - 1;
+	      if (currentMonth === 11) {
+	        currentYear--;
+	      }
+	      renderCalendar(currentMonth, currentYear);
+	    });
+
+	    // 다음 달 버튼 클릭 이벤트
+	    document.getElementById("explan_nextMonth").addEventListener("click", () => {
+	      currentMonth = (currentMonth + 1) % 12;
+	      if (currentMonth === 0) {
+	        currentYear++;
+	      }
+	      renderCalendar(currentMonth, currentYear);
+	    });
+
+	    // 초기 화면 렌더링
+	    renderCalendar(currentMonth, currentYear);
+		
+		
+		
+		
+		
+		
+		
+		
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+
+<style>
+  #explan_calendar {
+      width: 300px;
+      /* 높이 조정을 위해 높이 수치 제거 또는 일정 높이 유지 */
+      border: 1px solid #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+  }
+
+  #explan_header-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 5px;
+  }
+
+  #explan_month-year {
+      font-weight: bold;
+      font-size: 16px;
+      margin: 0 10px;
+  }
+
+  #explan_nav {
+      display: flex;
+      align-items: center;
+  }
+
+  #explan_nav button {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      margin: 0 10px;
+      padding: 0;
+  }
+
+  #explan_day-names {
+      display: flex;
+      width: 100%;
+  }
+
+  #explan_day-names div {
+      width: 14%;
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+  }
+
+  #explan_dates {
+      display: flex;
+      flex-wrap: wrap;
+      width: 100%;
+  }
+
+  .explan_date-cell {
+      width: 14%;
+      height: 30px; /* 높이 줄임 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      font-size: 12px;
+  }
+
+  .explan_empty-cell {
+      background: #f0f0f0;
+  }
+</style>
+
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+	<div class="container">
+		<div class="cont_wrap lnb_none">
+			<div class="sec_scroll">
+				<section class="sec_wrap">
+					<!-- 스케줄 왼쪽 -->
+					<div class="schedule left">
+						<div class="cont_top">
+							<div class="today_schedule">
+								<i class="icon_calendar_mark"></i>
+								<div class="tit_schedule">오늘의 일정</div>
+								<span class="num">2개</span>
+							</div>
+						</div>
+						<!-- 왼쪽 박스 영역 -->
+						<div class="schedule_wrap">
+							<div class="datepicker"></div>
+							<div class="stit_schedule">하위 팀원 업무 스케줄 확인</div>
+							<div class="check_subTeam_wrap"></div>
+							<div class="stit_schedule">업무 유형</div>
+							<ul class="status_wrap">
+								<li><i class="status meeting"></i><span>미팅</span></li>
+								<li><i class="status tel_consul"></i><span>전화상담</span></li>
+								<li><i class="status other_work"></i><span>그 외 업무</span></li>
+								<li><i class="status send_email"></i><span>이메일 전송</span></li>
+								<li><i class="status schedule"></i><span>회사 내부 일정</span></li>
+								<li><i class="status seminar"></i><span>세미나</span></li>
+							</ul>
+						</div>
+
+					</div>
+					<!-- 스케줄 오른쪽 -->
+					<div class="schedule right">
+						<div class="schedule_topArea">
+							<div class="search_inputWrap" style="width:215px;">
+								<input type="search" name=""><button class="search_btn" id="searchBtn"><i class="icon_search"></i></button>
+								<ul class="search_lst" style="display:none;">
+									<li>날짜 검색</li>
+									<li>제목 검색</li>
+								</ul>
+							</div>
+							<a href="#modal-ex" class="btn select schedule_btn"><i class="icon_add_circle"></i>일정추가하기</a>
+						</div>
+						<div id='calendar'></div>
+					</div>
+				</section>
+
+			</div>
+		</div>
+	</div>
+	
+	
+	
+</page-component>

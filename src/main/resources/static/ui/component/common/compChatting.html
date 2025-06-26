@@ -1,0 +1,191 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		openRoomId : ''
+		,chatAnswerers : []
+		,stompClient : ''
+		,toggleChat : function() {
+		
+			<@compId>.loginUserCurRoom();
+
+		}
+		,loginUserCurRoom : function() {
+			
+ 			var parm = {
+					queryGroup : [{queryId : "system.getChatCurRoom"	,requestParm	:{USER_ID	: G_VAL.session.USER_ID}}
+								 ,{queryId : "system.getChatAnswerers"	,requestParm	:{USER_ID	: G_VAL.session.USER_ID}}
+								 ]
+				}
+			
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				const chatCurRoom		=  resultData.data["system.getChatCurRoom"	][0];  
+				<@compId>.chatAnswerers	=  resultData.data["system.getChatAnswerers"];  
+
+				if( isEmpty(chatCurRoom) ){
+					
+					const NEW_ROOM_ID = `${G_VAL.session.USER_ID}_ROOM_000`;
+		 			var parm = {
+							queryGroup : [{queryId : "system.insertAskRoom"		,requestParm	:{USER_ID	: G_VAL.session.USER_ID, ROOM_ID: NEW_ROOM_ID }}
+										 ]
+						}
+					
+					C_COM.requestQuery(parm, function(resultData) {
+						<@compId>.openChatRoom(NEW_ROOM_ID);
+					});
+					
+				}else{
+					<@compId>.openChatRoom(chatCurRoom.ROOM_ID);
+					
+				}
+
+			});			
+		}
+		,openChatRoom :  function(ROOM_ID) {
+			
+			<@compId>.openRoomId = ROOM_ID;
+			
+			var parm = {
+					 queryId 		: "system.getChatCurContent"
+					,requestParm	: {ROOM_ID: ROOM_ID }
+			}
+
+			C_COM.requestQuery(parm, function(resultData) {
+
+			    const chat = document.getElementById("<@compId>_chatContainer");
+			    chat.style.display = chat.style.display === "flex" ? "none" : "flex";
+			    
+			    let chatMessages = '';
+			    resultData.data.forEach( chat =>{
+			    	if( chat.ROLE == 'ASKER'){
+			    		chatMessages += `<div class="user-bubble">${chat.CHAT_TIME}<br>${chat.CONTENTS}</div>`
+			    	}else{
+			    		chatMessages += `<div class="bot-bubble">${chat.CHAT_TIME}<br>${chat.CONTENTS}</div>`
+			    	}
+			    	
+			    	
+			    })
+			    $("#<@compId> .chat-body").append(chatMessages);
+			    $("#<@compId> .chat-body").scrollTop($("#<@compId> .chat-body")[0].scrollHeight);
+
+			});			
+			
+		}
+		,addAsk : function() {
+			
+			let askMsg = $("#<@compId>_chatInput").val();
+			
+			if(isEmpty(askMsg)) {
+				C_POP.alert("메시지를 입력하세요.");
+				return;
+			}
+			
+            var convertedValue = askMsg;
+            
+            const now = dayjs();
+            const formatted = now.format('MM-DD HH:mm:ss');
+
+			const askerTag = `<div class="user-bubble">${formatted}<br>${convertedValue}</div>`
+			$("#<@compId> .chat-body").append(askerTag);
+		    $("#<@compId> .chat-body").scrollTop($("#<@compId> .chat-body")[0].scrollHeight);
+
+			var parm = {
+				 queryId 		: "system.insertAskContent"
+				,requestParm	: { 
+								 ROOM_ID 		: <@compId>.openRoomId
+								,USER_ID 		: G_VAL.session.USER_ID
+								,CONTENTS		: convertedValue
+				}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				if(resultData.state == "S") {
+					//문의사항에 저장에 성공 후 <@compId>.chatAnswerers 에게 알람.
+					
+					<@compId>.chatAnswerers.forEach( Answerer =><@compId>.addAlarm(Answerer.ANSWER_PERSON_ID)) ;
+				
+					<@compId>.sendSocketMsg();
+					
+				} else if(resultData.state == "E") {
+					C_POP.alert('메시지 저장에 실패하였습니다.');
+				}					
+			});  
+		 }
+		,addAlarm : function (targetUserId) {
+			
+			let parm = {
+					 userId 	: targetUserId
+					,content	: "프로그램문의 요청입니다."
+					,directExec	: 'NO/NO'
+				}
+			
+				C_ALARM.addAlarm(parm, function(retData) {
+				});				
+		}
+		,handleEnter : function (event) {
+			  if (event.key === "Enter") {
+			    event.preventDefault();
+			    <@compId>.addAsk();
+			  }
+		}
+		,sendSocketMsg : function() {
+			<@compId>.stompClient.send("/app/askerSendMessage", {}, JSON.stringify({
+				  sender: "asker",
+				  message: "checkYourMessage!"
+				}));
+		}
+	 	,connectWebSocket : function () {
+		    const socket = new SockJS("/ws-chat");
+		    <@compId>.stompClient = Stomp.over(socket);
+	
+		    <@compId>.stompClient.connect({}, function(frame) {
+		        console.log("웹소켓 연결됨: ", frame);
+	
+		        // 메시지 수신 (공용 토픽 구독)
+		        <@compId>.stompClient.subscribe('/topic/publicAsker', function(response) {
+		            const message = JSON.parse(response.body);
+	
+		            // 메시지 DOM에 표시
+		            const html = `<div class="bot-bubble">${message.time}<br>${message.message}</div>`;
+		            $("#<@compId> .chat-body").append(html);
+	
+		            // 자동 스크롤
+		            const chatBody = document.querySelector("#<@compId> .chat-body");
+		            chatBody.scrollTop = chatBody.scrollHeight;
+		        });
+		    });
+		}
+	}
+	
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		<@compId>.connectWebSocket();
+		
+	});
+</script>
+<component>
+	<div class="chat_btn"> 
+		<a href="javascript:;" class="open" onclick="<@compId>.toggleChat()"></a> 
+	</div>
+	
+	<!-- 드롭다운 채팅창 -->
+	<div class="chat-container" id="<@compId>_chatContainer">
+		  <div class="chat-header">
+			<span>운영자에게 문의 하기</span>
+			<button onclick="<@compId>.toggleChat()" class="chat-close">X</button>
+		  </div>
+
+		  <div class="chat-body">
+			<div class="bot-message"><strong>고객지원</strong></div>
+			<div class="bot-bubble">
+			  안녕하세요, 고객지원 센터입니다.<br>무엇을 도와드릴까요?
+			</div>
+		  </div>
+
+		  <div class="chat-input" >
+			<input type="text" placeholder="여기에 메시지를 입력하세요." id="<@compId>_chatInput" onkeydown="<@compId>.handleEnter(event)">
+			<button onclick="<@compId>.addAsk()"><img src="images/send.svg" alt="" class="chat-send"></button>
+		  </div>
+	</div>
+</component>

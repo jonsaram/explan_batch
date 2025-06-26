@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="board">
+
+	<resultMap id="clobMap" type="java.util.HashMap">
+	    <result property="BOARD_ID"			column="BOARD_ID"	/>
+	    <result property="TITLE"			column="TITLE"	/>
+		<result property="CONTENT"			column="CONTENT"	jdbcType="CLOB" javaType="java.lang.String"/>
+	    <result property="BOARD_MST_ID"		column="BOARD_MST_ID"/>
+	</resultMap>
+
+	<cache />
+	
+	<select id="getBoardList" resultMap="clobMap"  flushCache="true"  useCache="false">
+		/*	board.getBoardList
+			게시판 조회
+		*/
+			SELECT T.BOARD_ID 
+				,T.TITLE
+				,T.CONTENT
+				,T.BOARD_MST_ID
+				,GET_USER_NM(T.CREATE_USER) 					AS CREATE_USER_NM
+				,T.CREATE_USER
+				,T.UPDATE_USER
+				,TO_CHAR(T.CREATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS CREATE_DATE
+				,TO_CHAR(T.UPDATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS UPDATE_DATE
+				,T.VIEW_CNT
+			FROM TBL_EXP_BOARD T
+			WHERE 1=1
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	<select id="getBoard" resultMap="clobMap"  flushCache="true"  useCache="false">
+		/*	board.getBoard
+			게시판 조회
+		*/
+			SELECT T.BOARD_ID 
+				,T.TITLE
+				,T.CONTENT
+				,T.BOARD_MST_ID
+				,T.CREATE_USER
+				,GET_USER_NM(T.CREATE_USER) 					AS CREATE_USER_NM
+				,T.UPDATE_USER
+				,TO_CHAR(T.CREATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS CREATE_DATE
+				,TO_CHAR(T.UPDATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS UPDATE_DATE
+				,T.VIEW_CNT
+				,(SELECT COUNT(*) CNT FROM TBL_EXP_REPLY R WHERE R.RELATED_ID =T.BOARD_ID AND R.DEL_YN = 'N') AS REPLY_CNT
+			FROM TBL_EXP_BOARD T
+			WHERE 1=1
+			AND T.BOARD_ID = #{BOARD_ID}
+	</select>
+	
+	<insert id="insertBoard" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.insertBoard
+			게시판 입력 
+		*/
+		INSERT INTO TBL_EXP_BOARD(	BOARD_ID,
+									TITLE,
+									CONTENT,
+									BOARD_MST_ID,
+									UPDATE_USER,
+									CREATE_USER,
+									UPDATE_DATE,
+									CREATE_DATE,
+									VIEW_CNT)
+							VALUES( #{BOARD_ID},
+									#{TITLE},
+									#{CONTENT:CLOB},
+									#{BOARD_MST_ID},
+									#{sessionVo.userId},
+									#{sessionVo.userId},
+									GET_KRDT(SYSDATE),
+									GET_KRDT(SYSDATE),
+									0)
+	</insert>
+
+	<update id="updateBoard" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.updateBoard
+			게시판 수정 
+		*/
+		UPDATE TBL_EXP_BOARD
+		SET	TITLE = #{TITLE},
+			CONTENT = #{CONTENT:CLOB},
+			UPDATE_USER = #{sessionVo.userId},
+			UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE BOARD_ID = #{BOARD_ID}
+	</update>
+
+	<delete id="deleteBoard" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.deleteBoard
+			게시판 삭제 
+		*/
+		DELETE TBL_EXP_BOARD
+		WHERE BOARD_ID = #{BOARD_ID}
+	</delete>	
+
+	<update id="updateViewCnt" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.updateViewCnt
+			조회수 update 
+		*/
+		UPDATE TBL_EXP_BOARD
+		SET	VIEW_CNT = NVL(VIEW_CNT,0) + 1,
+			UPDATE_USER = #{sessionVo.userId},
+			UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE BOARD_ID = #{BOARD_ID}
+	</update>	
+
+	<select id="getReplyList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	board.getReplyList
+			게시판 댓글리스트 조회
+		*/
+		SELECT
+		     REPLY_ID
+		    ,CONTENT
+		    ,RELATED_ID
+		    ,RELATED_TYPE
+		    ,DEL_YN
+		    ,GET_USER_NM(CREATE_USER) 									  AS CREATE_USER_NM
+		    ,TO_CHAR( CREATE_DATE , 'MM-DD HH24:MI:SS' )				  AS CREATE_DATE
+		    ,GET_USER_NM(UPDATE_USER) 									  AS UPDATE_USER_NM
+		    ,TO_CHAR( UPDATE_DATE , 'MM-DD HH24:MI:SS' )				  AS UPDATE_DATE
+		    ,CREATE_DATE							 					  AS ODR
+		FROM
+		    TBL_EXP_REPLY A
+		WHERE 1=1
+			AND RELATED_ID 	= #{RELATED_ID} 
+			AND RELATED_TYPE= #{RELATED_TYPE}
+			AND DEL_YN 		= 'N'
+		ORDER BY ODR 
+	</select>
+	
+	<update id="updateReply" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.updateReply
+			댓글 update 
+		*/
+		MERGE INTO TBL_EXP_REPLY T
+		USING (
+		  SELECT 
+		  	#{REPLY_ID}	AS REPLY_ID
+		  FROM DUAL
+		) S
+		ON (
+			T.REPLY_ID	= S.REPLY_ID 
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.CONTENT = #{CONTENT}
+				 ,UPDATE_DATE = GET_KRDT(SYSDATE)
+				 ,UPDATE_USER = #{sessionVo.userId}
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+			     REPLY_ID
+			    ,CONTENT
+			    ,RELATED_ID
+			    ,RELATED_TYPE
+			    ,DEL_YN
+			    ,CREATE_USER
+			    ,CREATE_DATE
+			    ,UPDATE_USER
+			    ,UPDATE_DATE
+			) VALUES ( 
+				 #{REPLY_ID 	}
+				,#{CONTENT		}			
+				,#{RELATED_ID	}			
+				,#{RELATED_TYPE	}			
+				,'N'			
+	   			,#{sessionVo.userId}
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId}
+	   			,GET_KRDT(SYSDATE)
+			)
+	</update>
+	
+	<update id="updateReplyContent" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.updateReplyContent
+			댓글 update 
+		*/
+		UPDATE TBL_EXP_REPLY
+		SET	CONTENT = #{CONTENT},
+			UPDATE_USER = #{sessionVo.userId},
+			UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE REPLY_ID = #{REPLY_ID}
+	</update>
+
+
+	<delete id="deleteReply" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	board.deleteReply
+			댓글 삭제 
+		*/
+		UPDATE TBL_EXP_REPLY
+		SET	DEL_YN = 'Y',
+			UPDATE_USER = #{sessionVo.userId},
+			UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE REPLY_ID = #{REPLY_ID}
+
+	</delete>	
+	
+</mapper>

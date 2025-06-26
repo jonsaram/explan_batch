@@ -1,0 +1,154 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@popupId> = {
+         parm   : {}
+
+        ,close : function() {
+            C_POP.close();
+         }
+        ,loadList : function() {
+            
+        	var buyerId = G_VAL.session.BUYER_ID;
+            /* 기술력 */
+            let requestParm = {};
+            requestParm["buyerId"]    = buyerId;
+            requestParm["comCodeId"]  = "";
+            requestParm["grpCodeId"]  = "TECHNICAL";
+            requestParm["comCode"]    = "TECHNICAL_SKILLS_GRADE";
+            
+            let parm = {
+                 queryId        : "dashboardCertification.getCrtInfo"
+                ,requestParm    : requestParm
+            }
+             
+            C_COM.requestQuery(parm, function(resultData) {
+                
+                let infoData    = resultData.data[0].INFO_DATA;
+                $("#<@popupId>_technicalData").val(infoData);
+             });
+                         
+         }
+        ,save : function() {
+            let technicalData = $("#<@popupId>_technicalData").val();
+            
+            if (technicalData === null || technicalData.trim() === "") {
+            	C_POP.alert(`데이타를 입력해주세요.`);
+            	$("#<@popupId>_technicalData").focus();
+            	return;
+            }
+            var buyerId = G_VAL.session.BUYER_ID;
+
+            let requestParm = {};
+            requestParm["SP_CSTM_ID"]  = "starasset";
+            requestParm["BUYER_ID"]    = buyerId;
+            requestParm["GRP_CODE_ID"] = "TECHNICAL";
+            requestParm["CODE_ID"]     = "TECHNICAL_SKILLS_GRADE";
+            requestParm["INFO_DATA"]   = technicalData;
+            
+            let parm = {
+                    queryId        : "dashboardCertification.setCrtInfo"
+                   ,requestParm    : requestParm
+                   
+               }
+               C_COM.requestQuery(parm, function(resultData) {
+                   <@popupId>.loadList();
+               }); 
+            
+            <@popupId>.close();
+         }
+        ,validateRange : function(input) {
+            const value = parseInt(input.value, 10);
+            
+            if (isNaN(value)) {
+                input.value = '';
+                return;
+            }
+
+            if (value < 0) {
+                input.value = 0;
+            } else if (value > 100) {
+                input.value = 100;
+            }
+        }
+        
+    }
+    // Popup Load가 완료된후 실행 된다.
+    C_POP.onLoadPopup("<@popupId>", function(parm) {
+        
+        <@popupId>.parm = parm;
+        <@popupId>.loadList();   
+        
+    });
+</script>
+<style>
+input[type="password"] {
+    font-family: sans-serif; 
+}
+</style>
+    <!-- modal-popup start full-modal-dialog-->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 700px;">
+        <div class="modal-content">
+            <!-- header start -->
+            <div class="modal-header srch-pop-inwrap">
+                <h5 class="modal-title col7 col8-md col7-sm" id="<@popupId>_loginTitle">기업인증</h5>
+                <!-- button start -->
+                <div class="txt-r col3 col2-md col3-sm">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="<@popupId>.close()">
+                    <span class="pop-cls" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <!-- button end -->
+            </div>
+            <!-- header end -->
+    
+            <!-- body start -->
+            <div class="modal-body">
+            <div class="body-inwrap">
+    
+                <div class="display-between">
+                    <div class="card-tit" id="<@popupId>_cardTitle"><@title1></div>
+                </div>
+                <!-- table area start -->
+                <div class="tb-card-allwrap03 col10">
+                    <div class="card-inwrap">
+                        <div id="tb-scroll" class="card-cnt-wrap">
+                            <!-- table start -->
+                            <table class="tb-wr-wrap tb-read-wrap company-wh col10">
+                                <colgroup>
+                                    <col>
+                                    <col>
+                                </colgroup>
+                                
+                                <form  autocomplete="off">
+                                <tbody>
+                                    <tr>
+                                        <th class="col2 col2-md col2-sm col1-xs"><@title2></th>
+                                        <td class="col2 col2-md col2-sm col9-xs">
+                                            <input id="<@popupId>_technicalData" type="number" min="0" max="100" style="width:100%" value='' onkeydown="return event.key === 'Enter' ? <@popupId>.save() : true;" oninput="<@popupId>.validateRange(this)">
+                                        </td>                                            
+                                    </tr>
+                                </tbody>
+                                </form>
+                                </table>
+                            <!-- table end -->
+                        </div>
+                    </div>
+                </div>
+                <!-- table area end -->
+                <!-- 결재 상신 내용 end -->
+    
+            </div>        
+            </div>
+            <!-- body end -->
+    
+            <!-- footer start -->
+            <div class="modal-footer">
+                <button type="button" class="btn flat-btn" onclick="<@popupId>.save()">저 장</button>
+                <button type="button" class="btn outline-btn mr20" data-dismiss="modal" onclick="<@popupId>.close()">취 소</button>
+            </div>
+            <!-- footer end -->
+        </div>
+        </div>
+    </div>                      
+    <!-- modal-popup end -->

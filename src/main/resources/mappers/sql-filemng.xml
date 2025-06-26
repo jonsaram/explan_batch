@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Filemng">
+
+	<cache />
+	
+    <!-- 첨부파일 조회 이응규 -->
+    <select id="getFile" resultType="java.util.HashMap">
+        /* Filemng.getFile */
+        SELECT ORG_FILE_NM
+              ,STORED_FILE_NM
+              ,FILE_SIZE
+              ,FILE_TYPE
+              ,ORDER_NUM
+              ,OWNER_CD
+              ,FILE_PATH
+              ,SP_CSTM_ID
+              ,UPDATE_USER
+              ,UPDATE_DATE
+              ,CREATE_USER
+              ,CREATE_DATE
+              ,FILE_ID
+              ,GRP_FILE_ID
+              ,DEL_YN
+              ,CONVERT_YN       
+        FROM   TBL_EXP_FILEMNG
+        WHERE    1 = 1
+        <if test="grpFileId != null and grpFileId != '' " >
+          AND    GRP_FILE_ID = #{grpFileId}
+        </if>
+        <if test=" FILE_ID != null and FILE_ID != '' " >
+          AND    FILE_ID = #{FILE_ID}
+        </if>
+        ORDER BY ORDER_NUM , CREATE_DATE DESC
+    </select>
+    
+    
+    <insert id="saveFileInfo">
+        /* Filemng.saveFileInfo */
+       INSERT INTO TBL_EXP_FILEMNG(
+             GRP_FILE_ID
+            ,FILE_ID
+            ,ORG_FILE_NM
+            ,STORED_FILE_NM
+            ,FILE_PATH
+            ,FILE_SIZE
+            ,FILE_TYPE
+            ,OWNER_CD
+            ,ORDER_NUM
+            ,DEL_YN
+            ,CREATE_USER
+            ,CREATE_DATE
+        )
+        VALUES(
+             #{GRP_FILE_ID}
+            ,#{FILE_ID}
+            ,#{ORG_FILE_NM}
+            ,#{STORED_FILE_NM}
+            ,#{FILE_PATH} 
+            ,TO_NUMBER(#{FILE_SIZE})
+            ,#{FILE_TYPE}
+            ,#{OWNER_CD}
+            ,(SELECT NVL2( MAX(ORDER_NUM), MAX(ORDER_NUM)+1 ,1 ) AS ORDER_NUM FROM TBL_EXP_FILEMNG WHERE GRP_FILE_ID = #{GRP_FILE_ID})
+            ,'N'
+            ,#{sessionVo.userId}
+            ,GET_KRDT(SYSDATE)
+        )
+    </insert>
+
+	<select id="getFileInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	Filemng.getFileInfo
+			업로드 파일 정보 조회
+		*/
+		SELECT
+			 ORG_FILE_NM   
+			,STORED_FILE_NM
+			,FILE_SIZE     
+			,FILE_TYPE     
+			,ORDER_NUM     
+			,OWNER_CD      
+			,FILE_PATH     
+			,UPDATE_USER   
+			,UPDATE_DATE   
+			,CREATE_USER   
+			,CREATE_DATE   
+			,FILE_ID       
+			,GRP_FILE_ID   
+			,DEL_YN        
+		FROM TBL_EXP_FILEMNG
+		WHERE 1=1
+			AND	FILE_ID = #{FILE_ID}
+			AND DEL_YN = 'N' 
+        ORDER BY CREATE_DATE
+   	</select>	
+
+	<select id="getGrpFileList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	Filemng.getGrpFileList
+			업로드 Group 파일 정보 조회
+		*/
+		SELECT
+			 ORG_FILE_NM   
+			,STORED_FILE_NM
+			,FILE_SIZE     
+			,FILE_TYPE     
+			,ORDER_NUM     
+			,OWNER_CD      
+			,FILE_PATH     
+			,UPDATE_USER   
+			,UPDATE_DATE   
+			,CREATE_USER   
+			,CREATE_DATE   
+			,FILE_ID       
+			,GRP_FILE_ID   
+			,DEL_YN        
+		FROM TBL_EXP_FILEMNG
+		WHERE 1=1
+			AND GRP_FILE_ID = #{GRP_FILE_ID}
+			AND DEL_YN 		= 'N' 
+        ORDER BY CREATE_DATE
+   	</select>
+   	
+    <select id="getFileList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+       /* Filemng.getFileList
+          업로드 File 정보 조회
+       */
+        SELECT  ORG_FILE_NM   
+               ,STORED_FILE_NM
+               ,FILE_SIZE     
+               ,FILE_TYPE  
+               ,CASE FILE_TYPE WHEN '.jpg' THEN 'Y'
+                               WHEN '.bmp' THEN 'Y'
+                               WHEN '.gif' THEN 'Y'
+                               WHEN '.png' THEN 'Y'
+                               WHEN '.pdf' THEN 'Y'
+                ELSE 'N'  END AS PRE_VIEW_YN 
+               ,CONVERT_YN   
+               ,ORDER_NUM     
+               ,OWNER_CD      
+               ,FILE_PATH     
+               ,SP_CSTM_ID    
+               ,UPDATE_USER   
+               ,UPDATE_DATE   
+               ,CREATE_USER   
+               ,CREATE_DATE   
+               ,FILE_ID       
+               ,GRP_FILE_ID   
+               ,DEL_YN        
+        FROM   TBL_EXP_FILEMNG
+        WHERE 1=1
+        AND   GRP_FILE_ID = #{GRP_FILE_ID}
+        AND   OWNER_CD    = #{OWNER_CD}
+        AND   DEL_YN      = 'N'
+        ORDER BY CREATE_DATE 
+      </select>
+      
+    <select id="searchFileList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+       /* Filemng.searchFileList
+          업로드 File 찾기
+       */
+        SELECT  ORG_FILE_NM   
+               ,STORED_FILE_NM
+               ,FILE_SIZE     
+               ,FILE_TYPE  
+               ,CASE FILE_TYPE WHEN '.jpg' THEN 'Y'
+                               WHEN '.bmp' THEN 'Y'
+                               WHEN '.gif' THEN 'Y'
+                               WHEN '.png' THEN 'Y'
+                               WHEN '.pdf' THEN 'Y'
+                ELSE 'N'  END AS PRE_VIEW_YN 
+               ,CONVERT_YN   
+               ,ORDER_NUM     
+               ,OWNER_CD      
+               ,FILE_PATH     
+               ,SP_CSTM_ID    
+               ,UPDATE_USER   
+               ,UPDATE_DATE   
+               ,CREATE_USER   
+               ,CREATE_DATE   
+               ,FILE_ID       
+               ,GRP_FILE_ID   
+               ,DEL_YN      
+        FROM   TBL_EXP_FILEMNG
+        WHERE 1=1
+        AND   GRP_FILE_ID = #{GRP_FILE_ID}
+		AND	  OWNER_CD IN (
+									SELECT FOLDER_ID
+									FROM(
+											SELECT 
+											    FOLDER_ID, FOLDER_NM,
+											    UP_FOLDER_ID, BUYER_ID, ORDER_IDX,
+											    LEVEL AS LEVEL_DEPTH
+											FROM 
+											    TBL_EXP_FOLDER
+											WHERE 1=1 
+											START WITH FOLDER_ID = #{FOLDER_ID} 
+											CONNECT BY PRIOR FOLDER_ID = UP_FOLDER_ID  
+											AND BUYER_ID = #{BUYER_ID}  
+											AND DEL_YN = 'N'
+											ORDER SIBLINGS BY FOLDER_ID
+									)
+			
+			)
+        AND   DEL_YN      = 'N'
+        AND	  UPPER(ORG_FILE_NM) LIKE '%'||UPPER(#{SEARCH_ITEM})||'%'
+        
+      </select>      
+
+  	<update id="deleteFile">
+  		UPDATE TBL_EXP_FILEMNG SET DEL_YN = 'Y' WHERE FILE_ID = #{FILE_ID}
+  	</update>      
+
+  	<update id="deleteGFile">
+  		UPDATE TBL_EXP_FILEMNG SET DEL_YN = 'Y' WHERE GRP_FILE_ID = #{GRP_FILE_ID}
+  	</update>
+  	
+	<update id="clearFileList">
+		/*	Filemng.clearFileList
+			업로드 File 정보 조회
+		*/
+		UPDATE TBL_EXP_FILEMNG SET
+			DEL_YN = 'Y'
+		WHERE 1=1
+			AND GRP_FILE_ID = #{GRP_FILE_ID}
+			AND OWNER_CD 	= #{OWNER_CD}
+			AND DEL_YN 		= 'N' 
+   	</update>
+   	
+	<update id="changeGrpFileId">
+		/*	Filemng.changeGrpFileId
+			업로드 File 정보 조회
+		*/
+		UPDATE TBL_EXP_FILEMNG SET
+			 GRP_FILE_ID 	= #{targetKey.GRP_FILE_ID}
+		WHERE 1=1
+			AND GRP_FILE_ID = #{nowKey.GRP_FILE_ID	}
+			AND OWNER_CD 	= #{nowKey.OWNER_CD		}
+   	</update>
+   		
+    <update id="updateFileInfo">
+        /*  Filemng.updateFileInfo */
+        UPDATE TBL_EXP_FILEMNG 
+        SET   UPDATE_DATE  = GET_KRDT(SYSDATE)
+        	  <if test=" sessionVo.buyerId != null and sessionVo.buyerId != '' " >
+              ,UPDATE_USER  = #{sessionVo.buyerId}
+              </if>
+              <if test=" CONVERT_YN != null and CONVERT_YN != '' " >
+                ,CONVERT_YN   = #{CONVERT_YN}
+              </if>   
+        WHERE 1=1
+        <if test=" GRP_FILE_ID != null and GRP_FILE_ID != '' " >
+            AND GRP_FILE_ID   = #{GRP_FILE_ID}
+        </if>   
+        <if test=" FILE_ID != null and FILE_ID != '' " >
+            AND FILE_ID   = #{FILE_ID}
+        </if>   
+    </update>
+
+    <update id="copyFile">
+        /*  Filemng.copyFile */
+		INSERT INTO TBL_EXP_FILEMNG (
+		     ORG_FILE_NM
+		    ,STORED_FILE_NM
+		    ,FILE_SIZE
+		    ,FILE_TYPE
+		    ,ORDER_NUM
+		    ,OWNER_CD
+		    ,FILE_PATH
+		    ,UPDATE_USER
+		    ,UPDATE_DATE
+		    ,CREATE_USER
+		    ,CREATE_DATE
+		    ,FILE_ID
+		    ,GRP_FILE_ID
+		    ,DEL_YN
+		    ,CONVERT_YN
+		)
+		SELECT
+		     ORG_FILE_NM
+		    ,STORED_FILE_NM
+		    ,FILE_SIZE
+		    ,FILE_TYPE
+		    ,ORDER_NUM
+		    ,#{toData.OWNER_CD} AS OWNER_CD
+		    ,FILE_PATH
+            ,#{sessionVo.userId}
+            ,GET_KRDT(SYSDATE)
+            ,#{sessionVo.userId}
+            ,GET_KRDT(SYSDATE)
+		    ,COMMON_SEQ.NEXTVAL
+		    ,#{toData.GRP_FILE_ID} AS GRP_FILE_ID
+		    ,DEL_YN
+		    ,CONVERT_YN
+		FROM TBL_EXP_FILEMNG WHERE GRP_FILE_ID = #{fromData.GRP_FILE_ID} AND OWNER_CD = #{fromData.OWNER_CD}
+    </update>
+
+	<select id="getFileMng" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	Filemng.getFileMng
+			불필요 파일 삭제를 위한 파일테이블 조회.
+		*/
+		SELECT
+			 ORG_FILE_NM   
+			,STORED_FILE_NM
+			,FILE_SIZE     
+			,FILE_TYPE     
+			,ORDER_NUM     
+			,OWNER_CD      
+			,FILE_PATH     
+			,SP_CSTM_ID    
+			,UPDATE_USER   
+			,UPDATE_DATE   
+			,CREATE_USER   
+			,CREATE_DATE   
+			,FILE_ID       
+			,GRP_FILE_ID   
+			,DEL_YN  
+			,CONVERT_YN      
+		FROM TBL_EXP_FILEMNG
+		WHERE 1=1
+		AND OWNER_CD IN ( 'IMPORT_IMAGE', 'EXCEL_TEMPLATE' , 'BOARD' , 'APPROVAL' )
+		AND FILE_PATH LIKE 'D:/OCI/workspace/exdev%'
+   	</select>
+   	
+
+    <insert id="insertDeleteLog">
+        /*  Filemng.insertDeleteLog */
+		INSERT INTO TBL_EXP_LOG (
+		     USER_ID
+		    ,LOG_TYPE
+		    ,LOG_CONTENTS
+		    ,LOG_DESC
+		    ,CREATE_USER
+		    ,CREATE_DATE
+		)VALUES
+		(
+		     #{USER_ID}
+		    ,#{LOG_TYPE}
+		    ,#{LOG_CONTENTS}
+		    ,#{LOG_DESC}
+		    ,#{CREATE_USER}
+		    ,SYSDATE
+		
+		)
+    </insert>
+</mapper>

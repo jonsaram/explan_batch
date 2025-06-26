@@ -1,0 +1,241 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,createChart 		: (container, categories, series)=>_lineRateChart(container, categories, series)
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,selectQueryGroup : function(pmt) {
+			var parm = {
+				queryGroup : [
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {				
+			});
+		 }
+		,setChart : (gubun, yearData, chartData) =>{}
+		,goPage : (compId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( compId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+		}		
+		,setEachColumnValue : (loc, arr ,grp) => {
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+		}
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,generalCompareEdit : () => {
+			let parm = {}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 },
+	}
+
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		//debugger;
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		//<@compId>.selectQueryGroup(data);
+	});
+</script>
+<component>
+
+<!-- 기업가치평가 필요성 area start -->
+<div class="pop_tab_content_box fx-col2 fx-col2-md">
+    <div class="col8 col10-md col10-sm">
+        <div class="mb5 display-between">
+            <div class="biz-subTitle">
+                기업 가치평가 필요성
+                <div class="ml20">
+                    <label class="star-wrap">
+                        <input type="checkbox" />
+                        <span class="star"></span>
+                    </label>
+                    <button class="msg-edit"></button>
+                </div>
+            </div>
+        </div>
+        <div class="display-row-between">
+            <div class="display-row-between tab-card-outline col10 col10-md col10-sm">
+                <div class="bg-blue col3 col3-md col4-sm p20 deco-line-rt">
+                    <p class="p5 txt-center">
+                        <img src="images/value-img.svg" alt="" width="55px">
+                        <p class="fs16 fs-w txt-center">기업 가치를 왜 평가해야 할까요?</p>
+                    </p>
+                </div>
+                <div class="col7 col7-md col6-sm p20">
+                    <p class="fs14 mb10">차명주식(명의신탁주의)을 정리할 계획이 있습니까?</p>
+                    <p class="fs14 mb10">자녀에게 주식을 증여/양도/상속 할 계획이 있습니까?</p>
+                    <p class="fs14">기업의 주식을 제3자에게 양도하거나 유상증자를 할 계획이 있습니까?</p>
+                </div>
+            </div>
+        </div>
+        <div class="display-column pt40 pb40 col10">
+            <div class="display-row fx-col2 fx-col2-md">
+                <div class="display-row col5 col10-md col10-sm">
+                    <div class="txt-r txt-container deco-line">
+                        <p class="pr20">주식 증여 시 증여세 과표 산정</p>
+                        <p class="pr20">가족별 증여 공제액 감안해 증여 규모 결정</p>
+                        <p class="pr20">주식 사전 증여 효과(상속재산 감소, 자금 출처)</p>
+                    </div>
+                    <div class="display-column-center img-container01 fs-w">
+                        <img src="images/value-img01.svg" alt="" width="30px" class="mb20">
+                        주식증여
+                    </div>
+                </div>
+                <div class="display-row col5 col10-md col10-sm">
+                    <div class="display-column-center img-container02 fs-w">
+                        <img src="images/value-img02.svg" alt="" width="25px" class="mb20">
+                        주식 양수도
+                    </div>
+                    <div class="txt-l txt-container deco-line">
+                        <p class="pl20">거래가액에 따른 예상 세금산출</p>
+                        <p class="pl20">비특수 관계자 거래 시 저가 양수도 가능</p>
+                    </div>
+                </div>
+            </div>
+            <div class="display-row fx-col2 fx-col2-md">
+                <div class="display-row col5 col10-md col10-sm">
+                    <div class="txt-r txt-container deco-line">
+                        <p class="pr20">자기주식 시가취득 원칙</p>
+                        <p class="pr20">이익소각 목적 시 균등 액면가 자기주식 취득 가능</p>
+                    </div>
+                    <div class="display-column-center img-container03 fs-w">
+                        <img src="images/value-img03.svg" alt="" width="30px" class="mb20">
+                        자기주식 취득
+                    </div>
+                </div>
+                <div class="display-row col5 col10-md col10-sm">
+                    <div class="display-column-center img-container04 fs-w">
+                        <img src="images/value-img04.svg" alt="" width="25px" class="mb20">
+                        상속재산 평가
+                    </div>
+                    <div class="txt-l txt-container deco-line">
+                        <p class="pl20">미래 기업가치 시뮬레이션</p>
+                        <p class="pl20">가업 주식을 포함한 예상 상속세 산출</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-card-outline display-row-between mb10 p30">
+            <div class="deco-line-rt col5 p20">
+                <p class="fs16 fs-w mb15">상장주식 가치평가 방법</p>
+                <p class="fs14">상장주식(유가증권시장, 코스닥시장)은 <span class="txt-blue">기준일 이전, 이후 2개월 최종 시세가액의 평균액</span>으로 평가한다.</p>
+            </div>
+            <div class="col5 p20">
+                <p class="fs16 fs-w mb15">비상장주식 가치평가 방법</p>
+                <p class="fs14">비상장주식은 평가 기준일 현재 사례가액 등 시가가 확인되지 아니한 경우 <span class="txt-blue">상증세법상 보충적 평가방법</span>에 의하여 평가합니다.</p>
+            </div>
+        </div>
+    </div>                          
+    <div class="col2 col10-md col10-sm tab-card-outline mb10 w240">
+        <div class="add-file-wrap">
+            <div class="biz-subTitle">Check Point</div>
+        </div>
+        <div class="checkpoint-wrap">
+            <h4 class="checkpoint-subTitle">외부 투자 유치시 기업가치 산정</h4>
+            <p>스타트업 등 해당 기업의 미래 잠재력을 바탕으로 기업의 가치를 산정하여 투자가 진행 될 경우에는<br><br>1) 현금 흐름법(Dis-counted Cash Flow),<br>2) 시장 비교 기업들의 멀티플 (시가통액/순이익)을 적용하는 방식 등이 활용됩니다.</p>
+        </div>
+    </div>
+</div>
+<!-- 기업가치평가 필요성 area end -->
+</component>

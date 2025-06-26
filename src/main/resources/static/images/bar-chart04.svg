@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="569" height="95" viewBox="0 0 569 95">
+  <defs>
+    <linearGradient id="linear-gradient" x1="0.5" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#727fd9"/>
+      <stop offset="1" stop-color="#455197"/>
+    </linearGradient>
+  </defs>
+  <g id="bar-chart04" transform="translate(117 -82.17)">
+    <g id="line" transform="translate(62.893 11.5)">
+      <line id="선_18" data-name="선 18" x2="285.122" transform="translate(0 132.617)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_41" data-name="선 41" x2="285.122" transform="translate(0 100.887)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_21" data-name="선 21" y2="95" transform="translate(8.607 70.67)" fill="none" stroke="#aaabac" stroke-width="1" stroke-dasharray="2 2"/>
+    </g>
+    <g id="그룹_24" data-name="그룹 24" transform="translate(347.303 88.67) rotate(90)">
+      <g id="사각형_28" data-name="사각형 28" transform="translate(-3 82)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="20" height="193.803" stroke="none"/>
+        <rect x="0.5" y="0.5" width="19" height="192.803" fill="none"/>
+      </g>
+      <g id="사각형_29" data-name="사각형 29" transform="translate(30 110.803)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="20" height="165" stroke="none"/>
+        <rect x="0.5" y="0.5" width="19" height="164" fill="none"/>
+      </g>
+      <g id="사각형_30" data-name="사각형 30" transform="translate(64 0)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="20" height="275.803" stroke="none"/>
+        <rect x="0.5" y="0.5" width="19" height="274.803" fill="none"/>
+      </g>
+    </g>
+    <g id="그룹_26" data-name="그룹 26" transform="translate(24 11.286)">
+      <text id="배당_플랜_후_기업가치" data-name="배당 플랜 후 기업가치" transform="translate(-30 121.385)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-62.685" y="0">배당 플랜 후 기업가치</tspan></text>
+      <text id="배당_퇴직금_플랜_후_기업가치" data-name="배당&amp;퇴직금 플랜 후 기업가치" transform="translate(-54 155.385)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-86.947" y="0">배당&amp;퇴직금 플랜 후 기업가치</tspan></text>
+      <text id="플랜_적용_전_기업가치" data-name="플랜 적용 전 기업가치" transform="translate(-30 87.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-62.685" y="0">플랜 적용 전 기업가치</tspan></text>
+      <text id="_2_856_000억원" data-name="2,856,000억원" transform="translate(383 121.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-44.982" y="0">2,856,000억원</tspan></text>
+      <text id="_2_856_000억원-2" data-name="2,856,000억원" transform="translate(383 87.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-44.982" y="0">2,856,000억원</tspan></text>
+      <text id="_2_856_000억원-3" data-name="2,856,000억원" transform="translate(383 155.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-44.982" y="0">2,856,000억원</tspan></text>
+    </g>
+  </g>
+</svg>

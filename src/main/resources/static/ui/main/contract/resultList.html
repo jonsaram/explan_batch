@@ -1,0 +1,292 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@pageId> = {
+		paMap : G_VAL.PAGE_AUTH_MAP["<@pageId>"]
+		,checkedItems : []
+		,selectedContract : {}
+		,selectedResultList:{}
+		,excelParam : {}
+		,searchListParam : {}
+ 		,CONTRACT_ID : {}
+		,YEAR_MONTHS	: ''
+		,pageInit : () =>{
+			
+			_yearMonthSelectBox("<@pageId>_yearMonths");
+			<@pageId>.YEAR_MONTHS		= dayjs( C_UICOM.getData("<@pageId>_yearMonths"		) ,"YYYYMM" ).format('YYYY-MM');
+			<@pageId>.setHanler();
+			<@pageId>.searchUsers();
+
+		}
+		,searchUsers : () => {
+			
+			var parm = {
+					 queryId 		: "system.getUser"
+					,requestParm	: {}
+			}
+
+			C_COM.requestQuery(parm, function(resultData) {
+
+				const USERS = resultData.data.map( item=> {return [item.USER_ID,item.USER_NM]});
+				C_UICOM.makeSelectBox({ 
+					 data 			: USERS
+				 	,targetId 		: "<@pageId>_USER" 
+				}, "multi");	
+			});
+			
+		}
+		,searchList : () => {
+
+			var contractDate = <@pageId>.YEAR_MONTHS;
+			
+			const requestParm = {
+					RESULT_DATE_YM 	: contractDate	
+					,CONTRACT_ID	: <@pageId>.CONTRACT_ID
+					,USER_IDS		: C_UICOM.getData("<@pageId>_USER")
+			};
+			
+			if( isEmpty($("[name='<@pageId>_contract']" ).val()) ){
+				requestParm.CONTRACT_ID ='';
+			} 
+			<@pageId>.searchListParam = requestParm ;
+			var parm = {
+					 queryId 		: "result.getResultDataList"
+					,requestParm	: requestParm
+			}
+
+			C_COM.requestQuery(parm, function(resultData) {
+								
+				var rparm = {
+						 targetId 		: "<@pageId>_resultList"
+						,list			: resultData.data
+						,targetTotalId	: "<@pageId>_totalCnt"
+				}
+				C_COM.renderHtml("<@pageId>", rparm);
+				
+				<@pageId>.selectedResultList = resultData.data;
+	        	mergeTableTD('<@pageId>_resultList', {startIdx : 2, endIdx : 7, startRowIdx : 1});
+	        	
+	        	let oldCotractId = "";
+				let sumTotalCost=0,sumIncome=0,sumCost=0,sumOrg=0;
+				resultData.data.forEach(item=>{
+					 
+					if( item.CONTRACT_ID != oldCotractId ){
+						sumTotalCost		+=item.TOTAL_COST;
+					}
+					sumIncome			+= isEmpty(item.INCOME) ? 0:item.INCOME;
+					sumCost				+= isEmpty(item.SUM_COST_PRICE) ? 0: item.SUM_COST_PRICE;
+					sumOrg				+= isEmpty(item.ORG_SELLING_PRICE) ? 0: item.ORG_SELLING_PRICE ;
+					
+					oldCotractId = item.CONTRACT_ID;
+				})
+
+				$("#<@pageId>_sumTotalCost").text(sumTotalCost.toLocaleString());
+				$("#<@pageId>_sumIncome").text(sumIncome.toLocaleString());
+				$("#<@pageId>_sumCost").text(sumCost.toLocaleString());
+				$("#<@pageId>_sumOrgSellingPrice").text(sumOrg.toLocaleString());
+
+			});  
+		}
+		,openSelectContract : () => {
+
+			let param = [];	
+
+			C_POP.open('popup_contract_contractSearchPopup', {YEAR_PERIOD:'1'}, function(retData) {
+
+				if(isValid(retData)){
+
+					<@pageId>.selectedContract 	=	retData;
+					<@pageId>.CONTRACT_ID 		=	retData["CONTRACT_ID"];
+					const BUYER_NM 				=	retData["BUYER_NM"];
+					const CONSULTING_NM			=	retData["CONSULTING_NM"];
+					const USER_ID				=	retData["USER_ID"];
+					const USER_NM				=	retData["USER_NM"];
+					
+					$("[name='<@pageId>_contract']").val(`${CONSULTING_NM} ( ${BUYER_NM} )`);
+					
+				}
+				
+			});
+			
+		}		
+		,setHanler : () => {
+			
+			let fn = function(dataObj, targetId) {
+				if( targetId == "<@pageId>_yearMonths"){
+					
+					<@pageId>.YEAR_MONTHS		= dayjs( C_UICOM.getData("<@pageId>_yearMonths"		) ,"YYYYMM" ).format('YYYY-MM');
+					
+				}				
+			}
+			C_UICOM.addChangeListener("<@pageId>_yearMonths"		, fn);
+			
+			
+			$("#<@pageId>_search").click( () =>{
+			
+				<@pageId>.searchList();
+
+		    })
+			
+		}
+		,openDetailPopup : (index) => {
+
+			const resultData = <@pageId>.selectedResultList[index];
+			
+			const queryParam = {
+				CONTRACT_ID: resultData.CONTRACT_ID 
+				, RESULT_ID: resultData.RESULT_ID
+				, RELATION_TYPE: 'SALES'
+				, USER_ID: resultData.USER_ID 
+				, PA_ROLE: <@pageId>.paMap.ROLE_ID
+			}
+			
+ 			var parm = {
+				queryGroup : [{queryId : "contract.getContractList"	,requestParm	:queryParam}
+							 ,{queryId : "result.getResultList"		,requestParm	:queryParam}
+							 ]
+			}
+	        C_COM.requestQuery(parm, function(resultData) {
+	        	
+				const contractItem		=  resultData.data["contract.getContractList"][0];  
+				const resultItem		=  resultData.data["result.getResultList"][0];  
+
+		 		C_POP.open('popup_result_resultUpdatePopup', {
+		 			
+		 				  mode:"V"
+						, resultItem :resultItem
+						, contractItem :contractItem
+						, resultInsertedCnt : 0
+					}, function(retData) {
+						 
+				});							
+		 		
+	        });
+		}
+		,saveIsPayable : (index) => {
+			
+	    	C_POP.confirm('Y로 세팅 하시겠습니까?', function() {
+
+				const isPayable = 'Y';
+				var parm = {
+						 queryId 		: "result.updateIsPayable"
+						,requestParm	: {IS_PAYABLE:'Y', RESULT_ID : <@pageId>.selectedResultList[index].RESULT_ID }
+				}
+
+				C_COM.requestQuery(parm, function(resultData) {
+
+					$("tr[name='<@pageId>_tr_"+index+"'] td[name='isPayable']").text(isPayable);
+				});
+
+			});
+		}
+}
+
+// Page Load가 완료된후 실행 된다.
+C_PM.onLoadPage("<@pageId>", function() {
+
+	<@pageId>.pageInit();
+	
+	<@pageId>.searchList();
+
+});
+// History back으로 이동해왔을 경우 이루틴이 실행된다.
+C_HM.onReturn("<@pageId>", function(pageId, data) {
+	<@pageId>.searchList();
+});
+</script>
+<div class="cont_wrap backWhite">
+	<div class="cont_top">
+		<h2><i class="icon_bullet"></i>실적 현황</h2>
+	</div>
+	<section class="sec_wrap list" style="height:calc(100% - 43px);">
+	<!-- search area -->
+	<div class="search_area mt0">
+		<div class="fl">
+			<!-- 싱글 선택 -->
+			<div class="select_box fl" style="width:142x">
+				<div id="<@pageId>_yearMonths" style="width:132px"></div>
+			</div>
+			<span class="tit01 fl lh33">계약선택</span>
+			<div class="search_inputWrap fl">
+				<input 	type="search" name="<@pageId>_contract" style="width:200px;" 
+						onclick="<@pageId>.openSelectContract();" placeholder="컨설팅명(고객명)" >
+						<a  href="javascript:void(0);" onclick="<@pageId>.openSelectContract();" class="search_btn">
+						<i class="icon_search"></i></a>
+			</div>
+ 			<span class="tit01 fl lh33">담당자</span>
+			<div class="search_inputWrap fl">
+				<div style="width:200px;margin-bottom:10px;"  id="<@pageId>_USER">
+			</div>
+		<button class="btn select fl" id="<@pageId>_search" >검색</button>
+		</div>
+		<div class="search_right">
+			<strong class="total">Total: <span class="pointColr" id="<@pageId>_totalCnt"></span></strong>
+		</div>
+	</div>
+	<!-- 테이블 -->
+	<div class="tbl01 col tbl_scroll line" style="height:calc(100% - 41px);">
+		<table>
+			<caption>실적 현황 리스트</caption>
+			<colgroup>
+				<col style="width:40px;"/>
+				<col style="width:120px;" span="3"/>
+				<col style="width:100px;"/>
+				<col style="width:120px;" span="4"/>
+				<col style="width:120px;"/>
+				<col style="width:70px;"/>
+			</colgroup>
+			<thead>
+				<tr>
+					<th scope="col">No.</th>
+					<th scope="col">등록년월</th>
+					<th scope="col">고객명</th>
+					<th scope="col">상품명</th>
+					<th scope="col">담당자</th>
+					<th scope="col">계약금액</th>
+					<th scope="col">입금일</th>
+					<th scope="col">입금액</th>
+					<th scope="col">비용</th>
+					<th scope="col">순매출</th>
+					<th scope="col">자문보고서</th>
+				</tr>
+			</thead>
+			<tbody id="<@pageId>_resultList">
+			</tbody>
+			<script type="text/x-jsrender" id="<@pageId>_resultList_template">						
+			{{for list}}
+				<tr name="<@pageId>_tr_{{:#index}}" >
+					<td {{:RESULT_ID}} onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{:RN}}</td>
+					<td class="tc">{{:RESULT_DATE_YM}}</td>
+					<td class="tl" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{:BUYER_NM}}</td>
+					<td class="tl" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{:CONSULTING_NM}}</td>
+					<td class="tl" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{:USER_NM}}</td>
+					<td class="tr" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{numb:TOTAL_COST}}</td>
+					<td class="tc" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{:RESULT_DATE}}</td>
+					<td class="tr" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{numb:INCOME}}</td>
+					<td class="tr" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{numb:SUM_COST_PRICE}}</td>
+					<td class="tr" onclick="javascript:<@pageId>.openDetailPopup('{{:#index}}')">{{numb:ORG_SELLING_PRICE}}</td>
+					<td class="tc" name='isPayable' ondblclick="javascript:<@pageId>.saveIsPayable('{{:#index}}')">{{:IS_PAYABLE}}</td>
+				</tr>
+			{{/for}}
+			</script>
+			<script type="text/x-jsrender" id="<@pageId>_resultList_noData_template">	
+				<tr>	
+					<td colspan=10>자료가 없습니다.</td>	
+				</tr>
+			</script>
+				<tfoot>
+					<tr>
+						<td></td>
+						<td colspan="4" >총계</td>
+						<td class="tr" id="<@pageId>_sumTotalCost"></td>
+						<td></td>
+						<td class="tr" id="<@pageId>_sumIncome"></td>
+						<td class="tr" id="<@pageId>_sumCost"></td>
+						<td class="tr" id="<@pageId>_sumOrgSellingPrice"></td>
+						<td class="tr" ></td>
+					</tr>
+				</tfoot>			
+		</table>
+	</div>
+	<br/><br/><br/>
+	</section>
+</div>

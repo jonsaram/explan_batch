@@ -1,0 +1,106 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		  brandId	: G_VAL.session.BRAND_ID
+		 ,loadComponent : function(parm) {
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery : {
+						  queryId 		: "system.getCodeList"
+						 ,requestParm 	: {}
+					 }
+					,columnMap 		: {
+						 "GRP_CODE_ID" : { headerText : "GRP_CODE_ID", width : "250px", align:"left"}
+						,"GRP_CODE_NM" : { headerText : "GRP_CODE_NM"}
+						,"CODE_ID"     : { headerText : "CODE_ID"    , width : "200px", align:"left"}
+						,"CODE_NM"     : { headerText : "CODE_NM"    }
+						,"CODE_DESC"   : { headerText : "CODE_DESC"  }
+						,"USE_YN"      : { headerText : "USE_YN"     }
+						,"DEL_YN"      : { headerText : "DEL_YN"     }
+						,"SORT_ORDER"  : { headerText : "SORT_ORDER" }
+						,"ATTR1"       : { headerText : "ATTR1"      }
+						,"ATTR2"       : { headerText : "ATTR2"      }
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["A.GRP_CODE_ID"	,"CODE_ID"				]
+					,searchColumnList	: ["A.GRP_CODE_ID"	,"A.GRP_CODE_NM"	,"CODE_ID"	,"CODE_NM"	]		// Table 지정인경우 적용
+					,orderColumnList 	: ["A.SORT_ORDER"	,"B.SORT_ORDER"]
+					,cellMergeList		: [["GRP_CODE_ID", "GRP_CODE_NM", 1]]
+				 }
+				,callbackEditButton : function(parm) {
+					<@pageId>.openEditMultiTable();
+				 }
+			}
+			C_COMP.import("<@pageId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,openEditMultiTable : function() {
+
+			var ynCdList = C_COM.getCodeList("YES_OR_NO");
+
+			let sendParm = {
+				 gridParmFst : {
+					 tableName		: "TBL_EXP_GRPCODE"
+					,columnMap 		: {
+						 "GRP_CODE_ID"		: { headerText : "그룹ID"	,align : "left" ,width : "250px"			}
+						,"GRP_CODE_NM"		: { headerText : "그룹명"	,align : "left"								}
+						,"CODE_DESC"		: { headerText : "상세설명"	,align : "left"	}
+						,"SORT_ORDER"		: { headerText : "순서"						}
+						,"USE_YN"			: { headerText : "사용여부"					}
+						,"DEL_YN"			: { headerText : "삭제여부"					}
+					 }
+					,columnConfig 	: {
+						 selectBoxCodeList 	: {
+						 	  "USE_YN" : ynCdList
+						 	 ,"DEL_YN" : ynCdList
+						 }
+					 }
+					,primaryKeyList		: ["GRP_CODE_ID"					]
+					,searchColumnList	: ["GRP_CODE_ID","GRP_CODE_NM"		]		// Table 지정인경우 적용
+					,orderColumnList 	: ["SORT_ORDER ASC"				]
+				 }
+				,gridParmSnd : {
+					 tableName		: "TBL_EXP_CODE"
+					,columnMap 		: {
+						 "GRP_CODE_ID" 	: { headerText : "그룹ID"	,hidden : "Y" 	}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"CODE_ID" 		: { headerText : "코드ID"					}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"CODE_NM" 		: { headerText : "코드명"					}
+						,"CODE_DESC"	: { headerText : "상세설명"	,align : "left"	}
+						,"ATTR1"		: { headerText : "ATTR1"				}
+						,"ATTR2"		: { headerText : "ATTR2"				}
+						,"SORT_ORDER"	: { headerText : "순서"						}
+						,"USE_YN"		: { headerText : "사용여부"					}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["GRP_CODE_ID", "CODE_ID"	]
+					,searchColumnList	: ["CODE_ID"	, "CODE_NM"	]		// Table 지정인경우 적용
+					,orderColumnList 	: ["SORT_ORDER ASC"			]
+				 }
+				,popupTitle 	: "CODE 편집"
+				,fstGridTitle	: "Group Code List"
+				,sndGridTitle	: "Code List"
+				,connectColumn 	: ["GRP_CODE_ID"]
+				,titleComment	: "( 그룹ID : [GRP_CODE_ID/] / [GRP_CODE_NM/] )"
+			}
+			
+			C_POP.open("popup_common_multiTableEditPopup", sendParm, function(retData){
+				<@pageId>["<@pageId>_tableGrid"].reload();
+			});
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_tableGrid"></compnent>    
+    <!-- table area end -->
+</page-component>

@@ -1,0 +1,806 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@compId> = {
+
+             BRAND_ID : ''
+            ,STORE_ID : ''
+            ,pageInit : () => {
+
+                var now = new Date();   // 현재 날짜 및 시간
+                var thisYear = now.getFullYear();   // 연도
+                var thisMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+                
+                var startDate = new Date();
+                startDate.setFullYear(startDate.getFullYear() - 5);// 현재년도의 과거 5년
+                var startYear = startDate.getFullYear();   // 연도
+                
+                const yearsArray = Array.from({ length: 6 }, (_, index) => {
+                    const year = thisYear - index;
+                    return [year.toString(), year + "년"];
+                });
+                
+                
+                const monthsArray = Array.from({ length: 12 }, (_, index) => {
+                      const months = ("0"+(1 + index) ).slice(-2);
+                      return [months.toString(), months ];
+                });
+
+                var startYearsArrayList = { data : yearsArray,targetId : "<@compId>_selectYears"}
+                C_UICOM.makeSelectBox(startYearsArrayList, "single");
+                C_UICOM.setSingleBox("<@compId>_selectYears", thisYear);
+                 
+                var startMonthsArrayList = { data : monthsArray,targetId : "<@compId>_selectMonths"}
+                C_UICOM.makeSelectBox(startMonthsArrayList, "single");
+                C_UICOM.setSingleBox("<@compId>_selectMonths", thisMonth);
+                
+                <@compId>.setSelectBoxGroup1('ALL');
+                <@compId>.setSelectBoxGroup2('ALL');
+                <@compId>.setSelectBoxStoreMenu('ALL','ALL');
+                <@compId>.searchBtn();
+                
+            }//pageInit
+
+            ,setSelectBoxGroup1 : function(param) {
+                // 대분류
+                let requestParm = {};
+                requestParm["storeId"]   = <@compId>.STORE_ID;
+                
+                var parm1 = {
+                        queryId  : "dashboardCorPerformance.getStoreMenuGrp1List"
+                       ,requestParm   : requestParm
+                }
+                
+                C_COM.requestQuery(parm1, function(resultData) {
+                    
+                    const DATA = resultData.data.map( item => [ item.GROUP_1, item.GROUP_1_NM ]);
+                    
+                    var selectBoxGroup1List = {
+                            defaultItem    : ["ALL", "전체"]
+                           ,data : DATA
+                           ,targetId : "<@compId>_selectGroup1" 
+                    }
+                    C_UICOM.makeSelectBox(selectBoxGroup1List, "single");
+                });
+            }
+            ,setSelectBoxGroup2 : function(param) {
+                // 분류명
+                let requestParm = {};
+                requestParm["storeId"]   = <@compId>.STORE_ID;
+                requestParm["group1"]    = param;
+                
+                var parm2= {
+                        queryId  : "dashboardCorPerformance.getStoreMenuGrp2List"
+                       ,requestParm   : requestParm
+                }
+                
+                C_COM.requestQuery(parm2, function(resultData) {
+                    
+                    const DATA = resultData.data.map( item => [ item.GROUP_2, item.GROUP_2_NM ]);
+                    
+                    var selectBoxGroup2List = {
+                            defaultItem    : ["ALL", "전체"]
+                           ,data : DATA
+                           ,targetId : "<@compId>_selectGroup2" 
+                    }
+                    C_UICOM.makeSelectBox(selectBoxGroup2List, "single");
+                });
+            }
+
+            ,setSelectBoxStoreMenu : function(group1,group2) {
+                // 메뉴명
+                let requestParm = {};
+                requestParm["storeId"]  = <@compId>.STORE_ID;
+                requestParm["group1"]   = group1;
+                requestParm["group2"]   = group2;
+                var parm3= {
+                        queryId  : "dashboardCorPerformance.getStoreMenuList"
+                       ,requestParm   : requestParm
+                }
+                
+                C_COM.requestQuery(parm3, function(resultData) {
+                    
+                    const DATA = resultData.data.map( item => [ item.MENU_CD, item.MENU_NM ]);
+                    
+                    var selectBoxMenuList = {
+                            defaultItem    : ["ALL", "전체"]
+                           ,data : DATA
+                           ,targetId : "<@compId>_selectBoxMenu" 
+                    }
+                    C_UICOM.makeSelectBox(selectBoxMenuList, "single");
+                });
+            }
+            
+            ,getSelectMenu : function(param) {
+                 
+                var group1 = C_UICOM.getData('<@compId>_selectGroup1');
+                var group2 = C_UICOM.getData('<@compId>_selectGroup2');
+                
+                if( param == 'GROUP1' ){
+                	<@compId>.setSelectBoxGroup2(group1);
+                    <@compId>.setSelectBoxStoreMenu(group1,group2);
+                }
+                if( param == 'GROUP2' ){ 
+                	<@compId>.setSelectBoxStoreMenu(group1,group2);
+                }
+            }
+            ,searchBtn : function(selectDom) {
+                    
+                    var brandId     = <@compId>.BRAND_ID;
+                    var storeId     = <@compId>.STORE_ID;
+
+                    var year        = C_UICOM.getData("<@compId>_selectYears");
+                    var month       = C_UICOM.getData("<@compId>_selectMonths");
+                    var group1      = C_UICOM.getData("<@compId>_selectGroup1");
+                    var group2      = C_UICOM.getData("<@compId>_selectGroup2");
+                    var menu        = C_UICOM.getData("<@compId>_selectBoxMenu");
+
+                    if (typeof group1 === "undefined") { group1 = "ALL"; }
+                    if (typeof group2 === "undefined") { group2 = "ALL"; }
+                    if (typeof menu === "undefined") { menu = "ALL"; }
+                    
+                    let requestParm = {};
+                    requestParm["brandId"]       = brandId;
+                    requestParm["year"]          = year;
+                    requestParm["month"]         = month;
+                    requestParm["group1"]        = group1;
+                    requestParm["group2"]        = group2;
+                    requestParm["menu"]          = menu;
+                    requestParm["storeId"]       = storeId;
+                    
+                    <@compId>.searchList1(requestParm);//매출 비교
+                    <@compId>.searchList2(requestParm);//분류명별 매출액
+                    <@compId>.searchList3(requestParm);//상세메뉴 매출액
+            }
+
+            /******** 공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통   *********/
+            ,setChartData : function( resultData, menuKey) {
+                let resultList = [];
+                var j = 0;
+                for (var i=0; i< resultData.data.length; i++){
+                    const item = resultData.data[i];
+                    
+                    if (item.MENU_ID === menuKey) {
+                    	
+                        resultList.push(Math.round(item.SALES / 1000));  // 또는 item.sales 등 구조에 따라
+                    }
+                }
+                return resultList;
+             }
+            ,getSeriesArry : function( resultData) {
+                let arr = [];
+                //중복 제거된 메뉴 찾기
+                for (var i=0; i< resultData.data.length; i++){
+                    
+                    let menuMap = {};
+                    menuMap.menuKey = resultData.data[i].MENU_ID
+                    menuMap.menuNm  = resultData.data[i].MENU_NM
+                    arr.push(menuMap);
+                }
+                
+                // Map을 사용하여 중복을 제거
+                let map = new Map();
+                arr.forEach(item => map.set(item.menuKey, item));
+
+                // Map을 다시 배열로 변환
+                let uniqueArr = Array.from(map.values());
+
+                let seriesArr = [];
+                for (let item of uniqueArr) {
+                  var categoriesArr = <@compId>.setChartData( resultData, item.menuKey);
+                  let seriesMap = {};
+                  seriesMap.name = item.menuNm
+                  seriesMap.data = categoriesArr
+                  seriesArr.push(seriesMap);
+                }
+                return seriesArr;
+             }
+            ,getCategoryArr : function( resultData) {
+                let arr = [];
+                
+                //중복 제거된 데이터 찾기
+                for (var i=0; i< resultData.data.length; i++){
+                    
+                    let dataMap = {};
+                    dataMap.data = resultData.data[i].DAY+"일";
+                    arr.push(dataMap);
+                }
+                
+                // Map을 사용하여 중복을 제거
+                let map = new Map();
+                arr.forEach(item => map.set(item.data, item));
+
+                // Map을 다시 배열로 변환
+                let uniqueArr = Array.from(map.values());
+
+                let dataArr = [];
+                
+                for (let item of uniqueArr) {
+                  let dataMap = {};
+                  dataMap.data = item.data
+                  dataArr.push(item.data);
+                }
+                return dataArr;
+             }
+            /*####### 공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통    공통   #######*/
+            /* 1 *******  매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    */
+            ,searchList1 : (requestParm) => {
+                
+                var parm = {
+                        queryId  : "dashboardCorPerformance.getStoreMenuSalesTop5"
+                       ,requestParm   : requestParm
+                }
+       
+                C_COM.requestQuery(parm, function(resultData) {
+                    <@compId>.setChart1( resultData );
+                });
+                
+            }//searchList1
+            ,setChart1 : (resultData) =>{
+                 var seriesArr = <@compId>.getSeriesArry( resultData);
+                 var categoryArr = <@compId>.getCategoryArr( resultData);
+                 
+                 /*
+                 for (let i = 0; i < categoryArr.length; i++) {
+                	  console.log("데이터 " + (i + 1) + ":", categoryArr[i]);
+                 }
+                 
+                 for (let i = 0; i < seriesArr.length; i++) {
+                     console.log("seriesArr 데이터 " + (i + 1) + ":", seriesArr[i]);
+                 } 
+                 */
+                 $('#<@compId>_chart1').highcharts({
+                     credits: {enabled: false},// 하이차트 워터마크 삭제
+                     title: {
+                         text: '',
+                         align: 'left'
+                     },
+
+                     yAxis: {
+                         labels: {
+                             formatter: function () {
+                                 
+                                 if (this.value >= 1000000) {
+                                     return (this.value / 1000000) + '백만';
+                                 } else if (this.value >= 1000) {
+                                     return (this.value / 1000) + '천';
+                                 }
+                                 return this.value;
+                             },
+                             style: {
+                                 color: '#8A8C92',
+                                 fontFamily: 'Noto Sans KR',
+                                 fontSize: '11px'
+                             }
+                         },
+                         title: {
+                             text: ''
+                         }
+                     },
+                     colors: ['#3399ff', '#66ff00','#ffcc00', '#006600', '#ff0000'],
+                     xAxis: {
+                         categories: categoryArr,
+                         accessibility: {
+                             rangeDescription: '2'
+                         }
+                     },
+                     plotOptions: {
+                         column: {
+                             pointPadding: 0.2,
+                             borderWidth: 0
+                         }
+                     },
+                     //series: seriesArr,
+                     
+                    series: [{
+                        name: seriesArr[0].name,
+                        data: seriesArr[0].data,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () {
+                                return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                            },
+                            style: {
+                                fontSize: '11px',
+                                color: '#000'
+                            }
+                        }
+                    }, {
+                        name: seriesArr[1].name,
+                        data: seriesArr[1].data,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () {
+                                return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                            },
+                            style: {
+                                fontSize: '11px',
+                                color: '#000'
+                            }
+                        }
+                    }, {
+                        name: seriesArr[2].name,
+                        data: seriesArr[2].data,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () {
+                                return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                            },
+                            style: {
+                                fontSize: '11px',
+                                color: '#000'
+                            }
+                        }   
+                    }, {
+                        name: seriesArr[3].name,
+                        data: seriesArr[3].data,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () {
+                                return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                            },
+                            style: {
+                                fontSize: '11px',
+                                color: '#000'
+                            }
+                        }   
+                    }, {
+                        name: seriesArr[4].name,
+                        data: seriesArr[4].data,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function () {
+                                return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                            },
+                            style: {
+                                fontSize: '11px',
+                                color: '#000'
+                            }
+                        }   
+                    }],
+                     tooltip: {
+                         formatter: function() {
+                             return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}`;
+                         }
+                     },
+                     responsive: {
+                         rules: [{
+                             condition: {
+                                 maxWidth: 500
+                             },
+                             chartOptions: {
+                                 legend: {
+                                     layout: 'horizontal',
+                                     align: 'center',
+                                     verticalAlign: 'bottom'
+                                 }
+                             }
+                         }]
+                     }
+
+                 });
+             }//setChart1
+            /* 1 #######  매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    매출 비교    */
+            
+           /*============= 분류명별 매출액    분류명별 매출액    분류명별 매출액    분류명별 매출액    분류명별 매출액    =============*/
+           ,searchList2 : (requestParm) => {
+               
+               var parm = {
+                       queryId       : 'dashboardCorPerformance.getStoreMenuGrp1SalesRanking'
+                      ,requestParm   : requestParm
+               }
+               
+               C_COM.requestQuery(parm, function(resultData) {
+                   
+                   let isOnCall = true;
+                   var rparm = {
+                        targetId       : "<@compId>_tableId2"
+                       ,list           : resultData.data
+                   }
+                   C_COM.renderHtml("<@compId>", rparm);
+                   //챠트
+                   <@compId>.setChart2(resultData);
+                   <@compId>.setTotal2(resultData);
+               });
+               
+           }
+
+           ,setTotal2 : (resultData) =>{
+               
+               let total = 0;
+               for (var i=0; i<resultData.data.length; i++){
+                   total += resultData.data[i].SALES;
+               }
+               
+               $('#<@compId>_total2').text(resultData.data.length);
+               $('#<@compId>_totalAmount2').text(addComma(total));
+               
+           }//searchList
+         
+           ,setChart2 : (resultData) =>{
+
+               let seriesArr = [];
+               let top5Sales = 0;
+               
+               let dataLength = resultData.data.length;
+               
+               if( dataLength == 0){
+                    // Highcharts 삭제
+                   let chartContainer = $("#<@compId>_chart2").highcharts();
+                   if (chartContainer) {
+                       chartContainer.destroy();
+                   }
+                   return;
+               }else{
+                   for (var i=0; i< dataLength; i++){
+
+                       let seriesMap = {};
+                       seriesMap.name = resultData.data[i].GROUP_1_NM;
+                       seriesMap.y    = Number(resultData.data[i].SALES);
+                       seriesArr.push(seriesMap);
+                       if( i == 4 ) break;
+                   }
+   
+               }
+               var totalAmount = $('#<@compId>_totalAmount2').text();
+               
+               let seriesMap = {};
+               seriesMap.name = '기타';
+               seriesMap.y    = Number(totalAmount); 
+               seriesArr.push(seriesMap);
+               
+               
+               $("#<@compId>_chart2").highcharts({
+                   credits: {enabled: false},// 하이차트 워터마크 삭제
+                   colors: ['#3399ff', '#66ff00','#ffcc00', '#006600', '#ff0000','#cc6633'],
+                   chart: {
+                       type: 'pie'
+                      ,height:240
+                   },
+                   accessibility: {
+                       point: {
+                           valueSuffix: '%'
+                       }
+                   },
+                   title: {
+                       text: ''
+                   },
+                   subtitle: {
+                       text: ''
+                   },
+                   tooltip: {
+                       pointFormat: '{series.name}: <b>{point.percentage:.0f}%</b>'
+                   },
+                   plotOptions: {
+                      
+                   },
+                   series: [{
+                       name: 'Registrations',
+                       colorByPoint: true,
+                       innerSize: '60%',
+                       data: seriesArr
+                   }]
+               });
+           }//setChart11
+           /*############# 분류명별 매출액    분류명별 매출액    분류명별 매출액    분류명별 매출액    분류명별 매출액    #############*/
+           
+           /*============= 상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    =============*/
+           ,searchList3 : (requestParm) => {
+               
+               var parm = {
+                       queryId       : 'dashboardCorPerformance.getStoreMenuSalesRanking'
+                      ,requestParm   : requestParm
+               }
+      
+               C_COM.requestQuery(parm, function(resultData) { 
+                   <@compId>.setTotal3(resultData);
+                   <@compId>.setChart3(resultData);
+                   
+                   var rparm = {
+                        targetId       : "<@compId>_tableId3"
+                       ,list           : resultData.data
+                   }
+                   C_COM.renderHtml("<@compId>", rparm);
+               });
+           }
+
+           ,setTotal3 : (resultData) =>{
+               
+               let total = 0;
+               for (var i=0; i<resultData.data.length; i++){
+                   total += resultData.data[i].SALES;
+               }
+               
+               $('#<@compId>_total3').text(resultData.data.length);
+               $('#<@compId>_totalAmount3').text(addComma(total));
+               
+           }
+           ,setChart3 : (resultData) => {
+               
+
+               var categoriesArr = []; 
+               var dataArr = [];
+               
+               let seriesArr = [];
+               let top5Sales = 0;
+               
+               let dataLength = resultData.data.length;
+               
+               if( dataLength == 0){
+                    // Highcharts 삭제
+                   let chartContainer = $("#<@compId>_chart3").highcharts();
+                   if (chartContainer) {
+                       chartContainer.destroy();
+                   }
+                   return;
+               }else{
+                   for (var i=0; i< dataLength; i++){
+
+                       let seriesMap = {};
+                       seriesMap.name = resultData.data[i].MENU_NM;
+                       seriesMap.y    = Number(resultData.data[i].SALES); 
+                       seriesArr.push(seriesMap);
+                       if( i == 4 ) break;
+                   }
+   
+               }
+               
+               var totalAmount3 = $('#<@compId>_totalAmount3').text();
+               
+               let seriesMap = {};
+               seriesMap.name = '기타';
+               seriesMap.y    = Number($('#<@compId>_totalAmount3').text()); 
+               seriesArr.push(seriesMap);
+               
+               $("#<@compId>_chart3").highcharts({
+                   credits: {enabled: false},// 하이차트 워터마크 삭제
+                   colors: ['#3399ff', '#66ff00','#ffcc00', '#006600', '#ff0000','#cc6633'],
+                   chart: {
+                       type: 'pie'
+                      ,height:240
+                   },
+                   accessibility: {
+                       point: {
+                           valueSuffix: '%'
+                       }
+                   },
+                   title: {
+                       text: ''
+                   },
+                   subtitle: {
+                       text: ''
+                   },
+                   tooltip: {
+                       pointFormat: '{series.name}: <b>{point.percentage:.0f}%</b>'
+                   },
+                   plotOptions: {
+                      
+                   },
+                   series: [{
+                       name: 'Registrations',
+                       colorByPoint: true,
+                       innerSize: '70%',
+                       data: seriesArr
+                   }]
+               });
+           }
+           /*############# 상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    상세메뉴 매출액    #############*/
+    		,changeStore : function(storeId) {
+    			G_VAL.current.storeId = storeId;
+    			<@compId>.STORE_ID =  storeId;
+    			// TODO
+    		 }
+            
+            
+    }//compId
+    // Component Load가 완료된후 실행 된다.
+    C_COMP.onLoadComp("<@compId>", function(parm) {
+
+        <@compId>.BRAND_ID = G_VAL.session.BRAND_ID;
+        <@compId>.STORE_ID = G_VAL.current.storeId;
+        
+        <@compId>.pageInit();
+
+        // 가맹점 Selectbox 설정 
+        C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+            var singleboxList = { 
+                 data           : selectList
+                ,defaultVal     : G_VAL.current.storeId
+                ,targetId       : "<@compId>_store"
+            }
+            C_UICOM.makeSelectBox(singleboxList, "single");
+        });
+    });
+</script>
+<component>
+
+     <div class="pop_tab_content_box">
+         <!-- title start -->
+         <div class="mt10 mb5 mt30 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+             <div class="biz-subTitle">
+                 <@tabTitle>
+                 <div class="ml20">
+                     <label class="star-wrap txt-r">
+                         <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                         <span class="star"></span>
+                     </label>
+                 </div>
+             </div>
+         </div>
+         <!-- title end -->
+         <!-- search filter box start -->
+		<div class="srch-card mb10">
+		    <div class="srch-card-inwrap">
+		        <div class="col9 col10-sm srch-card-form">
+		            <div class="col2 col2-md col2-sm display-h-end mb5">
+		                <label class="src-title">가맹점</label>
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_store"      onchange="<@compId>.changeStore(this.value)">
+		                </select>
+		            </div> 
+		            <div class="col8 col8-md col8-sm display-h-end mb5">
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_selectYears" onChange="<@compId>.checkDay(this)">
+		                </select>
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_selectMonths" onChange="<@compId>.checkDay(this)">
+		                </select>
+		
+		                <label class="src-title">분류</label>
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_selectGroup1" onChange="<@compId>.getSelectMenu('GROUP1')"> 
+		                </select>
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_selectGroup2" onChange="<@compId>.getSelectMenu('GROUP2')">
+		                </select>
+		
+		                <label class="src-title">메뉴</label>
+		                <select class="form-control form-control-sm col10 mr5" id="<@compId>_selectBoxMenu">
+		                </select>
+		            </div> 
+		        </div>
+		        <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+		            <button class="srch-btn col10" type="button" onclick="<@compId>.searchBtn()">검 색</button>
+		        </div>
+		    </div>
+		</div>
+        
+        <!-- 매출 비교 그래프 area start -->
+        <div class="mt30 mb5 display-between">
+            <div class="biz-subTitle">
+                매출 비교 그래프(단위: 천원)
+            </div>
+        </div>     
+        <div class="tab-card-outline">
+            <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart1_no" width="100%" height="100%"></div>
+                <div id="<@compId>_chart1"    width="100%" height="100%"></div>
+            </div>
+        </div>
+        <!-- 매출 비교 그래프 area end -->
+        <!-- 분류명별 매출액 + 상세 메뉴 매출액 area start --> 
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md">
+            <div class="col5 col10-md col10-sm">
+                <div class="display-between-start col10-md col10-sm tab-card-outline mb10">
+                    <div class="col5 deco-line-rt">
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">분류명 별 매출액</div>
+                        </div>
+                        
+                        <div class="tb-div-h05 txt-center p20">
+                            <div id="<@compId>_chart2"    width="100%" height="100%"></div>
+                        </div>
+                                                              
+                    </div>
+                    <div class="col5">
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">매출 TOP 5</div>
+                            <div class="biz-date">Total : <span id="<@compId>_total2"></span></div>
+                        </div>
+                        <div class="card-cnt-wrap">
+                            <div class="table-allwrap tb-div-h05">
+                              <!-- table start -->
+                              <table class="table-inwrap">
+                                <colgroup>
+                                  <col width="50px">
+                                  <col width="">                    
+                                  <col width="140px">                    
+                                </colgroup>
+                                <thead class="table-thead">
+                                  <tr>
+                                    <th>순위</th>
+                                    <th>분류명</th>
+                                    <th>총 매출액</th>
+                                  </tr>
+                                </thead>
+                                
+                                <tbody id="<@compId>_tableId2">
+                                </tbody>
+                                <tfoot>
+                                    <tr class="tb-fixed-btm">
+                                        <td colspan="2" class="bg-sum">총 합계</td>
+                                        <td class="txt-red txt-r bg-sum"  id="<@compId>_totalAmount2"></td>
+                                    </tr> 
+                                </tfoot>
+                                <script type="text/x-jsrender" id="<@compId>_tableId2_template">
+                                     {{for list}}
+                                         <tr>     
+                                             <td class="tl">{{:rownum}}</td>    
+                                             <td class="tl">{{:GROUP_1_NM}}</td> 
+                                             <td class="tr">{{numb:SALES}}</td>  
+                                         </tr>
+                                     {{/for}}
+                                </script>
+                                <script type="text/x-jsrender" id="<@compId>_tableId2_noData_template">  
+                                   <tr>    
+                                       <td colspan=3>자료가 없습니다.</td>    
+                                   </tr>
+                                </script> 
+                              </table>
+                              <!-- table end -->            
+                            </div>
+                          </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col5 col10-md col10-sm">
+                <div class="display-between-start col10-md col10-sm tab-card-outline mb10">
+                    <div class="col5 deco-line-rt">
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">상세 메뉴 매출액</div>
+                        </div>
+                        <div class="tb-div-h05 txt-center p20">
+                            <div id="<@compId>_chart3"    width="100%" height="100%"></div>
+                        </div>                                        
+                    </div>
+                    <div class="col5">
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">매출 TOP 5</div>
+                            <div class="biz-date">Total : <span id="<@compId>_total3"></span></div>
+                        </div>
+                        <div class="card-cnt-wrap">
+                            <div class="table-allwrap tb-div-h05">
+                              <!-- table start -->
+                              <table class="table-inwrap">
+                                <colgroup>
+                                  <col width="50px">
+                                  <col width="">                    
+                                  <col width="140px">                    
+                                </colgroup>
+                                <thead class="table-thead">
+                                  <tr>
+                                    <th>순위</th>
+                                    <th>메뉴명</th>
+                                    <th>총 매출액</th>
+                                  </tr>
+                                </thead>
+                                
+                                <tbody id="<@compId>_tableId3">
+                                </tbody>
+                                <tfoot>
+                                    <tr class="tb-fixed-btm">
+                                        <td colspan="2" class="bg-sum">총 합계</td>
+                                        <td class="txt-red txt-r bg-sum"  id="<@compId>_totalAmount3"></td>
+                                    </tr> 
+                                </tfoot>
+                                <script type="text/x-jsrender" id="<@compId>_tableId3_template">
+                                     {{for list}}
+                                         <tr>     
+                                             <td class="tl">{{:rownum}}</td>    
+                                             <td class="tl">{{:MENU_NM}}</td>  
+                                             <td class="tr">{{numb:SALES}}</td>  
+                                         </tr>
+                                     {{/for}}
+                                </script>
+                                <script type="text/x-jsrender" id="<@compId>_tableId3_noData_template">  
+                                   <tr>    
+                                       <td colspan=3>자료가 없습니다.</td>    
+                                   </tr>
+                                </script> 
+                                
+                              </table>
+                              <!-- table end -->            
+                            </div>
+                          </div>
+                    </div>
+                </div>
+            </div>  
+        </div>
+        <!-- 매출 통계 area end -->
+    </div>
+
+</component>

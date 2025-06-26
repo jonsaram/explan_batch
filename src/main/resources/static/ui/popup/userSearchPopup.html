@@ -1,0 +1,177 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@popupId> = {
+         requestParm 	: {}
+    	,userSearchList : []
+        ,searchList : function(){
+
+             const requestParm = {};
+             let parm = {
+                  queryId        : "system.searchUserList"
+                 ,requestParm    : requestParm
+             }
+             C_COM.requestQuery(parm, function(resultData) {
+                
+                 let rparm = {
+                      targetId   : "userSearchList"
+                     ,list       : resultData.data
+                 }
+                 console.log(resultData.data)
+                 C_COM.renderHtml("<@popupId>", rparm);
+                 
+                 <@popupId>.userSearchList = resultData.data;
+                 
+             });
+         }
+        ,selectUser : function( index ) {
+        	let returnData = <@popupId>.userSearchList[index];
+/*             
+            var peopleArr = new Array();
+            console.log( "spCstmId["+spCstmId+"] user_id["+user_id+"] user_nm["+user_nm+"] user_desc["+user_desc+"]  e_mail["+e_mail+"] ");
+            var obj = new Object();
+            
+            obj.index = user_id;
+            obj.spCstmId = spCstmId;
+            obj.user_id = user_id;
+            obj.user_nm = user_nm;
+            obj.user_desc = user_desc;
+            obj.e_mail = e_mail;
+            
+            console.log("obj.spCstmId =>"+obj.spCstmId);
+            console.log("obj.user_id =>"+obj.user_id);
+            console.log("obj.user_nm =>"+obj.user_nm);
+            console.log("obj.user_desc =>"+obj.user_desc);
+            console.log("obj.e_mail =>"+obj.e_mail);
+            
+            peopleArr.push(obj);
+            
+            console.log(peopleArr);
+ */
+            //if(isEmpty(returnData)) returnData = {};
+            C_POP.close(returnData);
+         }
+        ,close : function(returnData) {
+            C_POP.close(returnData);
+         }
+    }
+    // Popup Load가 완료된후 실행 된다.
+    C_POP.onLoadPopup("<@popupId>", function(data) {
+
+        //삭제 버튼 클릭      
+        $('#<@popupId>_selectUser').on('click', function (e) {
+            console.log("_selectUser");
+            <@popupId>.selectUser1();
+        })
+        
+        <@popupId>.searchList();
+        
+        if(isValid(data.title)) {
+        	$("#<@popupId> #title").html(data.title);
+        }
+        
+    });
+    
+    
+</script>
+  <!-- modal-popup start -->
+  <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle">사원 선택</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" onclick="C_POP.normalSize('<@popupId>')">
+            </button>
+            <!-- <button type="button" class="win-full" onclick="C_POP.fullSize('<@popupId>')"> -->
+            <button type="button" class="win-full" onclick="C_POP.maxSize('<@popupId>')">
+            
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+        <div class="modal-body">                            
+          <!-- search filter box start -->
+            <div class="modal_header">
+                <strong class="tit" id="title">사원 선택</strong>
+                <button type="button" class="btn_close" onclick="<@popupId>.close()"      ><span class="sp">팝업 닫기</span></button>
+            </div>
+            <div class="modal_body">
+                <dl class="info_wrap pay">
+                    <dt>사원 검색</dt>
+                    <dd>
+                        <div class="search_inputWrap" style="width:100%">
+                            <input type="search" name=""><button class="search_btn" onclick="<@popupId>.searchList()"><i class="icon_search"></i></button>
+                        </div>
+                    </dd>
+                    <dt>사원 리스트</dt>
+                        <dd class="mb0">
+                        <div class="approver_list_wrap person">
+                            <ul id="userSearchList" class="approver_list">
+                            </ul>
+                            <script type="text/x-jsrender" id="userSearchList_template">    
+                                {{for list}}
+                                    <li>
+                                        <span class="txt">
+                                            <a href="javascript:void(0);" onclick="<@popupId>.selectUser( '{{:#index}}' );">
+                                                {{:USER_NM}} / {{:USER_DESC}} / {{:USER_ID}} / {{:E_MAIL}}
+                                            </a>
+                                        </span>
+                                    </li>
+                                {{/for}}
+                            </script>
+                            <script type="text/x-jsrender" id="userSearchList_noData_template"> 
+                               <li>
+                                   <span class="txt">자료가 없습니다.</span>
+                               </li> 
+                            </script>
+                        </div>
+                    </dd>
+                </dl>
+            </div>
+          <!-- search filter box end -->
+        </div>
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- modal-popup end -->
+
+    <!-- 결재자 선택 팝업 -->
+<!--     <div class="modal_wrap" id="modal-ex02">
+        <div class="modal" style="width:450px;height:450px;">
+            <div class="modal_header">
+                <strong class="tit" id="title">사원 선택</strong>
+                <button type="button" class="btn_close" onclick="<@popupId>.close()"      ><span class="sp">팝업 닫기</span></button>
+            </div>
+            <div class="modal_body">
+                <dl class="info_wrap pay">
+                    <dt>사원 검색</dt>
+                    <dd>
+                        <div class="search_inputWrap" style="width:100%">
+                            <input type="search" name=""><button class="search_btn" onclick="<@popupId>.searchList()"><i class="icon_search"></i></button>
+                        </div>
+                    </dd>
+                    <dt>사원 리스트</dt>
+                        <dd class="mb0">
+                        <div class="approver_list_wrap person">
+                            <ul id="userSearchList" class="approver_list">
+                            </ul>
+                        </div>
+                    </dd>
+                </dl>
+            </div>
+            <div class="modal_footer">
+                <button type="button" class="btn close" onclick="<@popupId>.close()"      >닫기</button>
+            </div>
+        </div>
+    </div> -->

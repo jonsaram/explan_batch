@@ -1,0 +1,99 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getStoreMenuList"
+						 ,requestParm	: {BRAND_ID : G_VAL.session.BRAND_ID}
+					 }
+					,tableName		: "TBL_EXP_STORE_MENU_MST"
+					,columnMap 		: {
+						 "STORE_ID"         	: { headerText : "가맹점ID"		, hidden : "Y"		} 
+						,"STORE_NM"         	: { headerText : "가맹점명"							} 
+						,"MENU_CD" 				: { headerText : "메뉴CD"							} 
+						,"MENU_NM"          	: { headerText : "메뉴명"		,width : "15%", align : "left"	} 
+						,"SELLING_PRICE"    	: { headerText : "가격"			,dataType : "number"} 
+						,"RECIPE_RATE"    		: { headerText : "Recipe Rate"	,dataType : "number"} 
+						,"BRAND_MENU_CD"  		: { headerText : "본사메뉴CD" 						} 
+						,"BRAND_MENU_NM"    	: { headerText : "본사메뉴명"	,width : "12%", align : "left"	} 
+						,"GROUP_1_NM"      		: { headerText : "대분류CD"							}
+						,"GROUP_2_NM"      		: { headerText : "중분류CD"							}
+						,"CONVERSION_UNIT_PRICE": { headerText : "원가(원)"		,dataType : "number"}
+						,"BRAND_SELLING_PRICE"	: { headerText : "판매가(원)"	,dataType : "number"}
+						
+					 }
+					,headerTextGroup	: {
+						"본사메뉴" : [
+							 "BRAND_MENU_CD"
+							,"BRAND_MENU_NM"
+							,"GROUP_1_NM"   
+							,"GROUP_2_NM"   
+							,"CONVERSION_UNIT_PRICE"
+							,"BRAND_SELLING_PRICE"
+						]
+					 }
+					,columnConfig : {
+						makeCellViewData	: {
+							"RECIPE_RATE"	: function(cellText, rowData) {
+								if(isValid(cellText)) 	return cellText + "%"; 
+								else 					return cellText;
+							}
+						}
+					 }
+					,primaryKeyList		: ["A.STORE_ID"]
+					,searchColumnList	: ["A.MENU_CD", "A.MENU_NM", "B.BRAND_MENU_CD", "B.MENU_NM"]
+					,searchWhereMap		: {"C.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,orderColumnList 	: ["C.STORE_NM", "MENU_CD ASC"] // ORDER BY에 사용
+					,rowCntId			: "<@compId>_rowCnt"
+					,useRuntimeLoad		: 100
+				}
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "A.STORE_ID"
+							,targetColumn	: "STORE_NM"
+							,optionList 	: selectList
+							,firstItem		: ["", "전체"]
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisComp) {
+								G_VAL.current.storeId = selectVal;
+								thisComp.reload();
+							}
+						 }
+					]
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				,callbackEditButton : function(parm) {
+					
+					if(isEmpty(G_VAL.current.storeId)) {
+						C_POP.alert('가맹점을 선택해 주세요.');
+						return;
+					};
+					
+					C_POP.open("popup_headerManage_storeMenuEditPopup", {storeId : G_VAL.current.storeId, size : "MAX"}, function(retData){
+						if(retData.reload == "Y") {
+							<@parentId>.<@compId>_tableGrid.reload();
+						}
+					});
+				 }
+			}
+			C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);
+		});
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+<component>

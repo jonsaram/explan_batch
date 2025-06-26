@@ -1,0 +1,892 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="headerManage">
+
+	<cache />
+	
+	<sql id="getStoreMenuList_body">
+		/* headerManage.getStoreMenuList  */
+		WITH BRAND_MENU_MST AS (
+			SELECT 
+				 A.BRAND_ID      	
+				,A.BRAND_MENU_ID 	
+				,A.BRAND_MENU_CD
+				,A.MENU_NM       	
+				,A.COST_PRICE    	
+				,A.SELLING_PRICE 	
+				,A.GROUP_1      	
+				,A.GROUP_2      	
+				,SUM(CONVERSION_UNIT_PRICE) AS CONVERSION_UNIT_PRICE
+			FROM 
+				 TBL_EXP_BRAND_MENU_MASTER		A
+				,TBL_EXP_MENU_RECIPE			B
+				,TBL_EXP_RECIPE					C
+				,TBL_EXP_RECIPE_INGREDIENT		D
+				,VIEW_INGREDIENT_MST			E
+			WHERE 1=1
+				AND A.BRAND_MENU_CD		= B.BRAND_MENU_CD(+)
+				AND B.RECIPE_CD			= C.RECIPE_CD(+)
+				AND C.RECIPE_CD			= D.RECIPE_CD(+)
+				AND	D.INGREDIENT_CD 		= E.INGREDIENT_CD(+)
+			GROUP BY 
+				 A.BRAND_ID      	
+				,A.BRAND_MENU_ID 	
+				,A.BRAND_MENU_CD
+				,A.MENU_NM       	
+				,A.COST_PRICE    	
+				,A.SELLING_PRICE 	
+				,A.GROUP_1      	
+				,A.GROUP_2      	
+		)
+		SELECT 
+		     A.STORE_ID         											AS STORE_ID     
+		    ,C.STORE_NM         											AS STORE_NM     
+		    ,A.MENU_ID														AS MENU_ID 		
+		    ,A.MENU_CD														AS MENU_CD 		
+		    ,A.MENU_NM          											AS MENU_NM      
+		    ,B.BRAND_MENU_CD 												AS BRAND_MENU_CD
+		    ,B.MENU_NM          											AS BRAND_MENU_NM      
+		    ,A.SELLING_PRICE    											AS SELLING_PRICE
+		    ,B.SELLING_PRICE    											AS BRAND_SELLING_PRICE
+		    ,ROUND(B.CONVERSION_UNIT_PRICE)									AS CONVERSION_UNIT_PRICE
+		    ,B.GROUP_1														AS GROUP_1
+		    ,B.GROUP_2														AS GROUP_2
+		    ,GET_BRAND_CD_NM(B.BRAND_ID, 'STORE_MENU_GROUP1', B.GROUP_1)	AS GROUP_1_NM
+		    ,GET_BRAND_CD_NM(B.BRAND_ID, 'STORE_MENU_GROUP2', B.GROUP_2)	AS GROUP_2_NM
+		    ,A.RECIPE_RATE													AS RECIPE_RATE
+		FROM 
+		     TBL_EXP_STORE_MENU_MST     A                               	
+		    ,BRAND_MENU_MST  			B                               	
+		    ,TBL_EXP_STORE_MST     		C                               	
+		WHERE 1=1
+            AND A.DEL_FLAG IS NULL                                                       	
+		    AND A.BRAND_MENU_CD = B.BRAND_MENU_CD(+)          
+		    AND A.STORE_ID 		= C.STORE_ID(+) 
+		    AND A.SELLING_PRICE <![CDATA[>]]> 0                  	
+	    <if test='parm == null or parm.equals("")'>
+			/* 일반 쿼리로 접근 */
+			AND B.BRAND_ID = #{BRAND_ID}
+			AND A.STORE_ID = #{STORE_ID}
+			ORDER BY A.MENU_NM 
+	    </if>
+	    <if test='parm != null and !parm.equals("")'>
+			/* Grid Component에서 접근 */
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	    </if>
+	</sql>
+
+	
+	<select id="getStoreMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreMenuList  */
+		<include refid="getStoreMenuList_body"/>
+	</select>
+	<select id="getStoreMenuList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getStoreMenuList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getStoreMenuList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getStoreMenuList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreMenuList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getStoreMenuList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	<select id="getBrandMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuList  */
+		
+		SELECT A.* FROM (
+		
+			SELECT
+				 BRAND_MENU_CD													AS BRAND_MENU_CD
+				,BRAND_ID                                                   	AS BRAND_ID     
+				,MENU_NM                                                    	AS MENU_NM      
+				,COST_PRICE                                                 	AS COST_PRICE   
+				,SELLING_PRICE                                              	AS SELLING_PRICE
+				,GROUP_1                                                    	AS GROUP_1      
+				,GROUP_2                                                    	AS GROUP_2      
+			    ,GET_BRAND_CD_NM(#{BRAND_ID}, 'STORE_MENU_GROUP1', GROUP_1) 	AS GROUP_1_NM
+			    ,GET_BRAND_CD_NM(#{BRAND_ID}, 'STORE_MENU_GROUP2', GROUP_2) 	AS GROUP_2_NM
+			FROM 
+			    TBL_EXP_BRAND_MENU_MASTER
+			WHERE 1=1
+			    AND BRAND_ID = #{BRAND_ID}
+		) A
+		WHERE 1=1
+	    <if test='searchValue !=null and  !searchValue.equals("")'>
+	    	AND  (
+	    			A.BRAND_MENU_CD LIKE '%${searchValue}%'
+	    		OR	A.MENU_NM 		LIKE '%${searchValue}%'
+	    	)
+	    </if>
+		ORDER BY 
+			BRAND_MENU_CD		    
+	</select>
+
+
+	<select id="getAllStoreMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getAllStoreMenuList  */
+		
+		SELECT
+             A.STORE_ID
+			,B.MENU_ID
+			,B.MENU_NM      
+			,B.SELLING_PRICE
+		FROM 
+		     TBL_EXP_STORE_MST          A
+		    ,TBL_EXP_STORE_MENU_MST     B
+		WHERE 1=1
+            AND A.STORE_ID = B.STORE_ID
+		    AND A.BRAND_ID = #{BRAND_ID}
+            AND NOT EXISTS (
+                SELECT 
+                    BRAND_MENU_CD 
+                FROM 
+                    TBL_EXP_BRAND_MENU_MASTER C 
+                WHERE 1=1
+                    AND B.BRAND_MENU_CD = C.BRAND_MENU_CD
+                    AND BRAND_ID 		= #{BRAND_ID}
+            )
+            AND B.SELLING_PRICE > 0
+		ORDER BY 
+			STORE_ID, MENU_CD		    
+	</select>
+
+
+	<update id="updateStoreMenuMapping" flushCache="true">
+		UPDATE 
+			TBL_EXP_STORE_MENU_MST
+		SET
+			 BRAND_MENU_CD 	= #{BRAND_MENU_CD}
+			,RECIPE_RATE 	= #{RECIPE_RATE}
+		WHERE 1=1
+			AND STORE_ID 	= #{STORE_ID}
+			AND MENU_ID 	= #{MENU_ID}
+	</update>
+
+
+	
+	<select id="getBrandMenuOne" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuOne  */
+		
+		SELECT
+			 BRAND_ID                                                   	AS BRAND_ID     
+			,BRAND_MENU_CD                                             		AS MENU_CD    
+			,MENU_NM                                                    	AS MENU_NM      
+			,COST_PRICE                                                 	AS COST_PRICE   
+			,SELLING_PRICE                                              	AS SELLING_PRICE
+			,GROUP_1                                                    	AS GROUP_1      
+			,GROUP_2                                                    	AS GROUP_2      
+		    ,GET_BRAND_CD_NM(#{BRAND_ID}, 'STORE_MENU_GROUP1', GROUP_1) 	AS GROUP_1_NM
+		    ,GET_BRAND_CD_NM(#{BRAND_ID}, 'STORE_MENU_GROUP2', GROUP_2) 	AS GROUP_2_NM
+		FROM 
+		    TBL_EXP_BRAND_MENU_MASTER
+		WHERE 1=1
+		    AND BRAND_ID 		= #{BRAND_ID}
+		    AND BRAND_MENU_CD	= #{BRAND_MENU_CD}
+	</select>
+
+
+	<sql id="getMaterialsCompanyProductList_body">
+		/* headerManage.getMaterialsCompanyProductList_body  */
+		SELECT
+		     A.PRODUCT_ID				AS PRODUCT_ID						
+		    ,A.COMPANY_ID               AS COMPANY_ID           
+		    ,C.COMPANY_NM               AS COMPANY_NM           
+		    ,A.PRODUCT_CD               AS PRODUCT_CD         
+		    ,A.PRODUCT_NM               AS PRODUCT_NM           
+		    ,A.UNIT                     AS UNIT                 
+		    ,A.UNIT_PRICE               AS UNIT_PRICE                 
+		    ,A.FOOD_MATERIALS_UNIT      AS FOOD_MATERIALS_UNIT  
+		    ,A.CONVERSION_QUANTITY      AS CONVERSION_QUANTITY  
+		    ,A.MATERIALS_CD             AS MATERIALS_CD         
+		    ,B.MATERIALS_NM             AS MST_MATERIALS_NM         
+		    ,B.PRODUCT_CLASS            AS MST_PRODUCT_CLASS
+		    ,B.UNIT                     AS MST_UNIT                 
+		    ,B.CONVERSION_UNIT_PRICE    AS MST_CONVERSION_UNIT_PRICE           
+		    ,A.DEL_YN                   AS DEL_YN               
+		    ,D.SORT_ORDER				AS SORT_ORDER       
+		FROM
+		     TBL_EXP_FOOD_COMPANY_PRODUCT	A
+		    ,TBL_EXP_FOOD_MATERIALS_MASTER	B
+		    ,TBL_EXP_FOOD_MATERIALS_COMPANY	C
+		    ,${dbHdr}${comnHdr}TBL_EXP_CODE	D
+		WHERE 1=1
+			AND A.MATERIALS_CD	= B.MATERIALS_CD(+)
+			AND A.COMPANY_ID	= C.COMPANY_ID
+			AND D.GRP_CODE_ID(+)= 'PRODUCT_CLASS'
+			AND B.PRODUCT_CLASS	= D.CODE_ID(+) 
+	    <if test='parm == null or parm.equals("")'>
+			/* 일반 쿼리로 접근 */
+			AND B.BRAND_ID = #{BRAND_ID}
+	    </if>
+	    <if test='parm != null and !parm.equals("")'>
+			/* Grid Component에서 접근 */
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	    </if>
+
+	</sql>
+
+	
+	<select id="getMaterialsCompanyProductList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsCompanyProductList  */
+		<include refid="getMaterialsCompanyProductList_body"/>
+	</select>
+	<select id="getMaterialsCompanyProductList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsCompanyProductList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getMaterialsCompanyProductList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getMaterialsCompanyProductList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsCompanyProductList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getMaterialsCompanyProductList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+ 	
+	<select id="getRecipeIngredientList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getRecipeIngredientList  */
+
+		SELECT
+		     A.RECIPE_CD
+		    ,A.RECIPE_NM
+		    ,B.RECIPE_INGREDIENT_ID
+		    ,C.INGREDIENT_CD
+		    ,C.INGREDIENT_NM
+		    ,B.UNIT
+		    ,B.QUANTITY
+		    ,C.CONVERSION_UNIT_PRICE
+		    ,C.PRODUCT_CLASS
+		    ,NVL(B.QUANTITY, 0) * NVL(C.CONVERSION_UNIT_PRICE, 0) AS BASE_PRICE
+		    ,SUM(NVL(B.QUANTITY, 0) * NVL(C.CONVERSION_UNIT_PRICE, 0)) OVER (PARTITION BY A.RECIPE_CD) AS SUM_PRICE
+		    ,D.SORT_ORDER
+		FROM 
+		    TBL_EXP_RECIPE A
+		    LEFT JOIN TBL_EXP_RECIPE_INGREDIENT			B ON A.RECIPE_CD 		= B.RECIPE_CD
+		    LEFT JOIN VIEW_INGREDIENT_MST				C ON B.INGREDIENT_CD 	= C.INGREDIENT_CD
+		    LEFT JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE	D ON C.PRODUCT_CLASS 	= D.CODE_ID
+		WHERE 1=1 
+
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+
+	</select>	
+
+	<select id="getIngredientList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getIngredientList  */
+
+		SELECT
+		     C.INGREDIENT_CD
+		    ,C.INGREDIENT_NM
+		    ,C.CONVERSION_UNIT_PRICE
+		    ,C.UNIT
+		    ,C.PRODUCT_CLASS
+		    ,D.SORT_ORDER
+		FROM 
+		    VIEW_INGREDIENT_MST							C
+		    LEFT JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE	D ON C.PRODUCT_CLASS 	= D.CODE_ID
+		WHERE 1=1 
+
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+
+	</select>	
+
+
+	
+	<sql id="getStoreSalesMstList_body">
+		SELECT
+		    A.STORE_SALES_ID,
+		    A.STORE_ID,
+		    B.STORE_NM,
+		    A.YYYYMMDD,
+		    A.TAXABLE_AMOUNT,
+		    A.SURTAX_SUM,
+		    A.NET_SALES,
+		    A.AVERAGE_SALES,
+		    A.CUSTOMERS_NUM,
+		    A.RECEIPT_CNT,
+		    A.RECEIPT_PRICE,
+		    A.CARD_SALES,
+		    A.CASH_SALES,
+		    A.DISCOUNT_PRICE,
+		    A.ETC_SALES
+		FROM
+		     ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST A
+		    ,TBL_EXP_STORE_MST		 B
+		WHERE 1=1
+			AND A.STORE_ID = B.STORE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+	<select id="getStoreSalesMstList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMstList  */
+		SELECT TBL.* FROM (
+		<include refid="getStoreSalesMstList_body"/>
+		) TBL
+	</select>
+	<select id="getStoreSalesMstList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMstList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getStoreSalesMstList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getStoreSalesMstList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMstList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getStoreSalesMstList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+	
+
+
+
+	<sql id="getStoreSalesMenuList_body">
+		WITH MENU_MST AS (	
+			SELECT 
+				 A.BRAND_MENU_ID	AS BRAND_MENU_ID
+				,A.BRAND_ID         AS BRAND_ID     
+				,B.STORE_ID         AS STORE_ID     
+				,A.BRAND_MENU_CD    AS BRAND_MENU_CD
+				,A.MENU_NM          AS MENU_NM      
+				,A.COST_PRICE       AS COST_PRICE   
+				,A.SELLING_PRICE    AS SELLING_PRICE
+				,A.GROUP_1          AS GROUP_1      
+				,A.GROUP_2 	        AS GROUP_2 	    
+				,B.MENU_CD          AS MENU_CD     
+				,B.MENU_NM          AS STORE_MENU_NM     
+				,B.SELLING_PRICE    AS STORE_SELLING_PRICE
+			FROM 
+				 TBL_EXP_BRAND_MENU_MASTER	A
+				,TBL_EXP_STORE_MENU_MST		B
+			WHERE 1=1
+				AND A.BRAND_MENU_CD = B.BRAND_MENU_CD
+		)
+		SELECT 
+			 C.MENU_SALES_ID 
+			,C.STORE_ID           
+			,B.STORE_NM
+			,A.BRAND_MENU_CD
+			,A.MENU_CD           
+			,A.MENU_NM           
+			,A.STORE_MENU_NM           
+			,A.COST_PRICE         
+			,A.STORE_SELLING_PRICE      
+			,C.YYYYMMDD
+			,C.SALES
+			,C.SALES_QUANTITY
+			,C.CASH
+			,C.CARD
+			,C.OTHER
+			,C.DISCOUNT 
+		FROM 
+			 MENU_MST						A
+			,TBL_EXP_STORE_MST				B
+			,${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST	C
+		WHERE 1=1
+			AND	A.STORE_ID	= B.STORE_ID	
+			AND	B.STORE_ID	= C.STORE_ID	
+			AND	A.MENU_CD	= C.MENU_CD	
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	</sql>
+	<select id="getStoreSalesMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMenuList  */
+		SELECT TBL.* FROM (
+		<include refid="getStoreSalesMenuList_body"/>
+		) TBL
+	</select>
+	<select id="getStoreSalesMenuList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMenuList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getStoreSalesMenuList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getStoreSalesMenuList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getStoreSalesMenuList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getStoreSalesMenuList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+	<sql id="getMaterialsSalesList_body">
+		SELECT 
+			 A.MATERIALS_SALES_ID
+			,B.PRODUCT_ID
+			,B.PRODUCT_CD
+			,B.PRODUCT_NM
+			,B.CONVERSION_QUANTITY
+			,B.UNIT AS SELL_UNIT
+			,E.UNIT
+			,E.MATERIALS_CD
+			,E.MATERIALS_NM
+			,A.COMPANY_ID
+			,C.COMPANY_NM
+			,A.STORE_ID
+			,D.STORE_NM
+			,A.YYYYMMDD
+			,A.UNIT_PRICE
+			,A.QUANTITY
+			,A.FOOD_MATERIALS_QUANTITY
+			,A.SALES
+			,A.SUPPLY_PRICE
+			,A.DEL_YN
+			,E.PRODUCT_CLASS
+		FROM 
+			 TBL_EXP_FOOD_MATERIALS_SALES   A
+			,TBL_EXP_FOOD_COMPANY_PRODUCT   B
+			,TBL_EXP_FOOD_MATERIALS_COMPANY C
+			,TBL_EXP_STORE_MST 				D
+			,TBL_EXP_FOOD_MATERIALS_MASTER  E
+		WHERE 1=1
+			AND A.PRODUCT_CD 	= B.PRODUCT_CD	
+			AND A.COMPANY_ID 	= C.COMPANY_ID
+			AND B.COMPANY_ID 	= C.COMPANY_ID
+			AND A.STORE_ID   	= D.STORE_ID
+			AND B.MATERIALS_CD	= E.MATERIALS_CD		
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+	<select id="getMaterialsSalesList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsSalesList  */
+		SELECT TBL.* FROM (
+		<include refid="getMaterialsSalesList_body"/>
+		) TBL
+	</select>
+	<select id="getMaterialsSalesList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsSalesList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getMaterialsSalesList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getMaterialsSalesList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsSalesList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getMaterialsSalesList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+	
+	
+	
+	<select id="getMenuRecipeConnectList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMenuRecipeConnectList  */
+
+		SELECT 
+			 B.MENU_RECIPE_ID
+			,A.BRAND_MENU_ID
+			,C.RECIPE_ID 
+			,A.BRAND_MENU_CD
+			,A.MENU_NM
+            ,SUM(NVL(C.CONVERSION_UNIT_PRICE * B.QUANTITY, 0)) OVER (PARTITION BY A.BRAND_MENU_ID) AS MENU_SUM_PRICE
+            ,B.QUANTITY
+			,C.RECIPE_CD
+			,C.RECIPE_NM
+            ,C.CONVERSION_UNIT_PRICE
+            ,C.CONVERSION_UNIT_PRICE * B.QUANTITY AS RECIPE_SUM_PRICE
+		FROM 
+			 TBL_EXP_BRAND_MENU_MASTER	A
+			,TBL_EXP_MENU_RECIPE 		B
+			,VIEW_RECIPE_PRICE	 		C
+		WHERE 1=1
+			AND A.BRAND_MENU_ID 	= B.BRAND_MENU_ID(+)
+			AND B.RECIPE_ID 		= C.RECIPE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	<select id="getMenuRecipeImportList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMenuRecipeImportList  */
+
+		SELECT 
+			 B.MENU_RECIPE_ID
+			,A.BRAND_MENU_ID
+			,C.RECIPE_ID 
+			,A.BRAND_MENU_CD
+			,A.MENU_NM
+			,C.RECIPE_CD
+			,C.RECIPE_NM
+			,B.QUANTITY
+			,C.CONVERSION_UNIT_PRICE
+		FROM 
+			 TBL_EXP_BRAND_MENU_MASTER	A
+			,TBL_EXP_MENU_RECIPE 		B
+			,VIEW_RECIPE_PRICE			C
+		WHERE 1=1
+			AND A.BRAND_MENU_ID 	= B.BRAND_MENU_ID
+			AND B.RECIPE_ID 		= C.RECIPE_ID
+
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	
+	<select id="genStockBaseData" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.genStockBaseData  */
+		MERGE INTO TBL_EXP_STOCK_MST T
+		USING (
+		    SELECT
+		         #{BRAND_ID} 			AS BRAND_ID
+		        ,MATERIALS_CD 			AS PRODUCT_CD
+		        ,MATERIALS_NM 			AS PRODUCT_NM
+		        ,'M' 					AS PRODUCT_TYPE
+		        ,UNIT 					AS UNIT
+		        ,#{SAVE_PERIOD} 		AS SAVE_PERIOD
+		        ,#{sessionVo.userId}	AS CREATE_USER
+		        ,GET_KRDT(SYSDATE) 		AS CREATE_DATE
+		    FROM TBL_EXP_FOOD_MATERIALS_MASTER
+		    WHERE 1=1
+		        AND BRAND_ID 		= #{BRAND_ID}
+		        AND PRODUCT_CLASS 	IN ('PRIME', 'RECMD')
+		) S
+		ON (
+				T.BRAND_ID 		= S.BRAND_ID 
+			AND T.PRODUCT_CD 	= S.PRODUCT_CD
+		)
+		WHEN MATCHED THEN
+		    UPDATE SET
+		         T.UNIT 			= S.UNIT
+		        ,T.SAVE_PERIOD 	= S.SAVE_PERIOD
+		WHEN NOT MATCHED THEN
+		    INSERT (STOCK_MST_ID, BRAND_ID, PRODUCT_CD, PRODUCT_NM, PRODUCT_TYPE, UNIT, SAVE_PERIOD, USE_YN, CREATE_USER, CREATE_DATE)
+		    VALUES (
+		         #{BRAND_ID} || COMMON_SEQ.nextval
+		        ,S.BRAND_ID
+		        ,S.PRODUCT_CD
+		        ,S.PRODUCT_NM
+		        ,S.PRODUCT_TYPE
+		        ,S.UNIT
+		        ,S.SAVE_PERIOD
+		        ,'Y'
+		        ,S.CREATE_USER
+		        ,S.CREATE_DATE
+		    )
+	</select>
+	
+	<select id="getMaterialsMasterList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialsMasterList  */
+		SELECT
+		     A.MATERIALS_MASTER_ID
+		    ,A.BRAND_ID
+		    ,A.MATERIALS_CD
+		    ,A.MATERIALS_NM
+		    ,A.PRODUCT_CLASS
+		    ,B.CODE_NM AS PRODUCT_CLASS_NM
+		    ,A.UNIT
+		    ,A.LOSS_RATE
+		    ,A.SURTAX
+		    ,A.PURCHASE_PRICE
+		    ,A.MANUFACTURER
+		    ,A.STORAGE_TYPE
+		    ,A.NOTE
+		    ,A.CONVERSION_UNIT_PRICE
+		    ,A.DEL_YN
+		FROM
+		     TBL_EXP_FOOD_MATERIALS_MASTER 	A
+		    ,${dbHdr}${comnHdr}TBL_EXP_CODE	B
+		WHERE 1=1
+			AND B.GRP_CODE_ID	= 'PRODUCT_CLASS'
+			AND A.PRODUCT_CLASS = B.CODE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	
+	<select id="getIngredientMstList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getIngredientMstList  */
+		SELECT
+		     A.BRAND_ID
+		    ,A.INGREDIENT_CD
+		    ,A.INGREDIENT_NM
+		    ,A.PRODUCT_CLASS
+		    ,B.CODE_NM AS PRODUCT_CLASS_NM
+		    ,A.UNIT
+		    ,A.CONVERSION_UNIT_PRICE
+		FROM
+		     VIEW_INGREDIENT_MST 			A
+		    ,${dbHdr}${comnHdr}TBL_EXP_CODE	B
+		WHERE 1=1
+			AND B.GRP_CODE_ID	= 'PRODUCT_CLASS'
+			AND A.PRODUCT_CLASS = B.CODE_ID
+	    <if test='brandMenuList != null and !brandMenuList.equals("")'>
+			AND A.INGREDIENT_CD IN (
+				SELECT DISTINCT INGREDIENT_CD FROM VIEW_MENU_RECIPE_INGREDIENT
+				WHERE BRAND_MENU_CD IN 
+				<foreach item="item" collection="brandMenuList" separator="," open="(" close=" ) ">
+					#{item}
+				</foreach>
+			)
+		</if>
+			
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	
+	
+	
+	
+	
+	
+
+	<sql id="getBrandMenuMasterList_body">
+		/* headerManage.getBrandMenuMasterList  */
+		SELECT 
+			 A.BRAND_ID      	
+			,A.BRAND_MENU_ID 	
+			,A.BRAND_MENU_CD
+			,A.MENU_NM       	
+			,A.COST_PRICE    	
+			,A.SELLING_PRICE 	
+			,A.GROUP_1      	
+			,A.GROUP_2      	
+			,ROUND(SUM(B.QUANTITY * C.CONVERSION_UNIT_PRICE)) AS CONVERSION_UNIT_PRICE
+		FROM 
+			 TBL_EXP_BRAND_MENU_MASTER		A
+			,TBL_EXP_MENU_RECIPE			B
+			,VIEW_RECIPE_PRICE				C
+		WHERE 1=1
+			AND A.BRAND_MENU_ID		= B.BRAND_MENU_ID(+)
+			AND B.RECIPE_CD			= C.RECIPE_CD(+)
+			<include refid="common.gridOptionWhere"/>
+		GROUP BY 
+			 A.BRAND_ID      	
+			,A.BRAND_MENU_ID 	
+			,A.BRAND_MENU_CD
+			,A.MENU_NM       	
+			,A.COST_PRICE    	
+			,A.SELLING_PRICE 	
+			,A.GROUP_1      	
+			,A.GROUP_2      	
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+	
+	<select id="getBrandMenuMasterList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuMasterList  */
+		<include refid="getBrandMenuMasterList_body"/>
+	</select>
+	<select id="getBrandMenuMasterList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuMasterList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getBrandMenuMasterList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getBrandMenuMasterList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuMasterList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getBrandMenuMasterList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+
+	
+	<update id="deleteMenuRecipeGabageAboutMenu" flushCache="true">
+		/* headerManage.deleteMenuRecipeGabageAboutMenu  */
+	
+		DELETE FROM TBL_EXP_MENU_RECIPE 
+		WHERE NOT RECIPE_CD IN (SELECT RECIPE_CD FROM TBL_EXP_RECIPE)
+	</update>
+	
+	<update id="deleteMenuRecipeGabageAboutRecipe" flushCache="true">
+		/* headerManage.deleteMenuRecipeGabageAboutRecipe  */
+		DELETE FROM TBL_EXP_MENU_RECIPE 
+		WHERE 1=1
+			AND NOT BRAND_MENU_CD	IN (
+				SELECT BRAND_MENU_CD FROM TBL_EXP_BRAND_MENU_MASTER
+			)
+	</update>
+	
+	<select id="getBrandMenuAnalysisList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getBrandMenuAnalysisList  */
+		WITH MNP AS (
+				SELECT 
+					 A.BRAND_ID      	
+					,A.BRAND_MENU_CD
+					,ROUND(SUM(B.QUANTITY * C.CONVERSION_UNIT_PRICE)) AS MENU_PRICE
+				FROM 
+					 TBL_EXP_BRAND_MENU_MASTER		A
+					,TBL_EXP_MENU_RECIPE			B
+					,VIEW_RECIPE_PRICE				C
+				WHERE 1=1
+					AND A.BRAND_MENU_ID		= B.BRAND_MENU_ID(+)
+					AND B.RECIPE_CD			= C.RECIPE_CD(+)
+				GROUP BY 
+					 A.BRAND_ID      	
+					,A.BRAND_MENU_CD
+		)
+		SELECT 
+			 A.BRAND_MENU_ID
+			,A.BRAND_MENU_CD
+			,A.MENU_NM
+			,H.MENU_PRICE
+			,C.RECIPE_CD 
+			,C.RECIPE_NM
+			,C.CONVERSION_UNIT_PRICE 				AS RECIPE_PRICE
+			,B.QUANTITY 							AS RECIPE_QTY
+			,E.PRODUCT_CLASS
+			,E.INGREDIENT_CD
+			,E.INGREDIENT_NM
+			,D.QUANTITY * E.CONVERSION_UNIT_PRICE 	AS INGREDIENT_PRICE
+			,G.MATERIALS_CD
+			,G.MATERIALS_NM
+		FROM 
+			 TBL_EXP_BRAND_MENU_MASTER		A
+			,TBL_EXP_MENU_RECIPE 			B
+			,VIEW_RECIPE_PRICE	 			C
+			,TBL_EXP_RECIPE_INGREDIENT  	D
+			,VIEW_INGREDIENT_MST			E
+			,TBL_EXP_PRETREATMENT_MATERIALS	F
+			,TBL_EXP_FOOD_MATERIALS_MASTER	G
+			,MNP							H
+		WHERE 1=1
+			AND A.BRAND_MENU_ID 	= B.BRAND_MENU_ID(+)
+			AND B.RECIPE_ID 		= C.RECIPE_ID
+			AND C.RECIPE_CD			= D.RECIPE_CD
+			AND D.INGREDIENT_CD		= E.INGREDIENT_CD
+			AND E.INGREDIENT_CD		= F.PRETREATMENT_CD(+)
+			AND F.MATERIALS_CD		= G.MATERIALS_CD(+)
+			AND A.BRAND_ID		 	= H.BRAND_ID
+			AND A.BRAND_MENU_CD 	= H.BRAND_MENU_CD
+
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	
+	
+	<select id="brandMenuMasterListNoConnectRecipe" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.brandMenuMasterListNoConnectRecipe  */
+		SELECT  
+			 BRAND_MENU_ID 
+			,BRAND_ID 
+			,BRAND_MENU_CD 
+			,MENU_NM 
+			,COST_PRICE 
+			,SELLING_PRICE 
+			,GROUP_1 
+			,GROUP_2 
+		FROM TBL_EXP_BRAND_MENU_MASTER
+		WHERE 1=1
+			AND BRAND_ID = #{BRAND_ID}
+			AND NOT BRAND_MENU_CD	IN (
+				SELECT BRAND_MENU_CD FROM TBL_EXP_MENU_RECIPE
+			)
+	</select>
+	<select id="recipeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.recipeList  */
+		SELECT 
+			 BRAND_ID
+			,RECIPE_ID 
+			,RECIPE_CD
+			,RECIPE_NM
+		FROM TBL_EXP_RECIPE
+		WHERE 1=1
+			AND BRAND_ID = #{BRAND_ID}
+	</select>
+	<update id="updateMenuRecipeAutoSet" flushCache="true">
+		/* headerManage.updateMenuRecipeAutoSet  */
+		INSERT INTO TBL_EXP_MENU_RECIPE (
+		     MENU_RECIPE_ID 
+		    ,BRAND_MENU_CD 
+		    ,RECIPE_CD 
+		    ,BRAND_MENU_ID 
+		    ,RECIPE_ID
+		    ,RECIPE_TYPE 
+		    ,DEL_YN 
+		    ,CREATE_USER 
+		    ,CREATE_DATE 
+		) VALUES (
+		     #{MENU_RECIPE_ID   }
+		    ,#{BRAND_MENU_CD    }
+		    ,#{RECIPE_CD        }
+		    ,#{BRAND_MENU_ID    }
+		    ,#{RECIPE_ID        }
+		    ,'M'
+		    ,'N'
+		    ,#{sessionVo.userId}
+		    ,GET_KRDT(SYSDATE)
+		)
+	</update>
+	
+	
+	<sql id="similarWordList_body">
+		/* headerManage.similarWordList */
+		SELECT 
+			 A.BRAND_MENU_CD
+			,A.MENU_NM
+			,B.WORD_GRP_ID
+			,B.SIMILAR_WORD_NM
+		FROM				
+			TBL_EXP_BRAND_MENU_MASTER 	A
+			,TBL_EXP_WORD_GRP 			B	
+		WHERE 1=1
+			AND A.BRAND_MENU_CD = B.WORD_GRP_ID(+)
+			AND B.WORD_GRP_TYPE(+)   = 'BRAND_MENU'	
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+	<select id="similarWordList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* common.similarWordList  */
+		<include refid="similarWordList_body"/>
+	</select>
+	<select id="similarWordList_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* common.similarWordList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="similarWordList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="similarWordList_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* common.similarWordList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="similarWordList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+
+	<select id="getPretreatmentMaterialsList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* headerManage.getMaterialGroupList  */
+
+		SELECT
+		     A.PRETREATMENT_CD
+		    ,A.PRETREATMENT_NM
+		    ,B.PRETREATMENT_MATERIALS_ID
+		    ,C.MATERIALS_CD
+		    ,C.MATERIALS_NM
+		    ,A.UNIT					 AS PTMT_UNIT
+		    ,A.CONVERSION_UNIT_PRICE AS PTMT_UNIT_PRICE
+		    ,B.UNIT
+		    ,B.QUANTITY
+		    ,C.CONVERSION_UNIT_PRICE
+		    ,NVL(B.QUANTITY, 0) * NVL(C.CONVERSION_UNIT_PRICE, 0) AS BASE_PRICE
+		    ,SUM(NVL(B.QUANTITY, 0) * NVL(C.CONVERSION_UNIT_PRICE, 0)) 	OVER (PARTITION BY A.PRETREATMENT_CD) AS SUM_PRICE
+		    ,SUM(NVL(B.QUANTITY, 0)) 									OVER (PARTITION BY A.PRETREATMENT_CD) AS SUM_QTT
+		FROM 
+		    TBL_EXP_PRETREATMENT_MST A
+		    LEFT JOIN TBL_EXP_PRETREATMENT_MATERIALS 		B ON A.pretreatment_cd 	= B.pretreatment_cd
+		    LEFT JOIN TBL_EXP_FOOD_MATERIALS_MASTER 		C ON B.MATERIALS_CD 	= C.MATERIALS_CD
+		WHERE 1=1 
+
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+
+	</select>	
+
+
+
+	
+</mapper>

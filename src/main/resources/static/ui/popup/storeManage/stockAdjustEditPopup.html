@@ -1,0 +1,167 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 sendParm	: {}
+		,stockMap	: {}
+		,addStockToAdjustList : function(productCd) {
+			let gridInstance = <@popupId>.gridComp1.getGridInstance();
+			let selectCells = gridInstance.getSelectedCells();
+			let targetDom = selectCells[0];
+			gridInstance.setCellToColumn(targetDom, productCd, "PRODUCT_CD");
+		 }
+		,close : function(returnData) {
+			if(isEmpty(returnData)) returnData = {};
+			C_POP.close({refresh : "Y"});
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(parm) {
+		////////////////////// 첫번째 그리드 ////////////////////////////////////
+		
+		let sendParm = {
+			gridParm : {
+				 requestQuery 	: {
+					  queryId		: "storeManage.getStockAdjustList"
+					 ,requestParm	: {}
+				 }	
+				,tableName		: "TBL_EXP_STOCK_ADJUST"
+				,columnMap 		: {
+					 "STOCK_ADJUST_ID"	: { headerText : "재고조정ID"	,hidden : "Y", ifNewAutoSet : "random"								}
+					,"BRAND_ID"       	: { headerText : "브랜드ID"		,hidden : "Y", notNull: "Y", default : G_VAL.session.BRAND_ID	}
+					,"STORE_ID"       	: { headerText : "가맹점ID"		,hidden : "Y", notNull: "Y", default : G_VAL.current.storeId	}
+					,"STOCK_MST_ID"   	: { headerText : "재고ID"		,hidden : "Y", notNull: "Y"										}
+					,"ADJUST_DATE"      : { headerText : "재고조정일"	,notNull: "Y", dataType : "date", dateFormat: "YYYY-MM-DD"		}
+					,"PRODUCT_CD"     	: { headerText : "상품CD"		,noSave	: "Y"													}
+					,"PRODUCT_NM"     	: { headerText : "상품명"		,noSave : "Y"													}
+					,"ADJUST_QUANTITY"	: { headerText : "수량"			,notNull: "Y", dataType : "number"								}
+				 }
+				,columnConfig 	: {
+					 onChangeCell : {
+						"PRODUCT_CD"	: {
+							 func 		: function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+								
+								let productCd 	= rowData.PRODUCT_CD
+								
+								stockItem		= <@popupId>.stockMap[productCd];
+								
+								if(isEmpty(stockItem)) return;
+								
+								gridObj.setCellToColumn(cellObj, stockItem.STOCK_MST_ID ,"STOCK_MST_ID"	);
+								gridObj.setCellToColumn(cellObj, stockItem.PRODUCT_NM 	,"PRODUCT_NM"	);
+								gridObj.setCellToColumn(cellObj, getToday(8, "-") 		,"ADJUST_DATE"	);
+							 }						
+						}
+					 }
+				 }
+				,primaryKeyList		: ["STOCK_ADJUST_ID"]
+				,searchColumnList	: ["B.PRODUCT_CD", "B.PRODUCT_NM"]
+				,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID, "STORE_ID" : G_VAL.current.storeId }
+				,orderColumnList 	: ["A.ADJUST_DATE", "B.PRODUCT_CD"]
+			 }
+			,gridTitle : "재고조정"
+		}
+		C_COMP.import("gridComp1", "component_compGridWithSearch",sendParm , function(tableList) {
+		
+		});		
+		
+		
+
+		
+		////////////////////// 두번째 그리드 ////////////////////////////////////
+
+		let sendParm2 = {
+			gridParm : {
+				 tableName		: "TBL_EXP_STOCK_MST"
+				,columnMap 		: {
+					 "STOCK_MST_ID"		: { headerText : "재고ID"	, hidden : "Y", ifNewAutoSet : "random"					}
+					,"BRAND_ID"			: { headerText : "브랜드ID"	, hidden : "Y", default : G_VAL.session.BRAND_ID 	}
+					,"PRODUCT_CD"		: { headerText : "상품CD"		}
+					,"PRODUCT_TYPE"		: { headerText : "상품타입"		}
+					,"PRODUCT_NM"		: { headerText : "상품명"		}
+					,"UNIT"				: { headerText : "단위"			}
+					,"SAVE_PERIOD"		: { headerText : "적정기간"		}
+				 }
+				,columnConfig 	: {
+				 }
+				,rowConfig	: {
+					onDblClickRow : function(rowData) {
+						let productCd = rowData.PRODUCT_CD;
+						<@popupId>.addStockToAdjustList(productCd);
+					}						
+				 }
+				,primaryKeyList		: ["STOCK_MST_ID"]
+				,uniqueKeyList		: ["PRODUCT_CD"]
+				,searchColumnList	: ["PRODUCT_CD", "PRODUCT_TYPE", "PRODUCT_NM"]		
+				,orderColumnList 	: ["PRODUCT_CD"]
+				,searchWhereMap		: { "BRAND_ID" : G_VAL.session.BRAND_ID, "USE_YN" : "Y" }
+				,readOnly			: "Y"
+			 }
+			,gridTitle 	: "재고 목록"
+		}
+		C_COMP.import("gridComp2", "component_compGridWithSearch",sendParm2 , function(tableList) {
+			<@popupId>.stockMap = arrayToMap(tableList, "PRODUCT_CD");
+		});		
+	});
+</script>
+<!-- modal-popup start -->
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="full-modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm">재고조정편집</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls">
+            </button>
+            <button type="button" class="win-full">
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <!-- body start -->
+        <div class="modal-body">
+          <div class="body-inwrap display-row-nowrap-md"> <!-------------------- 테이블 좌, 우 배치 시 -- 이 부분에 클래스명 추가 ( display-row-nowrap-md ) // 테이블 하나의 경우 클래스명 추가 불필요 -------------------->
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col5 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp1"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col5 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp2"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+          </div>        
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+</div>                      
+<!-- modal-popup end -->

@@ -1,0 +1,63 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		getData : function() {
+			var data = $('#<@compId>_summernote').summernote('code');
+			return data;
+		}
+		,isAnyData : function(){
+			const html = $('#<@compId>_summernote').summernote('code');
+			const tempDiv = document.createElement('div');
+			tempDiv.innerHTML = html;
+			const text = tempDiv.textContent || tempDiv.innerText || '';
+
+			if (text.trim() === '') { return false;// 내용 없음
+			} else { return true;// 내용 있음
+			}
+		}
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+		const isEditable = data?.editable !== false;
+		const height = !isEmpty(data?.height) ? data.height : 300;
+
+		const editorId = '#<@compId>_summernote';
+
+		$(editorId).summernote({
+		    placeholder: '내용을 입력 해 주세요',
+		    tabsize: 2,
+		    height: height,
+		    toolbar: isEditable ?  [
+		        ['style', ['style']],
+		        ['font', ['bold', 'italic', 'underline', 'clear']],
+		        ['fontname', ['fontname']],
+		        ['fontsize', ['fontsize']],
+		        ['color', ['color']],
+		        ['height', ['height']],
+		        ['table', ['table']],
+		        ['insert', ['link', 'picture', 'hr']],
+		        ['view', ['fullscreen', 'codeview']],
+		        ['help', ['help']]
+		    ] : false,
+		    disableResizeEditor: true
+		});
+
+		// 코드 세팅
+		$(editorId).summernote('code', data.initData);
+		// height 강제 적용
+		setTimeout(()=>{
+			$(editorId).next('.note-editor').find('.note-editable').attr('style', `height: ${height}px !important`);
+		},100)
+
+		// 편집 모드 비활성화
+		if (!isEditable) {
+		    $(editorId).summernote('disable');
+		}
+
+
+	})
+</script>
+<component>
+	<textarea id="<@compId>_summernote"></textarea>
+</component>

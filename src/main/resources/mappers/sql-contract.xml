@@ -1,0 +1,1307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="contract">
+
+	<sql id="getContractList_body">
+		SELECT ROW_NUMBER() OVER (ORDER BY C.UPDATE_DATE DESC) AS RN
+		,C.CONTRACT_ID
+		,C.BUYER_ID 
+		,B.BUYER_NM
+		,B.BUYER_NM || ' ( ' || B.BUYER_ID || ' )'  AS "BUYER"
+		,C.PROCESS_STATE
+		,NVL( C.PRE_PROCESS_STATE ,'-' ) AS PRE_PROCESS_STATE 
+		,GET_CODE_NM('PROCESS_STATE', C.PROCESS_STATE ) ||' '|| GET_CODE_NM('APPROVAL_USER_PROC', (SELECT DECODE(STATE,'REJECT',STATE,null) FROM TBL_EXP_APPROVAL WHERE RELATION_ID =C.CONTRACT_ID ORDER BY UPDATE_DATE DESC FETCH FIRST 1 ROWS ONLY) ) AS PROCESS_STATE_NM 
+		,TO_CHAR( C.CONTACT_DATE , 'YYYY-MM-DD') 	AS CONTACT_DATE 
+		,C.USER_ID 									AS USER_ID
+		,U.USER_NM				 					AS USER_NM /* 담당자*/
+		,U.USER_NM || '( ' || C.USER_ID || ' )'  	AS "USER"
+		,NVL(U.ROLE,'-')							AS ROLE
+		,NVL(Get_CODE_NM('USER_ROLE',U.ROLE),'-')	AS ROLE_NM
+		,NVL(U.GRADE,'-')							AS GRADE
+		,NVL(Get_CODE_NM('GRADE',U.GRADE),'-')		AS GRADE_NM
+		,C.CONTRACT_TYPE
+		,GET_CODE_NM('CONTRACT_TYPE', C.CONTRACT_TYPE)	AS CONTRACT_TYPE_NM
+		,TO_CHAR( C.CONTRACT_DATE , 'YYYY-MM-DD' ) 	AS CONTRACT_DATE 
+		,CASE WHEN CT.CONSULTING_TYPE IN( 'ONCE', 'COLLABO' ) 
+				THEN TO_CHAR( C.CONTRACT_DATE , 'YYYY-MM-DD' )
+				ELSE TO_CHAR( C.EXPIRE_DATE , 'YYYY-MM-DD' ) 
+		END											AS EXPIRE_DATE 
+		,C.TOTAL_COST /* 총계약금액 */
+		,C.CONSULTING_ID
+		,CT.CONSULTING_NM/* 컨설팅명 */
+		,CT.CONSULTING_TYPE
+		,GET_CODE_NM('CONSULTING_TYPE', CT.CONSULTING_TYPE )  CONSULTING_TYPE_NM
+		,TAX_MNG
+		,LABOR_MNG
+		,ANOTHER_EXPERT
+		,CONSULTING_CLASS
+		,GET_CODE_NM('CONSULTING_CLASS', C.CONSULTING_CLASS)	AS CONSULTING_CLASS_NM
+		,C.USE_YN
+		,C.DEL_YN
+		,NVL(( 	SELECT MIN( REMAINING_SUM ) FROM TBL_EXP_RESULT I 
+				WHERE I.CONTRACT_ID = C.CONTRACT_ID AND I.USE_YN = 'Y' AND I.DEL_YN = 'N')
+			,C.TOTAL_COST) AS REMAINING_SUM
+		,NVL(( 	SELECT COUNT( * )  FROM TBL_EXP_RESULT I 
+				WHERE I.CONTRACT_ID = C.CONTRACT_ID AND I.USE_YN = 'Y' AND I.DEL_YN = 'N')
+			,0) AS RESULT_INSERTED_CNT
+		,U.RECOMMENDER_ID
+		,GET_USER_NM(U.RECOMMENDER_ID)		AS RECOMMENDER_NM
+		,(SELECT USER_ID FROM TBL_EXP_USER WHERE USER_ID = TM.USER_ID ) AS CONSULTANT_USER_ID
+		,GET_USER_NM((SELECT USER_ID FROM TBL_EXP_USER WHERE USER_ID = TM.USER_ID ))	AS CONSULTANT_USER_NM
+		,NVL(Get_CODE_NM('USER_ROLE',(SELECT ROLE FROM TBL_EXP_USER WHERE USER_ID = TM.USER_ID )),'-')  AS CONSULTANT_ROLE_NM	
+		,NVL(Get_CODE_NM('GRADE',(SELECT GRADE FROM TBL_EXP_USER WHERE USER_ID = TM.USER_ID )),'-')  AS CONSULTANT_GRADE_NM
+		,NVL(( SELECT 'Y' FROM TBL_EXP_RESULT I 
+		   WHERE I.CONTRACT_ID = C.CONTRACT_ID AND I.USE_YN = 'Y' 
+		     AND I.DEL_YN = 'N' AND ROWNUM=1 ),'N') AS RESULTING
+		, CASE 	WHEN C.PROCESS_STATE !='ON_CONTRACTED_APPR' 
+				 AND C.PROCESS_STATE !='ON_COMPLETED_APPR'
+				 AND C.PROCESS_STATE !='COMPLETED'
+	 			THEN 
+					'N/A'
+	 			ELSE 
+	 			(
+					SELECT GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) 
+					FROM TBL_EXP_APPROVAL B 
+					WHERE C.CONTRACT_ID = B.RELATION_ID
+					ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+				)
+		  END 	AS APP_STATE_NM
+		FROM TBL_EXP_CONTRACT C
+		,TBL_EXP_BUYER B
+		,TBL_EXP_CONSULTING CT
+		,TBL_EXP_USER U
+		,TBL_EXP_CONTRACT_MEMBER TM
+		WHERE C.BUYER_ID = B.BUYER_ID(+)
+		AND C.USE_YN = 'Y' 		AND C.DEL_YN = 'N'
+		AND U.USE_YN = 'Y'      AND U.DEL_YN = 'N'
+		AND C.CONSULTING_ID = CT.CONSULTING_ID		
+		AND C.USER_ID = U.USER_ID
+		AND C.PROCESS_STATE != 'PRE_CONTRACT' 
+		AND C.PROCESS_STATE != 'ON_CONTRACTING_APPR' 
+		AND C.CONTRACT_ID = TM.CONTRACT_ID(+)
+		AND TM.RELATION_TYPE(+) = 'EXECUTE'
+		<choose>
+			<!-- 실적화면호출시 -->
+			<when test='PA_ROLE != null'> 
+				<if test=" PA_ROLE.equals('SYSTEM') or PA_ROLE.equals('MANAGER')">
+				AND 1=1 /* 시스템 혹은 관리자 권한 */
+				</if>
+				<if test=" !PA_ROLE.equals('SYSTEM') and !PA_ROLE.equals('MANAGER')">
+				AND C.CONTRACT_ID IN ( SELECT CONTRACT_ID FROM TBL_EXP_CONTRACT_MEMBER WHERE USER_ID = #{sessionVo.userId})
+				</if>
+			</when>
+			<!-- CALL_TYPE USER 는 biz 계약관리 -->
+			<when test= "CALL_TYPE != null and CALL_TYPE.equals('USER')"> 
+				AND C.CONTRACT_ID IN ( SELECT CONTRACT_ID FROM TBL_EXP_CONTRACT_MEMBER WHERE USER_ID = #{sessionVo.userId})
+			</when>
+			<!-- 계약화면호출시 -->		
+			<when test='parm.PA_ROLE != null'> 
+				<if test=" parm.PA_ROLE.equals('SYSTEM') or parm.PA_ROLE.equals('MANAGER')">
+				AND 1=1 /* 시스템 혹은 관리자 권한 */ 
+				</if>
+				<if test=" !parm.PA_ROLE.equals('SYSTEM') and !parm.PA_ROLE.equals('MANAGER')">
+				AND C.CONTRACT_ID IN ( SELECT CONTRACT_ID FROM TBL_EXP_CONTRACT_MEMBER WHERE USER_ID = #{sessionVo.userId})
+				</if>
+			</when>
+			<!-- CALL_TYPE USER 는 biz 계약관리 -->
+			<when test= "parm.CALL_TYPE != null and parm.CALL_TYPE.equals('USER')"> 
+				AND C.CONTRACT_ID IN ( SELECT CONTRACT_ID FROM TBL_EXP_CONTRACT_MEMBER WHERE USER_ID = #{sessionVo.userId})
+			</when>		
+		</choose>		
+	</sql>
+	<select id="getContractList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getContractList
+			계약 리스트 조회 ( 실적화면에서 호출 )
+		*/
+		<include refid="getContractList_body"/>
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>	
+	</select>	
+	
+	<!--  계약화면에서 호출 C_PAGING 함수 호출일때 권한에 따른 실행 -->
+	<select id="getContractList_totalCnt" resultType="Integer">
+		/* contract.getContractList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getContractList_body"/>
+		<include refid="getContractList_param"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getContractList_paging" resultType="java.util.HashMap">
+		/* contract.getContractList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getContractList_body"/>
+		<include refid="getContractList_param"/>
+		ORDER BY C.UPDATE_DATE DESC, BUYER_ID, USER_ID, CONSULTING_ID DESC
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+	
+	<!-- 계약관리 조회조건 C_PAGING 함수 호출 -->
+	<sql id='getContractList_param'>
+		<if test=" parm.CONTRACT_ID != null and !parm.CONTRACT_ID.equals('') ">
+		AND C.CONTRACT_ID = #{parm.CONTRACT_ID}
+		</if>
+		<if test="parm.PROCESS_STATES != null and !parm.PROCESS_STATES.equals('')">
+			<foreach item="PROCESS_STATE" collection="parm.PROCESS_STATES" open="AND C.PROCESS_STATE IN (" close=")" separator=",">
+				#{PROCESS_STATE}
+			</foreach>
+		</if>			
+		<if test="parm.PROCESS_STATE != null and !parm.PROCESS_STATE.equals('')">
+		AND C.PROCESS_STATE = #{parm.PROCESS_STATE}
+		</if>
+		<if test='parm.IS_MULTI_SEARCH == "Y"'>  
+		    AND (
+		        <if test="parm.BUYER_ID != null and !parm.BUYER_ID.equals('')">
+		            C.BUYER_ID like '%' || #{parm.BUYER_ID} || '%'
+		        </if>
+		
+		        <if test="parm.BUYER_NM != null and !parm.BUYER_NM.equals('')">
+		            <if test="parm.BUYER_ID != null and !parm.BUYER_ID.equals('')">
+		            OR
+		            </if>
+		            B.BUYER_NM like '%' || #{parm.BUYER_NM} || '%'
+		        </if>
+		
+		        <if test="parm.USER_NM != null and !parm.USER_NM.equals('')">
+		            <if test="(parm.BUYER_ID != null and !parm.BUYER_ID.equals('')) or (parm.BUYER_NM != null and !parm.BUYER_NM.equals(''))">
+		            OR
+		            </if>
+		            U.USER_NM like '%' || #{parm.USER_NM} || '%'
+		        </if>
+		        
+		        <!-- BUYER_ID , BUYER_NM , USER_NM 어떤것도 제공되지 않을 때 -->
+		       <if test="	(parm.BUYER_ID == null or parm.BUYER_ID == '') and 
+          					(parm.BUYER_NM == null or parm.BUYER_NM == '') and 
+          					(parm.USER_NM == null or parm.USER_NM == '')"		>
+		            1=1
+		        </if>
+		    )
+		</if>		
+	</sql>
+	
+	<select id="getBuyerList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getBuyerList
+			고객 리스트 조회 
+		*/
+		SELECT BUYER_ID
+		, BUYER_NM
+		, TEL
+		, ADDR
+		, COMPANY_REGNUM
+		FROM TBL_EXP_BUYER
+		WHERE  1=1
+		<if test="SEARCH_ID != null and !SEARCH_ID.equals('')">
+		AND ( UPPER(BUYER_ID)	like '%' || UPPER( #{SEARCH_ID} ) || '%'
+		OR    UPPER(BUYER_NM)	like '%' || UPPER( #{SEARCH_ID} ) || '%'
+		OR    UPPER(ADDR) 		like '%' || UPPER( #{SEARCH_ID} ) || '%'
+		)
+		</if>
+		AND USE_YN = 'Y'
+		AND DEL_YN = 'N'
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>	
+	</select>		
+
+	<select id="getBuyerListAll" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		SELECT 
+			 A.BUYER_ID
+			,A.BUYER_NM
+			,A.ADDR
+		FROM 
+			 TBL_EXP_BUYER A
+		WHERE
+			A.DEL_YN = 'N'
+		ORDER BY A.BUYER_ID	
+	</select>
+	<select id="getBuyerListOfUser" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getBuyerListOfUser
+			User의 고객 리스트 조회 
+		*/
+		SELECT
+		     BUYER_ID
+		    ,BUYER_NM
+		    ,ADDR
+		    ,CASE 
+		        WHEN (SELECT MAX(CONTRACT_ID) FROM TBL_EXP_CONTRACT X WHERE TBL.BUYER_ID = X.BUYER_ID) IS NULL THEN 'N'
+		        ELSE 'Y'
+		     END AS CONTRACT_YN
+		FROM (
+			SELECT DISTINCT BUYER_ID, BUYER_NM, ADDR
+			FROM (
+				SELECT 
+					 A.BUYER_ID
+					,A.BUYER_NM
+					,A.ADDR
+				FROM 
+					 TBL_EXP_BUYER    		A
+					,TBL_EXP_CONTRACT 		B
+					,TBL_EXP_TEAM_MEMBER	C
+				WHERE 1=1
+					AND	A.BUYER_ID 		= B.BUYER_ID
+					AND B.CONTRACT_ID 	= C.CONTRACT_ID
+					AND C.USER_ID		= #{USER_ID}
+					AND A.USE_YN = 'Y'
+					AND A.DEL_YN = 'N'
+					AND B.USE_YN = 'Y'
+					AND B.DEL_YN = 'N'
+				UNION
+				SELECT 
+					 A.BUYER_ID
+					,A.BUYER_NM
+					,A.ADDR
+				FROM 
+					 TBL_EXP_BUYER    		A
+					,TBL_EXP_CONTRACT 		B
+				WHERE 1=1
+					AND	A.BUYER_ID 		= B.BUYER_ID
+					AND B.USER_ID		= #{USER_ID}
+					AND A.USE_YN = 'Y'
+					AND A.DEL_YN = 'N'
+					AND B.USE_YN = 'Y'
+					AND B.DEL_YN = 'N'
+				UNION
+				SELECT 
+					 A.BUYER_ID
+					,A.BUYER_NM
+					,A.ADDR
+				FROM 
+					 TBL_EXP_BUYER    		A
+				WHERE 1=1
+					AND A.CREATE_USER = #{USER_ID}
+					AND A.USE_YN = 'Y'
+					AND A.DEL_YN = 'N'
+			)
+		) TBL		
+	</select>		
+
+	<select id="getUserList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getUserList
+			계약 담당자 리스트 조회 
+		*/
+		SELECT SP_CSTM_ID
+		, USER_ID
+		, USER_NM
+		, USER_DESC
+		, E_MAIL
+		, PHONE_NUM
+ 		, "ROLE"
+		, GRADE
+		, GET_CODE_NM('GRADE', GRADE)		AS GRADE_NM
+		, STATE
+		, REG_DATE
+		, JUMIN
+		, POST_NUM
+		, ADDR1
+		, ADDR2
+		, UPDATE_USER
+		, UPDATE_DATE
+		, SURETY_INSURANCE
+		, GENDER
+		, SALES_TYPE
+		, GET_CODE_NM('SALES_TYPE', SALES_TYPE)		AS SALES_TYPE_NM
+		, RECOMMENDER_ID							AS RECOMMENDER_ID
+		, GET_USER_NM(RECOMMENDER_ID)				AS RECOMMENDER_NM 
+		FROM TBL_EXP_USER A
+		WHERE 1=1
+		<if test=" SEARCH_ID != null and !SEARCH_ID.equals('') ">
+			AND ( 
+			   UPPER(USER_ID) 						like '%' || UPPER( #{SEARCH_ID} ) || '%'
+			OR UPPER(USER_NM) 						like '%' || UPPER( #{SEARCH_ID} ) || '%'
+			OR UPPER(GRADE) 						like '%' || UPPER( #{SEARCH_ID} ) || '%'
+			OR UPPER(GET_CODE_NM('GRADE', GRADE))	like '%' || UPPER( #{SEARCH_ID} ) || '%'
+			OR UPPER(GET_CODE_NM('SALES_TYPE', SALES_TYPE)) 
+													like '%' || UPPER( #{SEARCH_ID} ) || '%' )
+		</if>
+		AND USE_YN = 'Y'
+		AND DEL_YN = 'N'
+		AND A.GRADE IN ( 'S_MASTER', 'MASTER', 'FA', 'RECOMMENDER') /* 시스템에서 관여하는 GRADE만 가능 */
+		<if test=" EXCEPT_MEMERS != null and !EXCEPT_MEMERS.equals('') ">
+		    <foreach item="member" collection="EXCEPT_MEMERS" open="AND USER_ID NOT IN (" close=")" separator=",">
+    			#{member}
+    		</foreach>	
+		</if>
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>			
+	</select>	
+	
+	<update id="updateContract" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.updateContract
+			계약  저장
+		*/
+		MERGE INTO TBL_EXP_CONTRACT T
+		USING (
+		  SELECT #{CONTRACT_ID}							AS CONTRACT_ID,
+		         #{USER_ID} 							AS USER_ID,
+		         #{BUYER_ID} 							AS BUYER_ID,
+		         TO_DATE(#{CONTACT_DATE},'YYYY-MM-DD') 	AS CONTACT_DATE,
+		         TO_DATE(#{CONTRACT_DATE},'YYYY-MM-DD')	AS CONTRACT_DATE,
+		         TRIM(#{CONTRACT_TYPE})					AS CONTRACT_TYPE,
+		         TO_DATE(#{EXPIRE_DATE},'YYYY-MM-DD')	AS EXPIRE_DATE,
+		         REPLACE(#{TOTAL_COST},',','') 			AS TOTAL_COST,
+		         <if test=" TAX_MNG != null and !TAX_MNG.equals('') ">
+		         #{TAX_MNG} 							AS TAX_MNG,
+		         </if>
+		         <if test=" LABOR_MNG != null and !LABOR_MNG.equals('') ">
+		         #{LABOR_MNG} 							AS LABOR_MNG,
+		         </if>
+		         <if test=" ANOTHER_EXPERT != null and !ANOTHER_EXPERT.equals('') ">
+		         #{ANOTHER_EXPERT} 						AS ANOTHER_EXPERT,
+		         </if>
+		         #{CONSULTING_CLASS} 					AS CONSULTING_CLASS,
+				 #{CONSULTING_ID} 						AS CONSULTING_ID,
+				 <if test=" PROCESS_STATE != null and !PROCESS_STATE.equals('') ">
+				 #{PROCESS_STATE} 						AS PROCESS_STATE,
+				 </if>
+				 <if test=" LAST_SOLUTION != null and !LAST_SOLUTION.equals('') ">
+		         #{LAST_SOLUTION} 						AS LAST_SOLUTION,
+		         </if>
+		         #{sessionVo.userId}					AS UPDATE_USER
+		  FROM dual
+		) S
+		ON (T.CONTRACT_ID	= S.CONTRACT_ID 
+		)
+		WHEN MATCHED THEN
+		  UPDATE SET
+		         T.USER_ID 			= S.USER_ID,
+		         T.BUYER_ID 		= S.BUYER_ID,
+		         T.CONTACT_DATE 	= S.CONTACT_DATE,
+		         T.CONTRACT_DATE 	= S.CONTRACT_DATE,
+		         T.CONTRACT_TYPE 	= S.CONTRACT_TYPE,
+		         T.EXPIRE_DATE 		= S.EXPIRE_DATE,
+		         T.TOTAL_COST 		= S.TOTAL_COST,
+		         <if test=" TAX_MNG != null and !TAX_MNG.equals('') ">
+		         T.TAX_MNG 			= S.TAX_MNG,
+		         </if>
+		         <if test=" LABOR_MNG != null and !LABOR_MNG.equals('') ">
+		         T.LABOR_MNG 		= S.LABOR_MNG,
+		         </if>
+		         <if test=" ANOTHER_EXPERT != null and !ANOTHER_EXPERT.equals('') ">
+		         T.ANOTHER_EXPERT 	= S.ANOTHER_EXPERT,
+		         </if>
+		         T.CONSULTING_CLASS	= S.CONSULTING_CLASS,
+ 		         T.CONSULTING_ID 	= S.CONSULTING_ID,
+				 <if test=" PROCESS_STATE != null and !PROCESS_STATE.equals('') ">
+ 		         T.PROCESS_STATE 	= S.PROCESS_STATE,
+				 </if>
+				 <if test=" LAST_SOLUTION != null and !LAST_SOLUTION.equals('') ">
+		         T.LAST_SOLUTION 	= S.LAST_SOLUTION, 
+		         </if>
+		         T.UPDATE_USER		= S.UPDATE_USER,
+		         T.UPDATE_DATE		= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN 
+     		INSERT (  CONTRACT_ID, USER_ID, BUYER_ID, CONTACT_DATE, CONTRACT_DATE, CONTRACT_TYPE, EXPIRE_DATE
+    				, TOTAL_COST
+    				<if test=" TAX_MNG != null and !TAX_MNG.equals('') ">
+    				, TAX_MNG
+    				</if>
+    				<if test=" LABOR_MNG != null and !LABOR_MNG.equals('') ">
+    				, LABOR_MNG 
+    				</if>
+    				<if test=" ANOTHER_EXPERT != null and !ANOTHER_EXPERT.equals('') ">
+    				, ANOTHER_EXPERT
+    				</if>
+    				, PROCESS_STATE	, CONSULTING_ID
+    				, CONSULTING_CLASS
+					 <if test=" LAST_SOLUTION != null and !LAST_SOLUTION.equals('') ">
+	    				, LAST_SOLUTION
+	    			 </if>	
+    				 , UPDATE_USER  
+	    			 , UPDATE_DATE
+	    			 , USE_YN
+	    			 , DEL_YN
+    				)
+   			VALUES (  S.CONTRACT_ID, S.USER_ID, S.BUYER_ID, S.CONTACT_DATE, S.CONTRACT_DATE, S.CONTRACT_TYPE, S.EXPIRE_DATE
+    				, S.TOTAL_COST
+    				<if test=" TAX_MNG != null and !TAX_MNG.equals('') ">
+    				, S.TAX_MNG
+    				</if>
+    				<if test=" LABOR_MNG != null and !LABOR_MNG.equals('') ">
+    				, S.LABOR_MNG 
+    				</if>
+    				<if test=" ANOTHER_EXPERT != null and !ANOTHER_EXPERT.equals('') ">
+    				, S.ANOTHER_EXPERT 
+    				</if>
+    				, 'PRE_CONTRACT' , S.CONSULTING_ID 
+    				, S.CONSULTING_CLASS
+					<if test=" LAST_SOLUTION != null and !LAST_SOLUTION.equals('') ">
+	    				, S.LAST_SOLUTION
+	    			 </if>
+    				 , S.UPDATE_USER
+	    			 , GET_KRDT(SYSDATE)
+	    			 , 'Y'
+	    			 , 'N' 
+    				)
+	</update>
+	
+	<update id="updateContractMemberFromTeam" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.updateContractMemberFromTeam
+			계약 관련자 옮겨옴
+		*/
+		MERGE INTO TBL_EXP_CONTRACT_MEMBER T
+		USING (
+				SELECT CONTRACT_ID , USER_ID , DECODE( TEAM_USER_ROLE, 'EXEC','EXECUTE', TEAM_USER_ROLE) AS RELATION_TYPE
+				FROM TBL_EXP_TEAM_MEMBER 
+				WHERE CONTRACT_ID = #{CONTRACT_ID}
+				UNION ALL
+				SELECT #{CONTRACT_ID} , USER_ID, 'SUGGESTER'
+				FROM TBL_EXP_USER 
+				WHERE USER_ID = (
+					SELECT RECOMMENDER_ID
+					FROM TBL_EXP_USER
+					WHERE USER_ID IN (
+					
+						SELECT USER_ID 
+						FROM TBL_EXP_TEAM_MEMBER
+						WHERE CONTRACT_ID = #{CONTRACT_ID}
+						AND TEAM_USER_ROLE = 'SALES'
+					
+					)
+				)
+		) S
+		ON (T.CONTRACT_ID	= S.CONTRACT_ID 
+		AND	T.USER_ID		= S.USER_ID 
+		AND	T.RELATION_TYPE	= S.RELATION_TYPE 
+		)
+		WHEN MATCHED THEN
+		  UPDATE SET
+		         T.UPDATE_USER 		= #{sessionVo.userId	},
+		         T.UPDATE_DATE		= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN 
+     		INSERT (  CONTRACT_ID, USER_ID, RELATION_TYPE, USE_YN, DEL_YN, UPDATE_USER, UPDATE_DATE )
+   			VALUES (  S.CONTRACT_ID, S.USER_ID, S.RELATION_TYPE,'Y', 'N', #{sessionVo.userId	}, GET_KRDT(SYSDATE))		
+		
+	</update>	
+	
+	<select id="canNextState" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.canNextState
+			진행상태 변경가능 확인 ( from 체결 진행중 to 체결 완료 ) 
+		*/
+		SELECT CASE WHEN SUM(CNT) > 1100 THEN 'Y' ELSE 'N' END  CAN_NEXT_STATE 
+		FROM (
+				SELECT 1000 CNT 
+				FROM TBL_EXP_CONTRACT 
+				WHERE CONTRACT_ID = #{CONTRACT_ID} 
+				AND USE_YN = 'Y' AND DEL_YN = 'N' 
+				AND PROCESS_STATE ='CONTRACTING' 
+			UNION ALL 
+				SELECT 100 
+				FROM TBL_EXP_CONTRACT_MEMBER  
+				WHERE CONTRACT_ID = #{CONTRACT_ID} 
+				AND RELATION_TYPE = 'EXECUTE'  
+				AND USE_YN = 'Y' AND DEL_YN = 'N'
+			UNION ALL 
+				SELECT COUNT(*) 
+				FROM TBL_EXP_CONTRACT_MEMBER 
+				WHERE CONTRACT_ID = #{CONTRACT_ID} 
+				AND RELATION_TYPE != 'EXECUTE'  
+				AND USE_YN = 'Y' AND DEL_YN = 'N'
+		)		
+	</select>	
+	<update id="updateContractProcessState" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.updateContractProcessState
+			계약 상태 변경 및 이전상태 저장
+		*/
+		UPDATE TBL_EXP_CONTRACT
+		SET PROCESS_STATE = #{PROCESS_STATE}
+		<if test=" PRE_PROCESS_STATE != null and !PRE_PROCESS_STATE.equals('') ">
+		,	PRE_PROCESS_STATE =  #{PRE_PROCESS_STATE}
+		</if>
+		<if test=" PRE_PROCESS_STATE == null or PRE_PROCESS_STATE.equals('') ">
+		,	PRE_PROCESS_STATE =  PROCESS_STATE
+		</if>
+		,	UPDATE_USER = #{sessionVo.userId}
+		,	UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE CONTRACT_ID	 = #{CONTRACT_ID}
+	</update>
+	
+	<delete id="deleteContract" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.deleteContract
+			계약 삭제
+		*/
+		UPDATE TBL_EXP_CONTRACT
+		SET USE_YN = 'N'
+		,	DEL_YN = 'Y'
+		,	UPDATE_USER = #{sessionVo.userId}
+		,	UPDATE_DATE = GET_KRDT(SYSDATE)
+		WHERE CONTRACT_ID	 = #{CONTRACT_ID}
+	</delete>
+	
+	<select id="getContractMemberList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getContractMemberList
+			계약 관계자 조회 
+		*/
+		SELECT 
+		  CM.CONTRACT_ID
+		, CM.USER_ID
+		, U.USER_NM
+		, U.GRADE
+		, GET_CODE_NM ( 'GRADE', U.GRADE) AS GRADE_NM
+		, CM.RELATION_TYPE
+		, GET_CODE_NM ( 'RELATION_TYPE', CM.RELATION_TYPE) AS RELATION_TYPE_NM
+		, NULL AS POSITION
+		, CM.USE_YN
+		, CM.DEL_YN
+		, CM.UPDATE_USER
+		, CM.UPDATE_DATE
+		FROM TBL_EXP_CONTRACT_MEMBER CM
+		, TBL_EXP_USER U
+		WHERE 1=1 
+		AND CM.CONTRACT_ID =  #{CONTRACT_ID}
+		AND CM.USER_ID = U.USER_ID
+		AND CM.USE_YN = 'Y'
+		AND CM.DEL_YN = 'N'
+		AND CM.RELATION_TYPE !='OVERRIDING' /* OVERRIDING 주석 */
+		<if test=" RELATION_TYPE != null and RELATION_TYPE != '' " >
+			AND CM.RELATION_TYPE = #{RELATION_TYPE} 
+		</if>		
+		ORDER BY 
+		CASE CM.RELATION_TYPE
+		    WHEN 'EXECUTE'		THEN '1'
+		    WHEN 'COWORK' 		THEN '2'
+		    WHEN 'SALES' 		THEN '3'
+		    WHEN 'OVERRIDING'	THEN '4'
+		    WHEN 'SUGGESTER'	THEN '5'
+	    END 
+	</select>	
+
+	<update id="updateContractMember" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.updateContractMember
+			계약 관계자 저장
+		*/
+		MERGE INTO TBL_EXP_CONTRACT_MEMBER T
+		USING (
+		  SELECT #{CONTRACT_ID}		AS CONTRACT_ID,
+		         #{USER_ID} 		AS USER_ID,
+		         #{RELATION_TYPE} 	AS RELATION_TYPE,
+		         'Y'	 			AS USE_YN,
+		         'N' 				AS DEL_YN,
+		         #{sessionVo.userId}	AS UPDATE_USER
+		  FROM dual
+		) S
+		ON (T.CONTRACT_ID	= S.CONTRACT_ID 
+		AND T.USER_ID		= S.USER_ID 
+		)
+		WHEN MATCHED THEN
+		  UPDATE SET
+		         T.RELATION_TYPE 			= S.RELATION_TYPE,
+		         T.USE_YN					= S.USE_YN,
+		         T.DEL_YN					= S.DEL_YN,
+		         T.UPDATE_USER				= S.UPDATE_USER,
+		         T.UPDATE_DATE				= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN 
+    		INSERT (    CONTRACT_ID,   USER_ID,   RELATION_TYPE,  USE_YN,   DEL_YN,   UPDATE_USER, UPDATE_DATE)
+   			VALUES (  S.CONTRACT_ID, S.USER_ID, S.RELATION_TYPE,  'Y'	 , 	 'N'   , S.UPDATE_USER, GET_KRDT(SYSDATE))
+	</update>
+	
+	<delete id="deleteContractMember" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.deleteContractMember
+			계약 관계자 삭제
+		*/
+		DELETE FROM  TBL_EXP_CONTRACT_MEMBER
+		WHERE CONTRACT_ID	= #{CONTRACT_ID}
+	</delete>
+	
+	<select id="getConsultingList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getConsultingList
+			컨설팅 리스트 조회 
+		*/
+		SELECT CONSULTING_ID
+		,CONSULTING_NM 
+		,CONSULTING_TYPE 
+		,GET_CODE_NM('CONSULTING_TYPE', CONSULTING_TYPE )  CONSULTING_TYPE_NM
+		,CONSULTING_DESC 
+		FROM TBL_EXP_CONSULTING 
+		WHERE 1=1
+		<if test=" SEARCH_ID != null and SEARCH_ID != '' " >
+		AND (
+			CONSULTING_ID 	like '%' || #{SEARCH_ID} || '%'
+		 OR CONSULTING_NM 	like '%' || #{SEARCH_ID} || '%'
+		 OR GET_CODE_NM('CONSULTING_TYPE', CONSULTING_TYPE ) like '%' || #{SEARCH_ID} || '%'
+		 OR CONSULTING_DESC like '%' || #{SEARCH_ID} || '%'
+		)
+		</if>
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>     
+	</select>	
+
+
+
+	<update id="registProject">
+		MERGE INTO TBL_EXP_CONTRACT T
+		USING (
+		  SELECT #{CONTRACT_ID}							AS CONTRACT_ID
+		  FROM DUAL
+		) S
+		ON (
+			T.CONTRACT_ID	= S.CONTRACT_ID 
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.USER_ID 				= #{USER_ID				}
+				,T.BUYER_ID 			= #{BUYER_ID			}
+				,T.CONSULTING_ID 		= #{CONSULTING_ID		}
+				,T.UPDATE_USER			= #{sessionVo.userId	}
+				,T.UPDATE_DATE			= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+				 CONTRACT_ID
+				,USER_ID
+				,BUYER_ID
+				,CONSULTING_ID
+				,PROCESS_STATE
+				,USE_YN
+				,DEL_YN
+				,BASE_FOLDER_ID
+				,UPDATE_DATE
+				,UPDATE_USER
+				,CREATE_DATE
+				,CREATE_USER
+				,SP_CSTM_ID
+			) VALUES ( 
+				 #{CONTRACT_ID			}
+				,#{USER_ID				}
+				,#{BUYER_ID				}
+				,#{CONSULTING_ID		}
+				,'PRE_CONTRACT'
+				,'Y'
+				,'N' 
+				,#{BASE_FOLDER_ID		}
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+				,#{sessionVo.spCstmId	}
+			)
+	</update>
+
+    <select id="getProjectList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  contract.getProjectList
+            프로젝트 리스트 조회 
+        */
+        WITH TM AS (
+            SELECT
+                 CONTRACT_ID
+                ,LISTAGG(USER_NM || '(' || TEAM_USER_ROLE_NM, '), ') WITHIN GROUP (ORDER BY TEAM_USER_ROLE_NM) || ')' AS TEAM_MEMBER_LIST
+            FROM (
+                    SELECT 
+                         A.CONTRACT_ID 
+                        ,GET_USER_NM(B.USER_ID) AS USER_NM
+                        ,(SELECT CODE_NM FROM ${dbHdr}${comnHdr}TBL_EXP_CODE WHERE GRP_CODE_ID = 'TEAM_USER_ROLE' AND CODE_ID = B.TEAM_USER_ROLE) AS TEAM_USER_ROLE_NM
+                    FROM 
+                          TBL_EXP_CONTRACT      A
+                         ,TBL_EXP_TEAM_MEMBER   B
+                    WHERE
+                        A.CONTRACT_ID = B.CONTRACT_ID   
+            )
+            GROUP BY CONTRACT_ID
+        )
+        SELECT 
+             A.CONTRACT_ID
+            ,A.USER_ID
+            ,GET_USER_NM(A.USER_ID) AS USER_NM
+            ,B.USER_ID AS CONSULTANT_USER_ID
+            ,E.USER_NM AS CONSULTANT_USER_NM
+            ,A.BUYER_ID
+            ,C.BUYER_NM
+            ,A.CONSULTING_ID
+            ,D.CONSULTING_NM
+            ,A.PROCESS_STATE
+            ,GET_CODE_NM('PROCESS_STATE', PROCESS_STATE) AS PROCESS_STATE_NM
+            ,TO_CHAR( A.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+            ,(  
+                SELECT GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) FROM TBL_EXP_APPROVAL B WHERE A.CONTRACT_ID = B.RELATION_ID
+                ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+             ) AS APP_STATE_NM
+            ,(SELECT FOLDER_ID FROM TBL_EXP_FOLDER FD WHERE FD.FOLDER_ID = A.BASE_FOLDER_ID AND FD.DEL_YN = 'N') AS BASE_FOLDER_ID
+            ,F.TEAM_MEMBER_LIST
+        FROM 
+              TBL_EXP_CONTRACT      A
+             ,TBL_EXP_TEAM_MEMBER   B
+             ,TBL_EXP_BUYER         C
+             ,TBL_EXP_CONSULTING    D
+             ,TBL_EXP_USER          E
+             ,TM                    F
+        WHERE  1=1
+            AND B.CONTRACT_ID(+)    = A.CONTRACT_ID
+            AND B.TEAM_USER_ROLE(+) IN ('EXEC')
+            AND (
+                    A.CONTRACT_ID   IN ( SELECT CONTRACT_ID FROM TBL_EXP_TEAM_MEMBER WHERE USER_ID = 'k2navyrd')
+                OR  A.USER_ID       = 'k2navyrd'
+                OR  A.CREATE_USER   = 'k2navyrd'
+                OR  'MANAGER' IN ('MANAGER', 'SYSTEM')
+            )
+            AND A.BUYER_ID              = C.BUYER_ID
+            AND A.CONSULTING_ID         = D.CONSULTING_ID
+            AND B.USER_ID               = E.USER_ID(+)
+            AND A.CONTRACT_ID           = F.CONTRACT_ID(+)
+            AND A.DEL_YN                = 'N'
+        ORDER BY UPDATE_DATE DESC
+    </select>
+	<select id="getProjectList_BAK" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getProjectList
+			프로젝트 리스트 조회 
+		*/
+
+		WITH TM AS (
+			SELECT
+				 CONTRACT_ID
+				,LISTAGG(USER_NM || '(' || TEAM_USER_ROLE_NM, '), ') WITHIN GROUP (ORDER BY TEAM_USER_ROLE_NM) || ')' AS TEAM_MEMBER_LIST
+			FROM (
+					SELECT 
+						 A.CONTRACT_ID 
+						,GET_USER_NM(B.USER_ID) AS USER_NM
+						,(SELECT CODE_NM FROM ${dbHdr}${comnHdr}TBL_EXP_CODE WHERE GRP_CODE_ID = 'TEAM_USER_ROLE' AND CODE_ID = B.TEAM_USER_ROLE) AS TEAM_USER_ROLE_NM
+					FROM 
+					 	  TBL_EXP_CONTRACT  	A
+					 	 ,TBL_EXP_TEAM_MEMBER 	B
+					WHERE
+						A.CONTRACT_ID = B.CONTRACT_ID	
+			)
+			GROUP BY CONTRACT_ID
+		)
+		SELECT 
+			 A.CONTRACT_ID
+			,A.USER_ID
+			,GET_USER_NM(A.USER_ID) AS USER_NM
+			,B.USER_ID AS CONSULTANT_USER_ID
+			,E.USER_NM AS CONSULTANT_USER_NM
+			,A.BUYER_ID
+			,C.BUYER_NM
+			,A.CONSULTING_ID
+			,D.CONSULTING_NM
+			,A.PROCESS_STATE
+			,GET_CODE_NM('PROCESS_STATE', PROCESS_STATE) AS PROCESS_STATE_NM
+			,TO_CHAR( A.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+			,(  
+                SELECT GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) FROM TBL_EXP_APPROVAL B WHERE A.CONTRACT_ID = B.RELATION_ID
+                ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+             ) AS APP_STATE_NM
+            ,(SELECT FOLDER_ID FROM TBL_EXP_FOLDER FD WHERE FD.FOLDER_ID = A.BASE_FOLDER_ID AND FD.DEL_YN = 'N') AS BASE_FOLDER_ID
+            ,F.TEAM_MEMBER_LIST
+		FROM 
+		 	  TBL_EXP_CONTRACT  	A
+		 	 ,TBL_EXP_TEAM_MEMBER 	B
+		 	 ,TBL_EXP_BUYER 		C
+		 	 ,TBL_EXP_CONSULTING 	D
+		 	 ,TBL_EXP_USER			E
+		 	 ,TM					F
+		WHERE  1=1
+			AND B.CONTRACT_ID(+)    = A.CONTRACT_ID
+			AND B.TEAM_USER_ROLE(+) IN ('EXEC')
+			AND (
+					A.CONTRACT_ID 	IN ( SELECT CONTRACT_ID FROM TBL_EXP_TEAM_MEMBER WHERE USER_ID = #{sessionVo.userId})
+				OR	A.USER_ID 		= #{sessionVo.userId}
+				OR	A.CREATE_USER	= #{sessionVo.userId}
+				OR  #{sessionVo.systemRoleId} IN ('MANAGER', 'SYSTEM')
+			)
+			AND A.BUYER_ID				= C.BUYER_ID
+			AND A.CONSULTING_ID			= D.CONSULTING_ID
+			AND B.USER_ID				= E.USER_ID(+)
+			AND A.CONTRACT_ID			= F.CONTRACT_ID(+)
+			<if test=" BUYER_ID != null and BUYER_ID != '' " >
+			AND C.BUYER_ID				= #{BUYER_ID}
+			</if>
+			AND A.DEL_YN 				= 'N'
+			<if test=" searchWord != null and searchWord != '' " >
+			AND (
+					GET_USER_NM(B.USER_ID)	LIKE '%${searchWord}%'
+				OR	C.BUYER_NM				LIKE '%${searchWord}%'
+				OR	D.CONSULTING_NM			LIKE '%${searchWord}%'
+			)
+			</if>
+			<if test=" consultingTypeList != null and consultingTypeList.size() > 0">
+				AND D.CONSULTING_TYPE	IN 
+				<foreach item="consultingType" collection="consultingTypeList" open="(" close=")" separator=",">
+					#{consultingType}		
+				</foreach>	
+			</if>
+			<if test=" buyerList != null and buyerList.size() > 0">
+				AND A.BUYER_ID	IN 
+				<foreach item="buyerId" collection="buyerList" open="(" close=")" separator=",">
+					#{buyerId}		
+				</foreach>	
+			</if>
+			<if test=" consultingList != null and consultingList.size() > 0">
+				AND A.CONSULTING_ID	IN 
+				<foreach item="consultingId" collection="consultingList" open="(" close=")" separator=",">
+					#{consultingId}		
+				</foreach>	
+			</if>
+			
+			<if test=" startDate != null and !startDate.equals('') ">
+		        AND A.UPDATE_DATE <![CDATA[>=]]> TO_DATE( '${startDate} 00:00:00' , 'YYYY-MM-DD HH24:MI:SS' )
+	       	</if>
+			<if test=" endDate != null and !endDate.equals('') ">
+		        AND A.UPDATE_DATE <![CDATA[<=]]>  TO_DATE( '${endDate} 23:59:59'  , 'YYYY-MM-DD HH24:MI:SS' )
+	       	</if>
+	       	
+			
+			
+		ORDER BY UPDATE_DATE DESC			
+				
+	</select>	
+
+    <select id="getProjectInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  contract.getProjectInfo
+            프로젝트 정보 조회 
+        */
+
+        SELECT 
+             A.CONTRACT_ID
+            ,A.USER_ID
+            ,GET_USER_NM(A.USER_ID) AS USER_NM
+            ,B.USER_ID AS CONSULTANT_USER_ID
+            ,E.USER_NM AS CONSULTANT_USER_NM
+            ,A.BUYER_ID
+            ,C.BUYER_NM
+            ,A.CONSULTING_ID
+            ,D.CONSULTING_NM
+            ,A.PROCESS_STATE
+            ,GET_CODE_NM('PROCESS_STATE', PROCESS_STATE) AS PROCESS_STATE_NM
+            ,TO_CHAR( A.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+            ,(  
+                SELECT GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) FROM TBL_EXP_APPROVAL B WHERE A.CONTRACT_ID = B.RELATION_ID
+                ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+             ) AS APP_STATE_NM
+            ,A.BASE_FOLDER_ID
+        FROM 
+              TBL_EXP_CONTRACT      A
+             ,TBL_EXP_TEAM_MEMBER   B
+             ,TBL_EXP_BUYER         C
+             ,TBL_EXP_CONSULTING    D
+             ,TBL_EXP_USER          E
+        WHERE  1=1
+            AND B.CONTRACT_ID(+)    = A.CONTRACT_ID
+            AND B.TEAM_USER_ROLE(+) IN ('EXEC')
+            AND (
+                    A.CONTRACT_ID   IN ( SELECT CONTRACT_ID FROM TBL_EXP_TEAM_MEMBER WHERE USER_ID = #{sessionVo.userId})
+                OR  A.USER_ID       = #{sessionVo.userId}
+            )
+            AND A.BUYER_ID              = C.BUYER_ID
+            AND A.CONSULTING_ID         = D.CONSULTING_ID
+            AND B.USER_ID               = E.USER_ID(+)
+            AND A.DEL_YN                = 'N'
+            AND A.CONTRACT_ID           = #{CONTRACT_ID}
+        ORDER BY UPDATE_DATE DESC           
+                
+    </select>   
+    
+    <select id="getContractInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		SELECT
+		    CONTRACT_ID,
+		    USER_ID,
+		    BUYER_ID,
+		    CONTACT_DATE,
+		    CONTRACT_DATE,
+		    CONTRACT_TYPE,
+		    EXPIRE_DATE,
+		    TOTAL_COST,
+		    CONSULTING_ID,
+		    PROCESS_STATE,
+		    PRE_PROCESS_STATE,
+		    LAST_SOLUTION,
+		    TAX_MNG,
+		    LABOR_MNG,
+		    CONSULTING_CLASS,
+		    USE_YN,
+		    DEL_YN,
+		    UPDATE_USER,
+		    UPDATE_DATE,
+		    SP_CSTM_ID,
+		    BASE_FOLDER_ID,
+		    CREATE_USER,
+		    CREATE_DATE,
+		    ANOTHER_EXPERT,
+            (SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE BUYER_ID = A.BUYER_ID) AS BUYER_NM,
+            (SELECT CONSULTING_NM FROM TBL_EXP_CONSULTING WHERE CONSULTING_ID = A.CONSULTING_ID) AS CONSULTING_NM
+		FROM
+		    TBL_EXP_CONTRACT A
+		WHERE CONTRACT_ID = #{CONTRACT_ID}  
+	</select>
+
+
+	<update id="updateProject">
+		/*	contract.updateProject
+			Project 상태값 Update
+		*/
+		
+		UPDATE TBL_EXP_CONTRACT
+			SET PROCESS_STATE = #{PROCESS_STATE}
+		WHERE 
+			CONTRACT_ID = #{CONTRACT_ID}
+	</update>
+
+	<update id="updateProjectUserId">
+		/*	contract.updateProjectUserId
+			Project등록시 Sales User 변경 
+		*/
+		UPDATE 
+			TBL_EXP_CONTRACT 
+		SET USER_ID = #{USER_ID} 
+		WHERE 
+			CONTRACT_ID = #{CONTRACT_ID}
+	</update>
+
+	<update id="updateBaseFolderIdOfProject">
+		/*	contract.updateBaseFolderIdOfProject
+			Project 기본 폴더 ID Update
+		*/
+		UPDATE TBL_EXP_CONTRACT
+			SET BASE_FOLDER_ID 	= #{BASE_FOLDER_ID}
+		WHERE 
+			CONTRACT_ID 		= #{CONTRACT_ID}
+	</update>
+
+
+	<update id="deleteProject">
+		/*	contract.deleteProject
+			Project 삭제
+		*/
+		
+		UPDATE TBL_EXP_CONTRACT
+			SET DEL_YN = 'Y'
+		WHERE 
+			CONTRACT_ID = #{CONTRACT_ID}
+	</update>
+
+
+
+	<select id="getWorkCmmtList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getWorkCmmtList
+			자문 진행 현황 / 진행 현황 리스트
+		*/
+		SELECT 
+			 WORK_CMMT_ID
+			,A.CONTRACT_ID
+			,CMMT
+			,UPDATE_USER
+			,GET_USER_NM(A.UPDATE_USER) AS USER_NM
+			,TO_CHAR( A.UPDATE_DATE , 'MM-DD HH24:MI' ) AS UPDATE_DATE
+			,A.UPDATE_DATE AS UPDATE_DATE_ORD
+			,A.DEL_YN
+		FROM 
+		 	 TBL_EXP_WORK_CMMT  A
+		WHERE 1=1
+			AND	A.CONTRACT_ID 	= #{CONTRACT_ID}
+		<if test=" lastReadTime != null and !lastReadTime.equals('') ">
+		    AND A.UPDATE_DATE > TO_DATE( #{lastReadTime} , 'YYYY-MM-DD HH24:MI:SS' )  
+       	</if>
+			
+		ORDER BY UPDATE_DATE_ORD ASC		
+	</select>	
+	
+	<update id="registWorkCmmt">
+		/*	contract."registWorkCmmt"
+			자문 진행 현황 / 진행 현황 등록
+		*/
+		INSERT INTO TBL_EXP_WORK_CMMT (
+			 WORK_CMMT_ID
+			,CONTRACT_ID
+			,CMMT
+			,UPDATE_DATE
+			,UPDATE_USER
+			,SP_CSTM_ID
+		) VALUES (
+			 #{WORK_CMMT_ID	}
+			,#{CONTRACT_ID	}
+			,#{CMMT			}
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+			,#{sessionVo.spCstmId	}
+		)
+	</update>
+
+	<update id="deleteWorkCmmt">
+		/*	contract."deleteWorkCmmt"
+			자문 진행 현황 / 진행 현황 삭제
+		*/
+		UPDATE 
+			TBL_EXP_WORK_CMMT 
+		SET 
+			 DEL_YN 		= 'Y' 
+			,UPDATE_DATE 	= GET_KRDT(SYSDATE) 
+		WHERE 
+			WORK_CMMT_ID = #{WORK_CMMT_ID}
+	</update>
+	
+	<update id="updateWorkCmmt">
+		/*	contract."updateWorkCmmt"
+			자문 진행 현황 / 진행 현황 메모 수정
+		*/
+		UPDATE 
+			TBL_EXP_WORK_CMMT 
+		SET 
+			 CMMT 			= #{CMMT} 
+			,UPDATE_DATE 	= GET_KRDT(SYSDATE) 
+		WHERE 
+			WORK_CMMT_ID 	= #{WORK_CMMT_ID}
+	</update>
+	
+
+
+	<select id="getTodoList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getTodoList
+			자문 진행 현황 / TODO 리스트
+		*/
+		SELECT 
+			 TODO_ID
+			,CONTRACT_ID
+			,TODO
+			,EXEC_CHECK
+			,UPDATE_USER
+			,GET_USER_NM(UPDATE_USER) AS UPDATE_USER_NM
+			,TO_CHAR( UPDATE_DATE , 'MM-DD HH24:MI' ) AS UPDATE_DATE
+		FROM 
+		 	TBL_EXP_TODO  A
+		WHERE  1=1
+			AND	CONTRACT_ID = #{CONTRACT_ID}
+			AND	SP_CSTM_ID	= #{sessionVo.spCstmId}
+			AND DEL_YN		= 'N'
+		ORDER BY UPDATE_DATE DESC		
+	</select>	
+	<update id="registTodo">
+		/*	contract.registTodo
+			자문 진행 현황 / TODO 등록
+		*/
+		INSERT INTO TBL_EXP_TODO (
+			 TODO_ID
+			,CONTRACT_ID
+			,TODO
+			,EXEC_CHECK
+			,UPDATE_DATE
+			,UPDATE_USER
+			,SP_CSTM_ID
+		) VALUES (
+			 #{TODO_ID		}
+			,#{CONTRACT_ID	}
+			,#{TODO			}
+			,'N'
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+			,#{sessionVo.spCstmId	}
+		)
+	</update>
+
+	<update id="deleteTodo">
+		/*	contract.deleteTodo
+			자문 진행 현황 / TODO 삭제
+		*/
+		UPDATE 
+			TBL_EXP_TODO 
+		SET 
+			DEL_YN = 'Y' 
+		WHERE 
+			TODO_ID = #{TODO_ID}
+	</update>
+
+	<update id="updateTodo">
+		/*	contract.updateTodo
+			자문 진행 현황 / TODO 실행 상태 변경
+		*/
+		UPDATE 
+			TBL_EXP_TODO 
+		SET 
+			EXEC_CHECK = #{EXEC_CHECK}
+		WHERE 
+			TODO_ID = #{TODO_ID}
+	</update>
+
+
+	<select id="getConsultingContentList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getConsultingContentList
+			자문 진행 현황 / 컨설팅 진행 현황 리스트
+		*/
+		SELECT 
+			 CONSULTING_ID
+			,CONSULTING_NM
+			,CONSULTING_TYPE
+			,CONSULTING_DESC			
+		FROM 
+		 	TBL_EXP_CONSULTING  A
+		WHERE  1=1
+			AND	CONSULTING_ID 	= #{CONSULTING_ID}
+	</select>	
+
+	<update id="insertTeam">
+		/*	contract.insertTeam
+			팀 생성
+		*/
+		MERGE INTO TBL_EXP_TEAM T
+		USING (
+		  SELECT #{CONTRACT_ID}		AS CONTRACT_ID
+		  FROM DUAL
+		) S
+		ON (T.CONTRACT_ID	= S.CONTRACT_ID)
+		WHEN NOT MATCHED THEN 
+			INSERT (
+				 CONTRACT_ID
+				,ALLOWED
+				,UPDATE_DATE
+				,UPDATE_USER
+				,SP_CSTM_ID
+			) VALUES (
+				 #{CONTRACT_ID}
+				,#{ALLOWED}
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+				,#{sessionVo.spCstmId	}
+			)
+		
+	</update>
+
+	<update id="insertTeamMember">
+		/*	contract.insertTeamMember
+			팀 멤버 등록
+		*/
+		INSERT INTO TBL_EXP_TEAM_MEMBER (
+		     CONTRACT_ID
+		    ,USER_ID
+		    ,TEAM_USER_ROLE
+		    ,COWORK_RATE
+		    ,HEADER_YN
+			,UPDATE_DATE
+			,UPDATE_USER
+			,SP_CSTM_ID
+		) VALUES (
+			 #{CONTRACT_ID   }
+			,#{USER_ID       }
+			,#{TEAM_USER_ROLE}
+			,'${COWORK_RATE  }'
+			,'${HEADER_YN    }'
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+			,#{sessionVo.spCstmId	}
+		)
+	</update>
+	
+	<update id="deleteTeam">
+		/*	contract.deleteTeam
+			팀 멤버 삭제
+		*/
+		DELETE FROM TBL_EXP_TEAM
+		WHERE CONTRACT_ID = #{CONTRACT_ID}
+	</update>
+	
+	<update id="deleteTeamMember">
+		/*	contract.deleteTeamMember
+			팀 멤버 삭제
+		*/
+		DELETE FROM TBL_EXP_TEAM_MEMBER
+		WHERE CONTRACT_ID = #{CONTRACT_ID}
+	</update>
+	
+	
+
+	<update id="updateTeamState" parameterType="java.util.HashMap"  flushCache="true" >
+		/*	contract.updateTeamState
+			계약 관련 팀 상태 승인으로 변경
+		*/
+		UPDATE TBL_EXP_TEAM
+		SET ALLOWED= 'Y'
+		WHERE CONTRACT_ID	 = #{CONTRACT_ID}
+	</update>
+
+			
+
+	<select id="getAdviceApprovalProcessList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getAdviceApprovalProcessList
+			자문 진행 현황 / 결재 현황 리스트
+		*/
+		SELECT 
+			 A.CONTRACT_ID
+			,A.USER_ID
+			,GET_USER_NM(A.USER_ID) AS USER_NM
+			,A.BUYER_ID
+			,(SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE BUYER_ID = A.BUYER_ID) AS BUYER_NM
+			,A.CONSULTING_ID
+			,(SELECT CONSULTING_NM FROM TBL_EXP_CONSULTING WHERE CONSULTING_ID = A.CONSULTING_ID) AS CONSULTING_NM
+			,A.PROCESS_STATE
+			,B.CODE_NM AS PROCESS_STATE_NM
+			,TO_CHAR( A.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+		FROM 
+			 TBL_EXP_CONTRACT 	A
+			,${dbHdr}${comnHdr}TBL_EXP_CODE		B
+		WHERE 1=1
+			AND B.GRP_CODE_ID 	= 'PROCESS_STATE'
+			AND A.PROCESS_STATE = B.CODE_ID
+			AND	USER_ID 		= #{sessionVo.userId	}
+			AND	A.SP_CSTM_ID 	= #{sessionVo.spCstmId	}
+			AND	PROCESS_STATE IN ('ON_CONTRACTING_APPR','ON_CONTRACTED_APPR','ON_COMPLETED_APPR')
+			AND A.DEL_YN = 'N'
+			AND A.USE_YN = 'Y'
+		ORDER BY B.SORT_ORDER
+	</select>	
+	
+
+	<update id="updateLastReadTime">
+		/*	contract.updateLastReadTime
+			팀 메시지 마지막 읽은 시간 Setting
+		*/
+		MERGE INTO TBL_EXP_LAST_READ_TIME T
+		USING (
+		  SELECT 
+		  		 #{CONTRACT_ID}				AS CONTRACT_ID
+		  		,#{sessionVo.userId		}	AS UPDATE_USER
+		  FROM DUAL
+		) S
+		ON (
+				T.CONTRACT_ID	= S.CONTRACT_ID
+			AND T.UPDATE_USER	= S.UPDATE_USER
+		)	
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.UPDATE_DATE 				= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN 
+			INSERT (
+				 CONTRACT_ID
+				,UPDATE_DATE
+				,UPDATE_USER
+				,SP_CSTM_ID
+			) VALUES (
+				 #{CONTRACT_ID}
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+				,#{sessionVo.spCstmId	}
+			)
+	</update>
+
+	
+	<select id="getCmmtUpdateContractList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	contract.getCmmtUpdateContractList
+			자문진행현황 Comment 업데이트 리스트
+		*/
+		WITH CTR AS (
+				SELECT 
+				     B.CONTRACT_ID 
+		            ,MAX(B.UPDATE_DATE) UPDATE_DATE
+				FROM 
+				     TBL_EXP_LAST_READ_TIME A
+				    ,TBL_EXP_WORK_CMMT      B    
+				WHERE
+				        A.CONTRACT_ID = B.CONTRACT_ID
+				    AND A.UPDATE_DATE <![CDATA[<]]> B.UPDATE_DATE
+				    AND A.UPDATE_USER = #{sessionVo.userId}
+				GROUP BY B.CONTRACT_ID    
+		)
+		SELECT 
+		     A.CONTRACT_ID
+		    ,C.BUYER_ID
+		    ,C.BUYER_NM
+		    ,D.CONSULTING_ID
+		    ,D.CONSULTING_NM
+		    ,TO_CHAR( A.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+		FROM 
+		     CTR                A
+		    ,TBL_EXP_CONTRACT   B
+		    ,TBL_EXP_BUYER      C
+		    ,TBL_EXP_CONSULTING D
+		WHERE
+		        A.CONTRACT_ID   = B.CONTRACT_ID
+		    AND B.BUYER_ID      = C.BUYER_ID
+		    AND B.CONSULTING_ID = D.CONSULTING_ID
+    
+		
+	</select>	
+			
+</mapper>

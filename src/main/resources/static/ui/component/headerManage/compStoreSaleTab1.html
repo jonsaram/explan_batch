@@ -1,0 +1,74 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+
+			// Code List 읽어오기
+			//var group1CdList = C_COM.getBrandCodeList(<@compId>.brandId, "STORE_MENU_GROUP1");
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "headerManage.getStoreSalesMstList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_STORE_SALES_MST"
+					,columnMap 		: {
+						 "STORE_SALES_ID" : { headerText : "지점매출ID"	, hidden : "Y"								}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"STORE_ID"       : { headerText : "지점ID"		, hidden : "Y"								}
+						,"STORE_NM"       : { headerText : "지점명"		, width : "170px"	, noSave : "Y"			}
+						,"YYYYMMDD"       : { headerText : "거레일시"  												}
+						,"TAXABLE_AMOUNT" : { headerText : "과세금액"  												}
+						,"SURTAX_SUM"     : { headerText : "부가세계"  												}
+						,"NET_SALES"      : { headerText : "순매출액"  	, width : "100px"	, dataType : "number"	}
+						,"AVERAGE_SALES"  : { headerText : "평균매출액"						, dataType : "number"	}
+						,"CUSTOMERS_NUM"  : { headerText : "고객수"    						, dataType : "number"	}
+						,"RECEIPT_CNT"    : { headerText : "영수건수"  						, dataType : "number"	}
+						,"RECEIPT_PRICE"  : { headerText : "영수단가"  						, dataType : "number"	}
+						,"CARD_SALES"     : { headerText : "카드매출액"	, width : "100px"	, dataType : "number"	}
+						,"CASH_SALES"     : { headerText : "현금매출액"	, width : "100px"	, dataType : "number"	}
+						,"DISCOUNT_PRICE" : { headerText : "할인액"    						, dataType : "number"	}
+						,"ETC_SALES"      : { headerText : "기타매출"  						, dataType : "number"	}
+					 }
+					,primaryKeyList		: ["STORE_SALES_ID"]
+					,searchColumnList	: ["STORE_NM", "YYYYMMDD"]						// Table 지정인경우 적용
+					,orderColumnList 	: ["STORE_ID", "YYYYMMDD DESC"]		// Table 지정인경우 적용
+					,searchWhereMap		: {"B.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,useRuntimeLoad		: 100
+					//,gridWidth			: "1800px"
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "A.STORE_ID"
+							,targetColumn	: "STORE_NM"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisComp) {
+								G_VAL.current.storeId = selectVal;
+								thisComp.reload();
+							 }
+						}
+					]
+				 }		
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);	
+		});
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

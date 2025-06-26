@@ -1,0 +1,127 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 companyId 	: ""
+		,gridParm	: {}
+		,loadComponent : function(selectList) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getMaterialsCompanyProductList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_FOOD_COMPANY_PRODUCT"
+					,columnMap 		: {
+						 "PRODUCT_ID"         			: { headerText : "상품ID"	,hidden		:"Y"          				} 
+						,"COMPANY_ID"         			: { headerText : "업체ID"	,hidden		:"Y"          				} 
+						,"COMPANY_NM"         			: { headerText : "물류회사"											} 
+						,"PRODUCT_CD"       			: { headerText : "상품코드"        									} 
+						,"PRODUCT_NM"         			: { headerText : "상품명"   ,width		: "200px", align : "left"	} 
+						,"UNIT"							: { headerText : "판매단위" 										}
+						,"UNIT_PRICE"					: { headerText : "판매단가" 										}
+						,"CONVERSION_QUANTITY"			: { headerText : "판매단위용량"    	,dataType : "number" 			}
+						,"BASE_UNIT"					: { headerText : "기준단가"    		,dataType : "number"
+							,initSetData : function(cellText, rowData) {
+								return 	toNumber(rowData.UNIT_PRICE / rowData.CONVERSION_QUANTITY, 2);				
+							 }
+						 }
+						,"DEL_YN"             			: { headerText : "사용여부", columnType : "selectbox", useCodeId : "REVERSE_YN" }
+						,"MATERIALS_CD"       			: { headerText : "상품CD"											} 
+						,"MST_MATERIALS_NM"     		: { headerText : "상품명"   										}
+						,"MST_PRODUCT_CLASS"    		: { headerText : "분류"    ,columnType : "selectbox", useCodeId : "PRODUCT_CLASS" }
+						,"MST_UNIT"             		: { headerText : "단위"    											}
+						,"MST_CONVERSION_UNIT_PRICE"	: { headerText : "단가"    ,dataType : "number" 					}
+						//,"MST_CONVERSION"       		: { headerText : "환산"    										}
+					 }
+					,headerTextGroup	: {
+						"Master 식자재" : [
+							 "MATERIALS_CD"     
+							,"MST_MATERIALS_NM"  
+							,"MST_PRODUCT_CLASS" 
+							,"MST_UNIT" 
+							,"MST_CONVERSION_UNIT_PRICE" 
+						]
+					 }
+					,columnConfig : {
+					 }
+					,primaryKeyList		: ["PRODUCT_ID"]
+					,searchColumnList	: ["A.PRODUCT_CD", "A.PRODUCT_NM", "A.MATERIALS_CD", "B.MATERIALS_NM"]
+					,orderColumnList 	: ["D.SORT_ORDER, B.SORT_ORDER, A.PRODUCT_CD"]
+					,searchWhereMap		: {"A.COMPANY_ID" : <@compId>.companyId }
+					,readOnly			: "Y"
+					,useRuntimeLoad		: 100
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBox"	
+							,title			: "물류회사"
+							,whereColumn	: "A.COMPANY_ID"
+							,targetColumn	: "COMPANY_NM"
+							,optionList 	: selectList
+							,defaultVal		: <@compId>.companyId
+							,onChange		: function(selectVal, thisComp) {
+								<@compId>.companyId = selectVal;
+								thisComp.reload();
+							}
+						}
+					]
+				 }
+				,callbackEditButton : function(parm) {
+
+					if(isEmpty(<@compId>.companyId)) { 
+						C_POP.alert('물류회사를 선택해 주세요.');
+						return;
+					}
+					
+					C_POP.open("popup_headerManage_cpFoodMaterialsEditPopup", {companyId : <@compId>.companyId}, function(retData){
+						if(retData.reload == "Y") {
+							<@compId>.<@compId>_tableGrid.reload();
+						}
+					});
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,setMaterialsCompanyList : function(brandId, callback) {
+			if(isEmpty(brandId)) {
+				C_POP.alert('Brand ID가 필요합니다.');
+				return;
+			}
+			var parm = {
+				 queryId 		: "common.getMaterialsCompanyList"
+				,requestParm	: {BRAND_ID : brandId}
+			}
+	        C_COM.requestQuery(parm, function(resultData) {
+	        	let selectList = C_COM.makeCodeList(resultData.data, "COMPANY_ID", "COMPANY_NM", ["", "선택"]);
+	    		if(selectList.length > 0 ) {
+	    			if(typeof callback == "function") callback(selectList); 
+	    		}
+	        });
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		let brandId = parm.brandId;
+		if(isEmpty(brandId)) brandId = G_VAL.session.BRAND_ID;
+		
+		<@compId>.setMaterialsCompanyList(brandId, function(selectList) {
+			if(isEmpty(selectList)) {
+				C_POP.alert('물류회사 등록이 필요합니다.');
+				return;
+			}
+			parm.companyId = selectList[0][0];
+
+			<@compId>.companyId = parm.companyId;
+			
+			<@compId>.loadComponent(selectList);
+		});
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+<component>

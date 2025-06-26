@@ -1,0 +1,1231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="common">
+
+	<cache />
+	
+	<select id="getCommonCodeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getCommonCodeList
+			공통코드 리스트 조회 
+		*/
+		SELECT
+		     A.GRP_CODE_ID
+		    ,A.GRP_CODE_NM
+		    ,A.USE_YN
+		    ,A.DEL_YN
+		    ,A.SORT_ORDER
+		    ,A.UPDATE_USER
+		    ,A.UPDATE_DATE
+		    ,B.CODE_ID
+		    ,B.CODE_NM
+		    ,B.CODE_DESC
+            ,B.ATTR1
+            ,B.ATTR2
+		FROM
+		     ${dbHdr}${comnHdr}TBL_EXP_GRPCODE    A
+		    ,${dbHdr}${comnHdr}TBL_EXP_CODE       B
+		WHERE 
+		    	A.GRP_CODE_ID = B.GRP_CODE_ID
+		    AND	A.USE_YN = 'Y'
+		    AND B.USE_YN = 'Y'
+		    <if test='GRP_CODE_ID !=null and  !GRP_CODE_ID.equals("")'>
+		    	AND A.GRP_CODE_ID = #{GRP_CODE_ID}
+		    </if>
+            <if test='CODE_ID !=null and  !CODE_ID.equals("")'>
+                AND B.CODE_ID = #{CODE_ID}
+            </if>
+		    <if test='attr1 !=null and  !attr1.equals("")'>
+		    	AND ATTR1 = #{attr1}
+		    </if>
+		    <if test='attr2 !=null and  !attr2.equals("")'>
+		    	AND ATTR2 = #{attr2}
+		    </if>
+		ORDER BY A.SORT_ORDER, B.SORT_ORDER    
+   	</select>
+	
+	<select id="getBrandCodeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getBrandCodeList
+			Brand코드 리스트 조회 (공통 코드 Setting용)
+		*/
+		SELECT
+		     A.BRAND_ID
+		    ,A.GRP_CODE_ID
+		    ,A.GRP_CODE_NM
+		    ,A.USE_YN
+		    ,A.DEL_YN
+		    ,A.SORT_ORDER
+		    ,A.UPDATE_USER
+		    ,A.UPDATE_DATE
+		    ,B.CODE_ID
+		    ,B.CODE_NM
+		    ,B.CODE_DESC
+		FROM
+		     TBL_EXP_BRAND_GRPCODE    A
+		    ,TBL_EXP_BRAND_CODE       B
+		WHERE 
+		    	A.BRAND_ID 		= B.BRAND_ID
+		    AND	A.GRP_CODE_ID 	= B.GRP_CODE_ID
+		    AND	A.USE_YN = 'Y'
+		    AND B.USE_YN = 'Y'
+		    <if test='BRAND_ID !=null and  !BRAND_ID.equals("")'>
+		    	AND A.BRAND_ID = #{BRAND_ID}
+		    </if>
+		    <if test='GRP_CODE_ID !=null and  !GRP_CODE_ID.equals("")'>
+		    	AND A.GRP_CODE_ID = #{GRP_CODE_ID}
+		    </if>
+		ORDER BY A.SORT_ORDER, B.SORT_ORDER    
+   	</select>
+	
+	<select id="getLoginUserList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getLoginUserList
+			로그인 사용자 리스트 조회 
+		*/
+		WITH OAUTH AS (
+			SELECT LOGIN_ID, MAIL_GUBUN, E_MAIL
+			FROM (
+			    SELECT 
+			        LOGIN_ID,
+			        MAIL_GUBUN,
+			        E_MAIL,
+			        ROW_NUMBER() OVER (
+			            PARTITION BY LOGIN_ID
+			            ORDER BY 
+			                CASE MAIL_GUBUN
+			                    WHEN 'KAKAO' THEN 1
+			                    WHEN 'NAVER' THEN 2
+			                    WHEN 'GOOGLE' THEN 3
+			                    ELSE 4
+			                END
+			        ) AS rn
+			    FROM TBL_EXP_OAUTH_INFO
+			) sub
+			WHERE rn = 1		
+		)
+		SELECT *
+		FROM(
+			SELECT LU.LOGIN_ID
+			, LU.BUYER_ID
+			,( SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE BUYER_ID = LU.BUYER_ID) AS BUYER_NM
+			,  LU.BRAND_ID
+			,( SELECT BRAND_NM FROM TBL_EXP_BUYER_BRAND WHERE BRAND_ID = LU.BRAND_ID) AS BRAND_NM
+			, LU.STORE_ID
+			,( SELECT STORE_NM FROM TBL_EXP_STORE_MST WHERE STORE_ID = LU.STORE_ID) AS STORE_NM
+			, LU.PASSWD, LU.UPDATE_USER, LU.UPDATE_DATE, LU.CREATE_USER, LU.CREATE_DATE
+			, A.ROLE_ID,A.USER_TYPE
+			, LU.LOGIN_ID AS userId
+			, LU.LOGIN_ID AS USER_ID
+			, O.E_MAIL
+			, LU.LOGIN_NM || CASE WHEN LU.USER_ID IS NOT NULL THEN '('||GET_USER_NM(LU.USER_ID)||')' ELSE NULL END AS LOGIN_NM
+			, LU.LOGIN_NM || CASE WHEN LU.USER_ID IS NOT NULL THEN '('||GET_USER_NM(LU.USER_ID)||')' ELSE NULL END AS USER_NM
+			, U.RECOMMENDER_ID							AS RECOMMENDER_ID
+			, GET_USER_NM(U.RECOMMENDER_ID)				AS RECOMMENDER_NM 
+			FROM TBL_EXP_LOGIN_USER LU
+			,${dbHdr}${comnHdr}TBL_EXP_AUTH A
+			,OAUTH O
+			,TBL_EXP_USER U
+			WHERE LU.LOGIN_ID  	= A.USER_ID
+			AND LU.LOGIN_ID 	= O.LOGIN_ID(+)
+			AND LU.LOGIN_ID 	= U.USER_ID(+)
+			AND LU.LOGIN_ID    != #{USER_ID}
+	        <choose>
+	          <when test='USER_TYPE != null and "ADMIN".equals(USER_TYPE)'>
+	            AND LU.BUYER_ID = #{BUYER_ID}
+	          </when>
+	          <when test='USER_TYPE != null and "HEADER".equals(USER_TYPE)'>
+	            AND LU.BUYER_ID = #{BUYER_ID}
+	            AND LU.BRAND_ID = #{BRAND_ID}
+	          </when>
+	          <when test='USER_TYPE != null and "STORE".equals(USER_TYPE)'>
+	            AND LU.BUYER_ID = #{BUYER_ID}
+	            AND LU.BRAND_ID = #{BRAND_ID}
+	            AND LU.STORE_ID = #{STORE_ID}
+	          </when>
+	          <when test='USER_TYPE != null and "USER".equals(USER_TYPE)'>
+	          	AND 1 != 1
+	          </when>
+	          <otherwise></otherwise>
+	        </choose>
+        )
+        <where>
+			<include refid="common.gridOptionWhere"/>
+		</where>
+		<include refid="common.gridOptionOrder"/>        
+   	</select>
+		
+	
+	<!-- MVT 및 Model의 실제 Data (관련 Table => T_MDL_MODEL_SAVE, T_MDL_MODEL_SAVE_MVT_ITEM) -->
+	<select id="getUserInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getUserInfo
+			사용자 정보 조회
+		*/
+		SELECT 
+			 'sample' AS USER_ID
+			,'나샘플' AS USER_NM
+		FROM DUAL 
+		WHERE 1 = 1
+	</select>
+	
+	<sql id="getTableData_body">
+		SELECT ROWNUM
+		<foreach item="item" index="index" collection="parm.columnList" separator="," open=",">
+		    <choose>
+		        <when test='"date".equals(item.dataType) and !"text".equals(item.saveType)'>
+				    <if test='item.dateFormat !=null and !item.dateFormat.equals("")'>
+			            TO_CHAR(${item.COLUMN_ID}, #{item.dateFormat}) AS ${item.COLUMN_ID}
+				    </if>
+				    <if test='item.dateFormat ==null or item.dateFormat.equals("")'>
+			            TO_CHAR(${item.COLUMN_ID}, 'YYYY-MM-DD') AS ${item.COLUMN_ID}
+				    </if>
+		        </when>
+		        <otherwise>
+				    <if test='!"N".equals(item.tableColumn)'>
+						${item.COLUMN_ID}
+				    </if>
+		        </otherwise>
+		    </choose>		    
+		</foreach>
+		FROM ${parm.tableName} 
+		WHERE 1 = 1
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+	<select id="getTableData" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* common.getTableData  */
+		<include refid="getTableData_body"/>
+	</select>
+	<select id="getTableData_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* common.getTableData_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getTableData_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getTableData_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* common.getTableData_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getTableData_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+	
+	
+	
+	<update id="deleteTableData" parameterType="map">
+		/*	common.deleteTableData
+			Table Data 삭제
+		*/
+		DELETE FROM ${tableName}
+		WHERE 1 = 1
+		<foreach item="item" index="index" collection="deleteWhereList" separator=" AND " open=" AND ">
+			${item.COLUMN_ID} = #{item.COLUMN_VAL}
+		</foreach>
+	</update>
+<!-- 
+	<update id="updateTableData" parameterType="map">
+			MERGE INTO ${tableName} t
+		USING (
+			SELECT
+				<foreach item="item" index="index" collection="updateWhereList" separator=",">
+					#{item.COLUMN_VAL} AS ${item.COLUMN_ID}
+				</foreach>
+			FROM DUAL
+		) s
+		ON (
+			<foreach item="item" index="index" collection="updateWhereList" separator=" AND ">
+				t.${item.COLUMN_ID} = s.#{item.COLUMN_ID}
+			</foreach>
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+			<foreach item="item" index="index" collection="updateColumnList" separator=",">
+				${item.COLUMN_ID} = #{item.COLUMN_VAL}
+			</foreach>
+		WHEN NOT MATCHED THEN
+			INSERT (
+				<foreach item="item" index="index" collection="updateColumnList" separator=",">
+					${item.COLUMN_ID}
+				</foreach>
+			)
+			VALUES (
+				<foreach item="item" index="index" collection="updateColumnList" separator=",">
+					#{item.COLUMN_VAL}
+				</foreach>
+			)
+	</update>
+-->
+	<update id="updateTableData" parameterType="map">
+		/*	common.updateTableData
+			Table Data Update
+		*/
+		UPDATE ${tableName} SET
+		<foreach item="item" index="index" collection="updateColumnList" separator=",">
+		    <choose>
+		        <when test='"date".equals(item.dataType) and !"text".equals(item.saveType)'>
+				    <if test='item.dateFormat !=null and !item.dateFormat.equals("")'>
+			            ${item.COLUMN_ID} = TO_DATE(#{item.COLUMN_VAL}, #{item.dateFormat})
+				    </if>
+				    <if test='item.dateFormat ==null or item.dateFormat.equals("")'>
+			            ${item.COLUMN_ID} = TO_DATE(#{item.COLUMN_VAL}, 'YYYY-MM-DD')
+				    </if>
+		        </when>
+		        <when test='"clob".equals(item.dataType)'>
+		        	${item.COLUMN_ID} = #{item.COLUMN_VAL:CLOB}
+		        </when>
+		        <otherwise>
+					${item.COLUMN_ID} = #{item.COLUMN_VAL}
+		        </otherwise>
+		    </choose>		    
+		</foreach>
+			,UPDATE_USER	= #{sessionVo.userId}
+			,UPDATE_DATE	= GET_KRDT(SYSDATE)       
+		WHERE
+		<foreach item="item" index="index" collection="updateWhereList" separator=" AND ">
+			${item.COLUMN_ID} = #{item.COLUMN_VAL}
+		</foreach>
+	</update>
+
+	<update id="insertTableData" parameterType="map">
+		/*	common.insertTableData
+			Table Data Insert
+		*/
+		INSERT INTO ${tableName}(
+			<foreach item="item" index="index" collection="insertColumnList" separator=",">
+				${item.COLUMN_ID}
+			</foreach>
+				,CREATE_USER
+				,CREATE_DATE
+				
+		)
+		VALUES (
+			<foreach item="item" index="index" collection="insertColumnList" separator=",">
+			    <choose>
+			        <when test='"date".equals(item.dataType) and !"text".equals(item.saveType)'>
+				    <if test='item.dateFormat !=null and !item.dateFormat.equals("")'>
+			            TO_DATE(#{item.COLUMN_VAL}, #{item.dateFormat})
+				    </if>
+				    <if test='item.dateFormat ==null or item.dateFormat.equals("")'>
+			            TO_DATE(#{item.COLUMN_VAL}, 'YYYY-MM-DD')
+				    </if>
+			        </when>
+			        <otherwise>
+						#{item.COLUMN_VAL}
+			        </otherwise>
+			    </choose>
+			</foreach>
+				,#{sessionVo.userId 	}
+				,GET_KRDT(SYSDATE)
+		)
+	</update>
+	
+	
+	<update id="mergeTableData" parameterType="map">
+		/*	common.mergeTableData
+			Table Data Merge
+		*/
+		MERGE INTO ${tableName} T
+		USING (
+			SELECT 
+			<foreach item="item" index="index" collection="updateColumnList" separator=",">
+			    <choose>
+			        <when test='"date".equals(item.dataType) and !"text".equals(item.saveType)'>
+					    <if test='item.dateFormat !=null and !item.dateFormat.equals("")'>
+				            TO_DATE(#{item.COLUMN_VAL}, #{item.dateFormat}) AS ${item.COLUMN_ID} 
+					    </if>
+					    <if test='item.dateFormat ==null or item.dateFormat.equals("")'>
+				            TO_DATE(#{item.COLUMN_VAL}, 'YYYY-MM-DD') 		AS ${item.COLUMN_ID}
+					    </if>
+			        </when>
+			        <when test='"clob".equals(item.dataType)'>
+			        	#{item.COLUMN_VAL:CLOB}					 			AS ${item.COLUMN_ID} 
+			        </when>
+			        <otherwise>
+						#{item.COLUMN_VAL}									AS ${item.COLUMN_ID} 
+			        </otherwise>
+			    </choose>		    
+			</foreach>
+		    FROM DUAL
+		) S
+		ON (
+		<foreach item="item" index="index" collection="updateWhereList" separator=" AND ">
+			T.${item.COLUMN_ID} = S.${item.COLUMN_ID}
+		</foreach>
+		)
+		WHEN MATCHED THEN
+		    UPDATE SET 
+			<foreach item="item" index="index" collection="targetColumnList" separator=",">
+				T.${item.COLUMN_ID} = S.${item.COLUMN_ID}
+			</foreach>
+		WHEN NOT MATCHED THEN
+		    INSERT (
+			<foreach item="item" index="index" collection="updateColumnList" separator=",">
+				${item.COLUMN_ID}
+			</foreach>
+				,CREATE_USER
+				,CREATE_DATE
+		    )
+		    VALUES (
+			<foreach item="item" index="index" collection="updateColumnList" separator=",">
+				S.${item.COLUMN_ID}
+			</foreach>
+				,#{sessionVo.userId 	}
+				,GET_KRDT(SYSDATE)
+			)
+	</update>
+	
+	
+	
+	<select id="getStoreList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getStoreList */
+		SELECT 
+		     STORE_ID
+		    ,STORE_ID
+		    ,STORE_NM
+		FROM TBL_EXP_STORE_MST
+		WHERE 1=1
+		    AND BRAND_ID 	= #{BRAND_ID}
+		    AND USE_YN 		= 'Y'
+		ORDER BY STORE_NM		    
+	</select>
+	
+	
+	
+	
+	<select id="getMaterialsCompanyList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getMaterialsCompanyList */
+		SELECT 
+		     COMPANY_ID
+		    ,COMPANY_NM
+            ,COMPANY_CD
+		FROM TBL_EXP_FOOD_MATERIALS_COMPANY
+		WHERE
+		    BRAND_ID = #{BRAND_ID}
+		ORDER BY COMPANY_NM		    
+	</select>
+	
+	
+
+	
+	<select id="getCommonQuery" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getCommonQuery 
+			공통 기본 쿼리
+		*/
+		SELECT ROWNUM
+		<foreach item="item" index="index" collection="columnList" separator="," open=",">
+			${item}
+		</foreach>
+		FROM ${tableName} 
+		WHERE 1 = 1
+		<foreach item="item" index="index" collection="searchColumnList" separator=" AND " open=" AND ">
+			${item.column} = #{item.value}
+		</foreach>
+			AND ROWNUM <![CDATA[<]]> 3000
+	</select>
+
+
+
+	<!-- Paging 관련 Template Start-->	
+	<sql id="totalWrapStart">
+		SELECT count(1) TOTAL_CNT FROM (
+	</sql>
+	<sql id="totalWrapEnd">
+		)
+	</sql>
+	<sql id="pagingWrapStart">
+		SELECT TBL.* FROM (
+			SELECT 
+				 ROWNUM AS ROWIDX
+				,BODY.*
+			FROM (
+	</sql>	
+	<sql id="pagingWrapEnd">
+			) BODY
+		) TBL
+		WHERE 
+			ROWIDX <![CDATA[>=]]> ${startIdx} AND ROWIDX <![CDATA[<=]]> ${endIdx}
+	</sql>	
+
+
+	<sql id="gridOptionWhere">
+	
+	    <if test='parm.searchColumnList !=null and  !parm.searchColumnList.equals("") and parm.searchValue !=null and  !parm.searchValue.equals("")'>
+			<foreach item="item" index="index" collection="parm.searchColumnList" separator=" OR " open=" AND ( " close=" ) ">
+			${item} LIKE '%${parm.searchValue}%'
+			</foreach>
+	    </if>
+	    <if test='parm.filterWhere !=null and  !parm.filterWhere.equals("")'>
+	    	AND ${parm.filterWhere}
+	    </if>
+	    <if test='parm.searchWhereList !=null and  !parm.searchWhereList.equals("")'>
+			<foreach item="item" index="index" collection="parm.searchWhereList">
+			AND ${item.column} ${item.oper} ${item.value}
+			</foreach>
+	    </if>
+	</sql>
+	<sql id="gridOptionOrder">
+		<foreach item="item" index="index" collection="parm.orderColumnList" separator=", " open=" ORDER BY ">
+			${item}
+		</foreach>
+	</sql>
+
+	<!-- Paging 관련 Template End-->	
+
+	
+	
+	
+	
+	<!-- 기존 Excel Backup 관련 SQL Start-->	
+	<!-- 기존 Excel Backup 관련 SQL Start-->	
+	<!-- 기존 Excel Backup 관련 SQL Start-->	
+	   	
+	<select id="getExcelUploadColumnList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getExcelUploadColumnList
+			엑셀 업로드 Table Column 조회 
+		*/
+		SELECT
+		     TABLE_NAME
+		    ,COLUMN_LIST
+		    ,TBL_CMMT
+		FROM
+		     TBL_EXP_EXUPTBL
+		WHERE
+			TABLE_NAME = #{ORG_TABLE_NAME}
+   	</select>
+   	
+   	
+   	<!-- 
+	<select id="existTableName" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.existTableName
+			백업 Table 존재 확인
+		*/
+		SELECT TABLE_NAME
+		FROM USER_TABLES
+		WHERE TABLE_NAME = #{ORG_BK_TABLE_NAME}
+		
+   	</select>
+	 -->	
+   	
+	<select id="existTableName" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.existTableName
+			백업 Table 존재 확인
+		*/
+		SELECT TABLE_NAME
+		FROM ALL_TABLES
+		WHERE 1=1
+			AND	OWNER 		= #{OWNER}
+			AND TABLE_NAME 	= #{ORG_BK_TABLE_NAME}
+   	</select>
+
+
+	<update id="createBackupTable" flushCache="true">
+		/*	common.createBackupTable
+			백업 Table 생성
+		*/
+		CREATE TABLE ${BK_TABLE_NAME} AS  
+		SELECT 
+			  A.* 
+			 ,'${BACKUP_DATE}' AS BACKUP_DATE
+		FROM ${TABLE_NAME} A	
+   	</update>
+	<update id="insertBackupTable" flushCache="true">
+		/*	common.insertBackupTable
+			백업 Table 에 Insert
+		*/
+		INSERT INTO ${BK_TABLE_NAME}  
+		SELECT 
+			  A.* 
+			 ,#{BACKUP_DATE} 	AS BACKUP_DATE
+		FROM ${TABLE_NAME} A	
+   	</update>
+	<update id="insertBackupLog" flushCache="true">
+		/*	common.insertBackupTable
+			 엑셀 업로드시 Log 남김
+		*/
+		INSERT INTO TBL_EXP_EXCEL_BACKUP_LOG(
+		     BK_TABLE_NAME
+		    ,BK_TYPE			
+		    ,BACKUP_DATE		
+		    ,UPDATE_USER  
+		    ,UPDATE_DATE  
+		) VALUES (
+			 #{BK_TABLE_NAME}  
+			,#{BK_TYPE}
+			,#{BACKUP_DATE}
+			,#{sessionVo.userId}
+			,GET_KRDT(SYSDATE)
+		)
+   	</update>
+	<update id="deleteTable" flushCache="true">
+		DELETE FROM ${TABLE_NAME}  
+   	</update>   	
+   	
+	<select id="excelUploadToTable" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+	/*	common.excelUploadToTable
+		공통 Table Upload
+	*/
+	INSERT INTO ${tableName} (
+    <foreach item="setInfo" collection="setInfoList" separator=",">
+  			 ${setInfo.header}
+  		</foreach>
+  			,UPDATE_DATE
+  			,UPDATE_USER
+	) VALUES (
+    <foreach item="setInfo" collection="setInfoList" separator=",">
+		<if test='setInfo.columnType.equals("D") '>
+		TO_DATE(#{setInfo.data}, 'YYYY-MM-DD HH24:MI:SS')
+		</if>
+		<if test='!setInfo.columnType.equals("D")'>
+		#{setInfo.data}
+		</if>
+  		</foreach>
+  			,GET_KRDT(SYSDATE)
+  			,#{sessionVo.userId}
+	)
+  	</select>
+
+	<select id="excelOverwriteToTable" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.excelOverwriteToTable
+			공통 Table Merge
+		*/
+		MERGE INTO ${tableName} T
+		USING (
+			SELECT
+		    <foreach item="setInfo" collection="setInfoList" separator=",">
+	   			 #{setInfo.data} AS ${setInfo.header}
+	   		</foreach>
+			FROM DUAL
+		) S
+		ON (
+	    <foreach item="pkey" collection="prmKeyAttr" separator=" AND ">
+	  			 T.${pkey} = S.${pkey}
+	  		</foreach>
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+		    <foreach item="setInfo" collection="setUpdateList" separator=",">
+				<if test='setInfo.columnType.equals("D") '>
+				T.${setInfo.header} = TO_DATE(#{setInfo.data}, 'YYYY-MM-DD HH24:MI:SS')
+				</if>
+				<if test='!setInfo.columnType.equals("D")'>
+				T.${setInfo.header} = #{setInfo.data}
+				</if>
+	   		</foreach>
+	   		
+	   			 ,T.UPDATE_USER		 = #{sessionVo.userId}
+	   			 ,T.UPDATE_DATE		 = GET_KRDT(SYSDATE) 
+		WHEN NOT MATCHED THEN 
+			INSERT (
+		    <foreach item="setInfo" collection="setInfoList" separator=",">
+	   			 ${setInfo.header}
+	   		</foreach>
+	   			,UPDATE_DATE
+	   			,UPDATE_USER
+			) VALUES (
+		    <foreach item="setInfo" collection="setInfoList" separator=",">
+				<if test='setInfo.columnType.equals("D") '>
+				TO_DATE(#{setInfo.data}, 'YYYY-MM-DD HH24:MI:SS')
+				</if>
+				<if test='!setInfo.columnType.equals("D")'>
+				#{setInfo.data}
+				</if>
+	   		</foreach>
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId}
+			)
+	</select>	
+	<!-- 기존 Excel Backup 관련 SQL End-->	
+	<!-- 기존 Excel Backup 관련 SQL End-->	
+	<!-- 기존 Excel Backup 관련 SQL End-->	
+
+ 	<!--   -->
+	<delete id="excelDeleteFromTable" flushCache="true">
+		/*	common.excelDeleteFromTable
+			 
+		*/
+			DELETE FROM ${tableName} 
+   	</delete>
+
+	<insert id="excelInsertToTable" flushCache="true">
+		/*	common.excelInsertToTable
+			 
+		*/
+			INSERT INTO ${tableName} SELECT ${selectCaluse} FROM DUAL
+   	</insert>   	
+
+	<insert id="saveExcelUploadLog" flushCache="true">
+		/*	common.saveExcelUploadLog
+			 
+		*/
+		INSERT INTO TBL_EXP_MATERIALS_EXCELUPLOAD_LOG
+		(UPLOAD_LOG_ID, COMPANY_CD, FILE_ID, APPLY_COMP_YN,  UPDATE_USER, UPDATE_DATE, CREATE_USER, CREATE_DATE)
+		VALUES(#{UPLOAD_LOG_ID}, #{COMPANY_CD}, #{FILE_ID}, 'N', 'admin', SYSDATE, 'system', SYSDATE)
+   	</insert>   		
+   		
+   		
+   		
+	<!-- System에서 Data 삭제하는 경우 Backup관련 Start-->	
+	<!-- System에서 Data 삭제하는 경우 Backup관련 Start-->	
+	<!-- System에서 Data 삭제하는 경우 Backup관련 Start-->	
+
+	<!-- 기존 Table을 이용하여 빈 Table 생성 -->
+	<update id="createBackupEmptyTable" flushCache="true">
+		/*	common.createBackupEmptyTable
+			백업 Table 생성
+		*/
+		CREATE TABLE ${BK_TABLE_NAME} AS  
+		SELECT 
+			  A.* 
+			 ,CAST('' AS VARCHAR2(30)) 	AS BACKUP_USER
+			 ,CAST('' AS VARCHAR2(14))	AS BACKUP_DATE
+			 ,CAST('' AS VARCHAR2(1))	AS BACKUP_TYPE
+		FROM ${TABLE_NAME} A	
+		WHERE 1=2	
+   	</update>
+
+
+	<!-- PK 지정 Data만 Backup할경우 -->
+	<update id="insertBackupTableFromPk" flushCache="true">
+		/*	common.insertBackupTableFromPk
+			백업 Table 에 Insert
+		*/
+		INSERT INTO ${BK_TABLE_NAME}  
+		SELECT 
+			  A.* 
+			 ,#{sessionVo.userId} 								AS BACKUP_USER
+			 ,TO_CHAR(GET_KRDT(SYSDATE), 'YYYYMMDDHH24MISS') 	AS BACKUP_DATE
+			 ,#{backupType}										AS BACKUP_TYPE
+		FROM ${TABLE_NAME} A
+		WHERE 1=1	
+		<foreach item="item" index="index" collection="whereList" separator=" AND " open=" AND ">
+			${item.COLUMN_ID} = #{item.COLUMN_VAL}
+		</foreach>
+   	</update>
+
+	<!-- System에서 Data 삭제하는 경우 Backup관련 End-->	
+	<!-- System에서 Data 삭제하는 경우 Backup관련 End-->	
+	<!-- System에서 Data 삭제하는 경우 Backup관련 End-->	
+
+	
+
+	<select id="getBaseAuth" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBaseAuth
+			기본 권한
+		*/
+		SELECT
+			  USER_ID
+			 ,ROLE_ID
+			 ,USER_TYPE
+		FROM 
+			${dbHdr}${comnHdr}TBL_EXP_AUTH
+		WHERE
+			USER_ID = #{userId}
+	</select>
+
+	<select id="getAuthListForSession" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+
+		/*	system.getAuthListForSession
+			Session Menu Auth 목록
+		*/
+		SELECT
+			 A.USER_ID
+			,B.ROLE_ID
+			,B.ROLE_NM
+			,A.USER_TYPE
+			,D.MENU_ID
+			,D.MENU_NM
+			,C.AUTH_TYPE
+			,D.PAGE_ID
+		FROM
+			 ${dbHdr}${comnHdr}TBL_EXP_AUTH 	A 
+			,${dbHdr}${comnHdr}TBL_EXP_ROLE 	B
+			,${dbHdr}${comnHdr}TBL_EXP_ROLEMENU C
+			,${dbHdr}${comnHdr}TBL_EXP_MENU 	D
+		WHERE 1=1	
+			AND A.ROLE_ID 	= B.ROLE_ID
+			AND B.ROLE_ID 	= C.ROLE_ID
+			AND C.MENU_ID 	= D.MENU_ID
+			AND USER_ID 	= #{sessionVo.userId}
+	</select>	
+
+
+	<!-- Alarm 관련 -->
+	<select id="getAlarmList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getAlarmList
+			Alarm 리스트 조회
+		*/
+		SELECT
+			 ALARM_ID   
+			,TARGET_USER_ID    
+			,CONTENT    
+			,NEW_CHECK  
+			,DIRECT_EXEC
+			,DEL_YN     
+			,TO_CHAR( UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) AS UPDATE_DATE
+			,UPDATE_USER
+		FROM 
+			TBL_EXP_ALARM
+		WHERE 1=1
+			AND TARGET_USER_ID = #{sessionVo.userId}
+			AND DEL_YN = 'N'
+		ORDER BY UPDATE_DATE DESC
+   	</select>
+
+	<select id="getAlarmListCount" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getAlarmList
+			Alarm 리스트 Count
+		*/
+		SELECT
+			count(*) CNT
+		FROM 
+			TBL_EXP_ALARM
+		WHERE 1=1
+			AND TARGET_USER_ID	= #{sessionVo.userId}
+			AND NEW_CHECK		= 'Y'
+			AND DEL_YN = 'N'
+   	</select>
+
+
+
+	<update id="addAlarm">
+		/*	contract.addAlarm
+			공통 / 알람등록
+		*/
+		INSERT INTO TBL_EXP_ALARM (
+			 ALARM_ID   
+			,TARGET_USER_ID    
+			,CONTENT    
+			,NEW_CHECK  
+			,DIRECT_EXEC
+			,DEL_YN     
+			,CREATE_DATE
+			,CREATE_USER
+			,UPDATE_DATE
+			,UPDATE_USER
+		) VALUES (
+			 #{ALARM_ID   		}
+			,#{TARGET_USER_ID   }
+			,#{CONTENT    		}
+			,'Y'
+			,'${DIRECT_EXEC		}'
+			,'N'
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+		)
+	</update>
+
+	<update id="deleteNewFromAlarm">
+		/*	common.deleteNewFromAlarm
+			공통 / 알람 New 제거
+		*/
+		UPDATE TBL_EXP_ALARM 
+			SET NEW_CHECK = 'N'
+		WHERE 1=1
+			AND TARGET_USER_ID	= #{sessionVo.userId}
+			AND NEW_CHECK		= 'Y'
+			AND DEL_YN 			= 'N'
+   	</update>
+
+
+	<select id="getStockEvaluationCriteria" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getStockEvaluationCriteria
+			재고 평가 기준
+		*/
+		SELECT
+		     BOTTOM_VAL
+		    ,TOP_VAL
+		    ,EVALUATION
+		    ,COLOR_CODE
+		FROM
+		    TBL_EXP_STOCK_EVALUATION_CRITERIA
+		WHERE 
+			BRAND_ID = #{BRAND_ID}
+		ORDER BY TOP_VAL DESC
+	</select>	
+
+	<select id="getStockCheckList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getStockCheckList */
+		SELECT 
+			A.*
+		FROM (	
+			SELECT 
+			     A.BRAND_ID
+			    ,B.STORE_ID
+			    ,B.STORE_NM
+			    ,A.INOV
+			    ,A.OTOV
+			    ,(A.INOV + A.OTOV) AS ECNT
+			FROM 
+			     TBL_EXP_STOCK_ANALYSIS  A
+			    ,TBL_EXP_STORE_MST       B    
+			WHERE 1=1
+			    AND A.BRAND_ID = B.BRAND_ID
+			    AND A.STORE_ID = B.STORE_ID
+		) A
+		WHERE 1=1
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+	<select id="getStockProductList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getStockProductList */
+		SELECT 
+		     STOCK_MST_ID
+		    ,BRAND_ID
+		    ,PRODUCT_CD
+		    ,PRODUCT_TYPE
+		    ,PRODUCT_NM
+		    ,UNIT
+		    ,USE_YN
+		    ,SAVE_PERIOD
+		FROM TBL_EXP_STOCK_MST
+		WHERE 
+			BRAND_ID = #{BRAND_ID}
+		ORDER BY PRODUCT_NM
+	</select>
+
+	<select id="getCompanyProductList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getCompanyProductList */
+		SELECT 
+		     B.PRODUCT_CD
+		    ,B.PRODUCT_NM
+		FROM 
+			 TBL_EXP_FOOD_MATERIALS_MASTER	A
+			,TBL_EXP_STOCK_MST				B
+		WHERE 1=1
+			AND A.MATERIALS_CD = B.PRODUCT_CD			
+			AND B.BRAND_ID = #{BRAND_ID}
+			AND B.USE_YN = 'Y'
+		ORDER BY A.MATERIALS_CD
+	</select>
+	
+	<select id="getAllBrandList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getAllBrandList */
+		SELECT
+		     BUYER_ID
+		    ,BRAND_ID
+		    ,BRAND_NM
+		FROM 
+		    TBL_EXP_BUYER_BRAND
+		ORDER BY 
+		     BUYER_ID
+		    ,SORT_ORDER
+	</select>
+
+	<insert id="insertFinPdfTemp">
+		/*	common.insertFinPdfTemp
+			PDF 추출 Temp Table Upload
+		*/
+		INSERT INTO TBL_EXP_FIN_PDF_TEMP(
+					  SEQ
+					, BUYER_ID
+					, INDENT_DEGREE
+					, ACCOUNT_GUBUN
+					, ACCOUNT_NAME
+					, YEAR_DATA01
+					, YEAR_DATA02
+					, YEAR_DATA03
+					, UPDATE_USER
+					, UPDATE_DATE)
+			SELECT 
+				   (SELECT NVL(MAX(SEQ)+1, 1)
+					  FROM TBL_EXP_FIN_PDF_TEMP
+					 WHERE BUYER_ID = #{BUYER_ID}
+					   AND ACCOUNT_GUBUN = #{ACCOUNT_GUBUN}) AS SEQ
+				   , #{BUYER_ID} AS BUYER_ID
+				   , #{INDENT_DEGREE} AS INDENT_DEGREE
+				   , #{ACCOUNT_GUBUN} AS ACCOUNT_GUBUN
+				   , #{ACCOUNT_NAME} AS ACCOUNT_NAME
+				   , #{YEAR_DATA01} AS YEAR_DATA01
+				   , #{YEAR_DATA02} AS YEAR_DATA02
+				   , #{YEAR_DATA03} AS YEAR_DATA03				   
+		   		   , #{sessionVo.userId} AS UPDATE_USER
+		   		   , GET_KRDT(SYSDATE) AS UPDATE_DATE
+			 FROM DUAL
+   	</insert>
+   	
+	<delete id="deleteFinPdfTemp">
+		/*	common.deleteFinPdfTemp
+			PDF 추출전 Temp Table 기존데이터 삭제
+		*/
+		DELETE 
+		  FROM TBL_EXP_FIN_PDF_TEMP
+		 WHERE BUYER_ID = #{BUYER_ID}
+   	</delete>
+
+
+	<update id="updateWidget">
+		/*	common.updateWidget */
+		MERGE INTO TBL_EXP_WIDGET_MNG T
+			USING (
+				SELECT   
+					 #{USER_ID   } AS USER_ID   
+					,#{COMP_ID   } AS COMP_ID   
+					,#{DOM_GRP_ID} AS DOM_GRP_ID
+					,#{ACTIVE    } AS ACTIVE    
+					,#{TITLE     } AS TITLE     
+				FROM DUAL
+			) S
+			ON (		
+					T.USER_ID 		= S.USER_ID
+				AND T.COMP_ID 		= S.COMP_ID
+				AND T.DOM_GRP_ID 	= S.DOM_GRP_ID
+			)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 ACTIVE			= S.ACTIVE
+				,UPDATE_USER	= #{sessionVo.userId}
+				,UPDATE_DATE	= GET_KRDT(SYSDATE)
+		WHEN NOT MATCHED THEN
+			INSERT (
+				 USER_ID   
+				,COMP_ID   
+				,DOM_GRP_ID
+				,ACTIVE    
+				,TITLE     
+				,CREATE_USER
+				,CREATE_DATE 
+			)
+			VALUES (
+				 S.USER_ID      
+				,S.COMP_ID      
+				,S.DOM_GRP_ID   
+				,S.ACTIVE       
+				,S.TITLE
+				,#{sessionVo.userId}
+				,GET_KRDT(SYSDATE) 
+			)
+	</update>
+
+
+	<update id="updateWidgetGrp">
+		/*	common.updateWidgetGrp */
+		MERGE INTO TBL_EXP_WIDGET_GRP T
+			USING (
+				SELECT   
+					 #{USER_ID   } AS USER_ID   
+					,#{COMP_ID   } AS COMP_ID   
+					,#{TAB_TITLE } AS TAB_TITLE     
+				FROM DUAL
+			) S
+			ON (		
+					T.USER_ID 		= S.USER_ID
+				AND T.COMP_ID 		= S.COMP_ID
+			)
+		WHEN NOT MATCHED THEN
+			INSERT (
+				 USER_ID   
+				,COMP_ID   
+				,TAB_TITLE     
+				,SORT_ORDER
+				,CREATE_USER
+				,CREATE_DATE 
+			)
+			VALUES (
+				 S.USER_ID      
+				,S.COMP_ID      
+				,S.TAB_TITLE
+				,(SELECT NVL(MAX(SORT_ORDER), 0) + 1 FROM TBL_EXP_WIDGET_GRP A WHERE A.USER_ID = S.USER_ID )		     
+				,#{sessionVo.userId}
+				,GET_KRDT(SYSDATE) 
+			)
+	</update>
+
+
+	<select id="getWidgetList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getWidgetList */
+		WITH WIDGET_GRP AS (
+			SELECT
+				 T.*
+				,ROWNUM AS SORT_ORDER
+			FROM (
+				SELECT 
+					 USER_ID
+					,COMP_ID
+					,TAB_TITLE
+				FROM 
+					TBL_EXP_WIDGET_GRP A
+				WHERE
+					COMP_ID IN (
+						SELECT COMP_ID FROM TBL_EXP_WIDGET_MNG B
+						WHERE 1=1
+							AND	A.USER_ID = B.USER_ID 
+							AND A.COMP_ID = B.COMP_ID
+							AND B.USER_ID = #{sessionVo.userId}
+							AND B.ACTIVE = 'Y'
+					)
+				ORDER BY SORT_ORDER
+			) T
+		)	
+		SELECT
+			 B.USER_ID   
+			,B.COMP_ID   
+			,B.DOM_GRP_ID
+			,B.ACTIVE    
+			,B.TITLE     
+			,A.TAB_TITLE
+			,A.SORT_ORDER
+		FROM 
+		     WIDGET_GRP 		A
+		    ,TBL_EXP_WIDGET_MNG B
+		WHERE 1=1
+			AND A.USER_ID = B.USER_ID
+			AND A.COMP_ID = B.COMP_ID
+	    <if test='COMP_ID !=null and  !COMP_ID.equals("ALL")'>
+			AND B.COMP_ID = #{COMP_ID}	    
+	    </if>
+			AND B.USER_ID = #{sessionVo.userId}
+			AND B.ACTIVE = 'Y'
+		ORDER BY 
+		     A.SORT_ORDER
+	</select>
+	
+	<select id="getWidgetGrpList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getWidgetGrpList */
+		SELECT
+			 T.*
+			,ROWNUM AS SORT_ORDER
+		FROM (
+			SELECT
+				 USER_ID   
+				,COMP_ID   
+				,TAB_TITLE
+			FROM 
+				TBL_EXP_WIDGET_GRP A
+			WHERE
+				COMP_ID IN (SELECT COMP_ID FROM TBL_EXP_WIDGET_MNG B WHERE A.USER_ID = B.USER_ID AND A.COMP_ID = B.COMP_ID AND B.ACTIVE = 'Y')
+			ORDER BY SORT_ORDER ASC
+		) T
+	</select> 
+   	
+	<delete id="deleteFinAnalStatus">
+		/*	common.deleteFinAnalStatus
+			데이터 이관 전 재무제표, 손익계산서 데이터 삭제
+		*/
+		DELETE 
+		  FROM TBL_EXP_FIN_ANAL_STATUS
+		 WHERE BUYER_ID = #{BUYER_ID}
+		   AND (ACCOUNTING_DATE IN (SELECT YEAR_DATA01
+		   						 	 FROM TBL_EXP_FIN_PDF_TEMP
+		   						    WHERE BUYER_ID = #{BUYER_ID}
+		   						      AND ACCOUNT_NAME = '계정명'
+		   						    GROUP BY YEAR_DATA01)
+		   	OR ACCOUNTING_DATE IN (SELECT YEAR_DATA02
+		   						 	 FROM TBL_EXP_FIN_PDF_TEMP
+		   						    WHERE BUYER_ID = #{BUYER_ID}
+		   						      AND ACCOUNT_NAME = '계정명'
+		   						    GROUP BY YEAR_DATA02)
+		   	OR ACCOUNTING_DATE IN (SELECT YEAR_DATA03
+		   						 	 FROM TBL_EXP_FIN_PDF_TEMP
+		   						    WHERE BUYER_ID = #{BUYER_ID}
+		   						      AND ACCOUNT_NAME = '계정명'
+		   						    GROUP BY YEAR_DATA03))
+   	</delete>
+
+	<insert id="insertFinAnalStatus">
+		/*	common.insertFinAnalStatus
+			재무제표, 손익계산서 데이터 이관
+		*/
+		INSERT INTO TBL_EXP_FIN_ANAL_STATUS(
+						SEQ,
+						INDENT_DEGREE,
+						BUYER_ID,
+						ACCOUNT_NAME,
+						ACCOUNTING_DATE,
+						AMOUNT,
+						ACCOUNT_GUBUN,
+						UPDATE_USER,
+						UPDATE_DATE
+		)
+		WITH PDF_TEMP AS
+		( 
+		 SELECT B.SEQ
+		       ,B.INDENT_DEGREE
+		       ,B.ACCOUNT_NAME
+		       ,B.BUYER_ID
+		       ,A.YEAR_DATA01 AS YEAR01
+		       ,A.YEAR_DATA02 AS YEAR02
+		       ,A.YEAR_DATA03 AS YEAR03
+		       ,B.YEAR_DATA01
+		       ,B.YEAR_DATA02
+		       ,B.YEAR_DATA03
+		       ,B.ACCOUNT_GUBUN
+		  FROM
+			(
+			SELECT DECODE(ACCOUNT_GUBUN, '01', '재무상태표', '02', '손익계산서', NULL) AS ACCOUNT_GUBUN
+			      ,NULL AS SEQ
+			      ,NULL AS INDENT_DEGREE
+			      ,NULL AS BUYER_ID
+			      ,ACCOUNT_NAME 
+				  ,YEAR_DATA01
+				  ,YEAR_DATA02
+				  ,YEAR_DATA03
+			  FROM TBL_EXP_FIN_PDF_TEMP
+			 WHERE BUYER_ID  = #{BUYER_ID} 
+			   AND ACCOUNT_NAME = '계정명'
+			 GROUP BY ACCOUNT_GUBUN ,ACCOUNT_NAME ,YEAR_DATA01,YEAR_DATA02,YEAR_DATA03) A,
+			( 
+			SELECT DECODE(ACCOUNT_GUBUN, '01', '재무상태표', '02', '손익계산서', NULL) AS ACCOUNT_GUBUN
+			      ,SEQ
+			      ,INDENT_DEGREE
+			      ,BUYER_ID
+			      ,ACCOUNT_NAME 
+				  ,YEAR_DATA01
+				  ,YEAR_DATA02
+				  ,YEAR_DATA03
+			  FROM TBL_EXP_FIN_PDF_TEMP
+			 WHERE BUYER_ID  = #{BUYER_ID} 
+			   AND ACCOUNT_NAME NOT IN ('계정명', '(감가상각누계액)', '기타')
+			 GROUP BY SEQ, INDENT_DEGREE, BUYER_ID, ACCOUNT_GUBUN ,ACCOUNT_NAME ,YEAR_DATA01,YEAR_DATA02,YEAR_DATA03
+			) B
+		)
+		SELECT SEQ, INDENT_DEGREE, BUYER_ID, ACCOUNT_NAME, YEAR01, YEAR_DATA01, ACCOUNT_GUBUN, #{sessionVo.userId} AS UPDATE_USER, GET_KRDT(SYSDATE) AS UPDATE_DATE
+		  FROM PDF_TEMP
+		UNION 
+		SELECT SEQ, INDENT_DEGREE, BUYER_ID, ACCOUNT_NAME, YEAR02, YEAR_DATA02, ACCOUNT_GUBUN, #{sessionVo.userId} AS UPDATE_USER, GET_KRDT(SYSDATE) AS UPDATE_DATE
+		  FROM PDF_TEMP
+		UNION 
+		SELECT SEQ, INDENT_DEGREE, BUYER_ID, ACCOUNT_NAME, YEAR03, YEAR_DATA03, ACCOUNT_GUBUN, #{sessionVo.userId} AS UPDATE_USER, GET_KRDT(SYSDATE) AS UPDATE_DATE
+		  FROM PDF_TEMP
+		ORDER BY SEQ
+	</insert>
+
+
+
+	<select id="getWordGrpList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getWordGrpList */
+		SELECT
+		     WORD_GRP_ID
+		    ,SIMILAR_WORD_NM
+		FROM 
+		     TBL_EXP_WORD_GRP			A
+		    ,TBL_EXP_BRAND_MENU_MASTER	B
+		WHERE 1=1
+			AND A.WORD_GRP_ID	= B.BRAND_MENU_CD
+		    AND WORD_GRP_TYPE   = 'BRAND_MENU'
+		    AND A.BRAND_ID      = #{BRAND_ID}
+		
+	</select> 
+
+	<update id="deleteAllMenuMapping" parameterType="map">
+		/*	common.deleteAllMenuMapping */
+		UPDATE TBL_EXP_STORE_MENU_MST SET BRAND_MENU_CD = NULL, RECIPE_RATE = NULL
+		WHERE STORE_ID IN ( 
+			SELECT 	STORE_ID 
+			FROM 	TBL_EXP_STORE_MST 
+			WHERE 	BRAND_ID = #{BRAND_ID}
+		)		
+	</update>
+
+
+	<select id="getAlarmListCnt" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	common.getAlarmListCnt */
+		SELECT
+			count(*) CNT
+		FROM TBL_EXP_ALARM
+		WHERE 1=1
+			AND TARGET_USER_ID = #{sessionVo.userId}
+			AND NEW_CHECK = 'Y'
+	</select> 
+
+</mapper>

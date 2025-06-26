@@ -1,0 +1,49 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+
+	}
+	
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm1) {
+
+		let sendParm = {
+			gridParm : {
+				 tableName		: "TBL_EXP_RECIPE"
+				,columnMap 		: {
+					 "RECIPE_ID" 			: { headerText : "RECIPE_ID" 			, hidden : "Y", ifNewAutoSet : "random"					}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+					,"BRAND_ID" 			: { headerText : "BRAND_ID" 			, hidden : "Y", default : G_VAL.session.BRAND_ID 	}
+					,"RECIPE_CD" 			: { headerText : "RECIPE_CD" 			}
+					,"RECIPE_NM" 			: { headerText : "RECIPE_NM" 			}
+					,"RECIPE_DESCRIPTION" 	: { headerText : "RECIPE_DESCRIPTION" 	}
+					,"DEL_YN" 				: { headerText : "DEL_YN" 				, columnType : "selectbox", useCodeId : "YES_OR_NO"}
+				 }
+				,columnConfig 	: {
+				 }
+				,primaryKeyList		: ["RECIPE_ID"]
+				,uniqueKeyList		: ["RECIPE_CD"]
+				,searchColumnList	: ["RECIPE_CD", "RECIPE_NM", "RECIPE_DESCRIPTION"]		// Table 지정인경우 적용
+				,orderColumnList 	: ["RECIPE_CD ASC"]										// Table 지정인경우 적용
+				,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+				//,checkbox			: "show"
+				//,ordernum			: "hide"
+				,readOnly			: "Y"
+			}
+			,noTitle 			: "Y"
+			,noBreadcrumb		: "Y"
+		}	
+		
+		C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		
+	});
+
+</script>
+
+
+<component>
+
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+
+</component>

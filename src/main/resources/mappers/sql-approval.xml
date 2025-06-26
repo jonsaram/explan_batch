@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="approval">
+
+	<cache />
+	
+    <!--
+    	결재 상세 (결재 진행 현황)  
+    	Code by 위성열
+    	20240303
+    -->
+    <select id="getApprovalUser" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getApprovalUser */
+		SELECT 
+			 B.APPROVAL_ID<!-- ,B.SP_CSTM_ID -->
+			,B.USER_ID
+			,GET_USER_NM(B.USER_ID)  AS APPROVAL_USER_NM
+            ,(SELECT GET_CODE_NM('GRADE', GRADE)    FROM TBL_EXP_USER WHERE  USER_ID = B.USER_ID ) AS GRADE
+			,B.STATE
+			,GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) AS STATE_STR
+	        ,B.APPROVAL_TYPE
+	        ,GET_CODE_NM('APPROVAL_TYPE',B.APPROVAL_TYPE) 		 					AS APPROVAL_TYPE_NM
+			,B.APPROVAL_COMMENT
+			,CASE 
+                WHEN B.APPROVAL_TYPE = 'RQST' THEN 	TO_CHAR( B.CREATE_DATE 		, 'YYYY-MM-DD HH24:MI:SS')
+                ELSE 								TO_CHAR( B.COMPLETE_DATE 	, 'YYYY-MM-DD HH24:MI:SS')
+             END COMPLETE_DATE
+			,TO_CHAR( B.CREATE_DATE		, 'YYYY-MM-DD HH24:MI:SS')					AS CREATE_DATE 
+            ,B.APPROVAL_COMMENT
+            ,( SELECT LU.LOGIN_NM || CASE WHEN LU.USER_ID IS NOT NULL THEN '('||GET_USER_NM(LU.USER_ID)||')' ELSE NULL END 
+            	FROM TBL_EXP_LOGIN_USER LU 
+            	WHERE LOGIN_ID = B.USER_ID
+             ) AS USER_NM
+             ,( SELECT USER_TYPE FROM ${dbHdr}${comnHdr}TBL_EXP_AUTH WHERE USER_ID = B.USER_ID) AS USER_TYPE
+		FROM
+			 TBL_EXP_APPROVAL 		A 
+			,TBL_EXP_APPROVAL_USER 	B
+		WHERE 1=1
+			AND A.APPROVAL_ID	= B.APPROVAL_ID 
+			AND A.APPROVAL_ID 	= #{APPROVAL_ID}
+			<!-- AND A.SP_CSTM_ID 	= #{sessionVo.spCstmId} -->
+		ORDER BY B.ORDER_NUM
+    </select>
+    
+    <!--
+    	결재 상신함 리스트  
+    	Code by 위성열
+    	20240303
+    -->
+    <select id="getApprovalList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getApprovalList */
+	    SELECT  
+	    	 A.APPROVAL_ID											AS APPROVAL_ID   
+			,A.RELATION_ID											AS RELATION_ID   
+			,A.USER_ID   											AS USER_ID
+			,GET_USER_NM(A.USER_ID)									AS USER_NM
+			,A.TITLE												AS TITLE	         
+			,A.CONTENTS                                             AS CONTENTS
+			,A.STATE                                                AS STATE   
+			,GET_CODE_NM('APPROVAL_USER_PROC',A.STATE) 				AS STATE_NM       
+			,TO_CHAR( A.APPROVAL_DATE , 'YYYY-MM-DD HH24:MI:SS' ) 	AS APPROVAL_DATE
+			,TO_CHAR( A.COMPLETE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) 	AS COMPLETE_DATE
+		FROM  TBL_EXP_APPROVAL A
+		WHERE 1 = 1
+		<if test=' holdYn == "Y" '>
+			AND A.STATE 	= 'HOLD'
+		</if>		
+		<if test=' holdYn == "N" '>
+			AND A.STATE 	!= 'HOLD'
+		</if>		
+		
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+		
+		
+<!-- 		<if test=' holdYn == "Y" '>
+			AND A.STATE 	= 'HOLD'
+		</if>		
+		<if test=' holdYn == "N" '>
+			AND NOT A.STATE 	= 'HOLD'
+		</if>		
+		    AND A.USER_ID    	= #{sessionVo.userId	}
+		    AND '${holdYn}' = '${holdYn}'
+		ORDER BY APPROVAL_DATE DESC
+ -->    </select>
+
+    <!--
+    	결재 상신함 리스트  
+    	Code by 위성열
+    	20240303
+    -->
+    <select id="getApproval" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getApproval */
+	    SELECT  
+	    	 A.APPROVAL_ID											AS APPROVAL_ID   
+			,A.RELATION_ID											AS RELATION_ID   
+			,A.USER_ID   											AS USER_ID
+			,GET_USER_NM(A.USER_ID)									AS USER_NM
+			,A.TITLE												AS TITLE	         
+			,A.CONTENTS                                             AS CONTENTS
+			,A.STATE                                                AS STATE   
+			,GET_CODE_NM('APPROVAL_USER_PROC',A.STATE) 				AS STATE_NM       
+			,TO_CHAR( A.APPROVAL_DATE , 'YYYY-MM-DD HH24:MI:SS' ) 	AS APPROVAL_DATE
+			,TO_CHAR( A.COMPLETE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) 	AS COMPLETE_DATE
+			,A.AFTER_SERVICE										AS AFTER_SERVICE
+			,A.AFTER_PARM											AS AFTER_PARM
+		FROM  TBL_EXP_APPROVAL A
+		WHERE 1 = 1
+		<if test=" APPROVAL_ID != null and APPROVAL_ID != '' " >
+			AND A.APPROVAL_ID 	= #{APPROVAL_ID}
+		</if>		
+		    <!-- AND A.SP_CSTM_ID 	= #{sessionVo.spCstmId	} -->
+		ORDER BY APPROVAL_DATE DESC
+    </select>
+
+
+    <!--
+    	결재 상신 등록  
+    	Code by 위성열
+    	20240303
+    -->
+    <insert id="insertApproval" parameterType="map" >
+        /* approval.insertApproval */
+        INSERT INTO TBL_EXP_APPROVAL (
+		    APPROVAL_ID   
+		   ,RELATION_ID   
+		   ,USER_ID       
+		   ,TITLE         
+		   ,CONTENTS 
+		   ,STATE         
+		   ,APPROVAL_DATE 
+		   ,AFTER_SERVICE 
+		   ,AFTER_PARM   
+		   ,CREATE_USER   
+		   ,CREATE_DATE 
+        )
+        VALUES(
+		    #{APPROVAL_ID		}   
+		   ,'${RELATION_ID		}'   
+		   ,#{sessionVo.userId 	}
+		   ,#{TITLE         	}
+		   ,#{CONTENTS      	}
+		   ,#{STATE		      	}
+		   ,GET_KRDT(SYSDATE)
+		   ,#{AFTER_SERVICE		}
+		   ,#{AFTER_PARM		}
+           ,#{sessionVo.userId 	}
+           ,GET_KRDT(SYSDATE)
+        )   
+    </insert>
+    <delete id="deleteApproval" parameterType="map" >
+        /* approval.deleteApproval */
+		DELETE FROM TBL_EXP_APPROVAL
+		WHERE APPROVAL_ID = #{APPROVAL_ID} 
+    </delete>
+    
+    <delete id="deleteApprovalUser" parameterType="map" >
+        /* approval.deleteApprovalUser */
+		DELETE FROM TBL_EXP_APPROVAL_USER
+		WHERE APPROVAL_ID = #{APPROVAL_ID} 
+    </delete>
+    
+    <!--
+    	결재 상신 결재자 등록  
+    	Code by 위성열
+    	20240303
+    -->
+    <insert id="insertApprovalUser" parameterType="map" >
+        /* approval.insertApprovalUser */
+        INSERT INTO TBL_EXP_APPROVAL_USER (
+             APPROVAL_ID     
+            ,ORDER_NUM       
+            ,USER_ID         
+            ,APPROVAL_TYPE   
+            ,APPROVAL_COMMENT
+            ,CREATE_USER     
+            ,CREATE_DATE     
+<!--             ,SP_CSTM_ID -->      
+        )
+        VALUES(
+             #{APPROVAL_ID			}     
+            ,#{ORDER_NUM        	}
+            ,#{USER_ID          	}
+            ,#{APPROVAL_TYPE    	}
+            ,NULL
+            ,#{sessionVo.userId 	}
+            ,GET_KRDT(SYSDATE)
+<!--             ,#{sessionVo.spCstmId	} -->
+        )    
+    </insert>
+
+    <select id="getSuspenseApproval" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getSuspenseApproval */
+		
+		WITH NOW_APPR AS (
+			/* 현재 결재 진행중인 상신 List 현재 결재자(ORDER NUM) 검색*/
+			SELECT 
+				 APPROVAL_ID
+				,ORDER_NUM
+				,LST_ORDER_NUM
+				,CASE WHEN ORDER_NUM = LST_ORDER_NUM THEN 	'Y'
+				 	  ELSE 									'N' 
+				 END  LST_APPR
+			FROM (
+					SELECT
+					 A.APPROVAL_ID		AS APPROVAL_ID
+					,MIN(B.ORDER_NUM) 	AS ORDER_NUM
+					,MAX(B.ORDER_NUM) 	AS LST_ORDER_NUM
+				FROM 
+					 TBL_EXP_APPROVAL		A
+					,TBL_EXP_APPROVAL_USER	B
+				WHERE 1 = 1
+					AND A.APPROVAL_ID = B.APPROVAL_ID
+					AND APPROVAL_TYPE IN ('APPR', 'AGREE')
+					AND B.STATE IS NULL
+				GROUP BY
+					A.APPROVAL_ID	
+			)		
+		)
+		, ONGOING AS (
+			/* 내가 결재 또는 합의에 포함된 상신 List */
+			SELECT
+				 A.APPROVAL_ID			AS APPROVAL_ID
+			FROM 
+				 TBL_EXP_APPROVAL		A
+				,TBL_EXP_APPROVAL_USER	B
+			WHERE 1 = 1
+				AND A.APPROVAL_ID 	= B.APPROVAL_ID
+				AND APPROVAL_TYPE IN ('APPR', 'AGREE')
+				AND B.USER_ID		= #{sessionVo.userId 	}
+				AND A.STATE			= 'ONGOING'
+				AND B.COMPLETE_DATE IS NULL
+		)
+		
+		SELECT
+			 A.APPROVAL_ID			AS APPROVAL_ID
+			,A.TITLE				AS TITLE
+			,A.USER_ID				AS RSQ_USER_ID
+			,GET_USER_NM(A.USER_ID) AS RSQ_USER_NM
+			,TO_CHAR( A.APPROVAL_DATE 	, 'YYYY-MM-DD HH24:MI:SS') AS APPROVAL_DATE
+			,B.USER_ID              AS APR_USER_ID         
+			,GET_USER_NM(B.USER_ID) AS APR_USER_NM         
+			,B.APPROVAL_TYPE        AS APPROVAL_TYPE   
+			,A.STATE                AS STATE           
+			,GET_CODE_NM('APPROVAL_USER_PROC',A.STATE)           AS STATE_NM 
+			,B.APPROVAL_COMMENT     AS APPROVAL_COMMENT
+			,B.COMPLETE_DATE        AS COMPLETE_DATE   
+			,C.LST_APPR				AS LST_APPR
+		FROM 
+			 TBL_EXP_APPROVAL		A
+			,TBL_EXP_APPROVAL_USER	B
+			,NOW_APPR				C
+		WHERE 1 = 1
+			AND A.APPROVAL_ID 	= B.APPROVAL_ID
+			AND B.APPROVAL_ID	= C.APPROVAL_ID
+			AND B.ORDER_NUM		= C.ORDER_NUM
+			AND A.APPROVAL_ID IN ( SELECT APPROVAL_ID FROM ONGOING )		
+			<!-- AND A.SP_CSTM_ID	= #{sessionVo.spCstmId	} -->
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>			
+		<!-- ORDER BY A.APPROVAL_DATE DESC -->
+		
+    </select>
+
+
+    <select id="getDecisionApproval" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getDecisionApproval */
+		
+		WITH MYCMP AS (
+			SELECT
+				 A.APPROVAL_ID			AS APPROVAL_ID
+				 ,B.USER_ID
+			FROM 
+				 TBL_EXP_APPROVAL		A
+				,TBL_EXP_APPROVAL_USER	B
+			WHERE 1 = 1
+				AND A.APPROVAL_ID 	= B.APPROVAL_ID
+				AND APPROVAL_TYPE IN ('APPR', 'AGREE')
+				AND B.USER_ID		= #{sessionVo.userId 	}
+				AND B.COMPLETE_DATE IS NOT NULL
+		)
+		SELECT * FROM (
+			SELECT 
+				 A.APPROVAL_ID			AS APPROVAL_ID
+				,A.TITLE				AS TITLE
+				,A.USER_ID				AS RSQ_USER_ID
+				,GET_USER_NM(A.USER_ID) AS RSQ_USER_NM
+				,A.STATE				AS STATE
+				,TO_CHAR( A.APPROVAL_DATE 	, 'YYYY-MM-DD HH24:MI:SS') AS APPROVAL_DATE
+				,TO_CHAR( A.COMPLETE_DATE 	, 'YYYY-MM-DD HH24:MI:SS') AS COMPLETE_DATE
+				,B.USER_ID AS APP_USER_ID
+				,GET_USER_NM(B.USER_ID) AS APP_USER_NM
+			FROM
+				 TBL_EXP_APPROVAL 	A
+				,MYCMP 				B
+			WHERE 1=1
+				AND A.APPROVAL_ID = B.APPROVAL_ID	
+			<if test=" startDate != null and startDate != '' " >
+				AND APPROVAL_DATE <![CDATA[ >= ]]> TO_DATE(#{startDate}, 'YYYY-MM-DD')
+			</if>		
+			<if test=" endDate != null and endDate != '' " >
+				AND APPROVAL_DATE <![CDATA[ <= ]]> TO_DATE(#{endDate}, 'YYYY-MM-DD')
+			</if>		
+		) TBL
+		WHERE 1=1
+			<if test=" searchWord != null and searchWord != '' " >
+				AND (
+						TITLE LIKE '%${searchWord}%'
+					OR	RSQ_USER_NM LIKE '%${searchWord}%'
+				)
+			</if>	
+
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>							
+		<!-- ORDER BY APPROVAL_DATE DESC -->
+
+		
+    </select>
+
+
+    <select id="getNoticeApproval" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* approval.getNoticeApproval */
+		
+		WITH MYCMP AS (
+			SELECT
+				 A.APPROVAL_ID			AS APPROVAL_ID
+			FROM 
+				 TBL_EXP_APPROVAL		A
+				,TBL_EXP_APPROVAL_USER	B
+			WHERE 1 = 1
+				AND A.APPROVAL_ID 	= B.APPROVAL_ID
+				AND B.APPROVAL_TYPE IN ('NOTICE')
+				AND B.USER_ID		= #{sessionVo.userId 	}
+				AND A.STATE			= 'COMPLETE'
+		)
+		SELECT 
+			 A.APPROVAL_ID			AS APPROVAL_ID
+			,A.TITLE				AS TITLE
+			,A.USER_ID				AS RSQ_USER_ID
+			,GET_USER_NM(A.USER_ID) AS RSQ_USER_NM
+			,A.STATE				AS STATE
+			,TO_CHAR( A.APPROVAL_DATE 	, 'YYYY-MM-DD HH24:MI:SS') AS APPROVAL_DATE
+			,TO_CHAR( A.COMPLETE_DATE 	, 'YYYY-MM-DD HH24:MI:SS') AS COMPLETE_DATE
+		FROM
+			 TBL_EXP_APPROVAL 	A
+			,MYCMP 				B
+		WHERE 1=1
+			AND A.APPROVAL_ID = B.APPROVAL_ID	
+
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>							
+		<!-- ORDER BY APPROVAL_DATE DESC -->
+		
+    </select>
+
+
+    <!--
+    	결재자 결재 완료
+    	Code by 위성열
+    	20240303
+    -->
+    <update id="saveResultAppr" parameterType="map" >
+        /* approval.saveCompleteAppr */
+		UPDATE TBL_EXP_APPROVAL_USER SET
+			 STATE 				= #{STATE				}
+			,APPROVAL_COMMENT 	= #{APPROVAL_COMMENT	}
+			,COMPLETE_DATE 		= GET_KRDT(SYSDATE)
+			,UPDATE_USER 		= #{sessionVo.userId 	}
+			,UPDATE_DATE 		= GET_KRDT(SYSDATE)
+		WHERE 1=1
+			AND APPROVAL_ID 	= #{APPROVAL_ID			}     
+			AND USER_ID 		= #{sessionVo.userId 	}
+    </update>
+
+    <!--
+    	전체 결재 완료
+    	Code by 위성열
+    	20240303
+    -->
+    <update id="saveResultMainAppr" parameterType="map" >
+        /* approval.saveResultMainAppr */
+		UPDATE TBL_EXP_APPROVAL SET
+			 STATE 				= #{STATE				}
+			,COMPLETE_DATE 		= GET_KRDT(SYSDATE)
+			,UPDATE_USER 		= #{sessionVo.userId 	}
+			,UPDATE_DATE 		= GET_KRDT(SYSDATE)
+		WHERE 1=1
+			AND APPROVAL_ID 	= #{APPROVAL_ID			}     
+    </update>
+
+
+
+    <!--
+    	결재자 결재 완료시 통보 처리
+    	Code by 위성열
+    	20240303
+    -->
+    <update id="saveNoticeAppr" parameterType="map" >
+        /* approval.saveNoticeAppr */
+		UPDATE TBL_EXP_APPROVAL_USER SET
+			 STATE 				= 'NOTICE'
+			,COMPLETE_DATE 		= GET_KRDT(SYSDATE)
+			,UPDATE_USER 		= #{sessionVo.userId 	}
+			,UPDATE_DATE 		= GET_KRDT(SYSDATE)
+		WHERE 1=1
+			AND APPROVAL_ID 	= #{APPROVAL_ID			}     
+			AND APPROVAL_TYPE 	= 'NOTICE'
+    </update>
+
+    <select id="getNowApprUserInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	approval.getNowApprUserInfo
+			현재 결재자 정보
+		*/
+		SELECT
+			 A.TITLE
+		    ,B.APPROVAL_ID
+		    ,B.ORDER_NUM
+		    <!-- ,B.SP_CSTM_ID -->
+		    ,B.USER_ID
+		    ,B.APPROVAL_TYPE
+		    ,B.STATE
+		    ,B.APPROVAL_COMMENT
+		    ,B.COMPLETE_DATE
+		FROM
+			 TBL_EXP_APPROVAL		A
+		    ,TBL_EXP_APPROVAL_USER	B
+		WHERE 1=1
+			AND A.APPROVAL_ID = B.APPROVAL_ID
+			AND B.APPROVAL_TYPE IN ('APPR', 'AGREE')
+			AND	B.APPROVAL_ID = #{APPROVAL_ID}
+			AND B.COMPLETE_DATE IS NULL
+		ORDER BY B.ORDER_NUM FETCH FIRST 1 ROW ONLY
+	</select>
+    <select id="getNowNoticeUserInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	approval.getNowNoticeUserInfo
+			현재 결재자 정보
+		*/
+		SELECT
+			 A.TITLE
+		    ,B.APPROVAL_ID
+		    ,B.ORDER_NUM
+<!-- 		    ,B.SP_CSTM_ID -->
+		    ,B.USER_ID
+		    ,B.APPROVAL_TYPE
+		    ,B.STATE
+		    ,B.APPROVAL_COMMENT
+		    ,B.COMPLETE_DATE
+		FROM
+			 TBL_EXP_APPROVAL		A
+		    ,TBL_EXP_APPROVAL_USER	B
+		WHERE 1=1
+			AND A.APPROVAL_ID = B.APPROVAL_ID
+			AND B.APPROVAL_TYPE IN ('NOTICE')
+			AND	B.APPROVAL_ID = #{APPROVAL_ID}
+	</select>
+	
+</mapper>

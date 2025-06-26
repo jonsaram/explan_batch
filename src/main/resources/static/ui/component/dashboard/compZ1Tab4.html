@@ -1,0 +1,346 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,createChart 		: (container, categories, series)=>_lineRateChart(container, categories, series)
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,selectQueryGroup : function(pmt) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getFinAnalStdYear"
+						,requestParm	: pmt
+					},
+					{
+						 queryId 			: "financialanalysis.getFinAnalStatus"
+						,requestParm	: pmt
+					}
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.showObject(resultData.data['financialanalysis.getFinAnalStdYear'][0],'');
+				let accountGB = '';
+				resultData.data['financialanalysis.getFinAnalStatus'].forEach(function(item) {
+					if(item.ACCOUNT_NAME=='자산(*)'){
+						accountGB = '자산';
+					}else if(item.ACCOUNT_NAME=='부채(*)'){
+						accountGB = '부채';
+					}else if(item.ACCOUNT_NAME=='자본(*)'){
+						accountGB = '자본';
+					}else if(item.ACCOUNT_NAME=='매출액(*)'){
+						accountGB = 'left';
+					}else if(item.ACCOUNT_NAME=='판매비와관리비(*)'){
+						accountGB = 'right';
+					}
+					item.ITEM_GUBUN = accountGB;
+				});
+				<@compId>.showList("<@compId>_getFinAnalStatus01", resultData.data['financialanalysis.getFinAnalStatus']);
+				<@compId>.showList("<@compId>_getFinAnalStatus02", resultData.data['financialanalysis.getFinAnalStatus']);
+			});
+		 }
+		,goPage : (pageId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( pageId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+		}		
+		,setEachColumnValue : (loc, arr ,grp) => {
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+		}
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,balanceSheetEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_FIN_ANAL_STATUS"
+					,columnMap 		: {
+						 "BUYER_ID" 				: { headerText : "BUYER_ID", hidden : "Y", default : G_VAL.session.BUYER_ID}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"SEQ" 						: { headerText : "순서번호"}
+						,"INDENT_DEGREE" 			: { headerText : "들여쓰기정보[시작:25,들여쓰기:5씩추가]"}
+						,"ACCOUNTING_DATE" 			: { headerText : "회계결산일자", dataType   : "date", saveType : "text", dateFormat : "YYYY-MM-DD"}
+						,"ACCOUNT_NAME"				: { headerText : "계정과목명"}
+						,"AMOUNT"					: { headerText : "금액"}
+						,"ACCOUNT_GUBUN"			: { headerText : "재무제표", hidden : "Y", default : "재무상태표"}
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }
+					 /*
+					,rowConfig		: {
+						onClickRow : function(rowObj) {
+							dalert(rowObj);
+						}
+					 }
+					,gridConfig : {
+						width : ""	
+					 }
+					 */
+					,primaryKeyList		: ["BUYER_ID", "ACCOUNTING_DATE","ACCOUNT_NAME","ACCOUNT_GUBUN"]
+					,searchColumnList	: ["BUYER_ID", "SEQ"]		// Table 지정인경우 적용
+					,searchWhereMap		: {BUYER_ID : G_VAL.session.BUYER_ID,  ACCOUNT_GUBUN : "재무상태표" }
+					,orderColumnList 	: ["ACCOUNTING_DATE ASC", "SEQ ASC"]				// Table 지정인경우 적용
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					//,readOnly			: "Y"
+					//,gridWidth		: "2000px"
+					//,filterWhere		: `BUYER_ID = '${G_VAL.session.BUYER_ID}'`
+				 }
+				,popupTitle : `요약 재무상태표`
+				,size 		: "MAX"
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		//debugger;
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		<@compId>.selectQueryGroup(data);
+
+		// 20250211 
+		// code by 위성열
+		// Main Widget 처리
+		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+			C_WIDGET.setWidgetState("<@compId>", widgetList);
+		});
+	});
+</script>
+<component>
+
+   <!-- 요약 재무상태표​ area start -->
+       <div class="pop_tab_content_box fx-col2 fx-col2-md">
+           <div class="col4 col10-md col10-sm" wgtframe5="<@compTemplateId>">
+               <div class="mt10 mb5 display-between" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+                   <div class="biz-subTitle">
+                       요약 재무상태표
+                       <div class="ml20">
+	                        <label class="star-wrap">
+	                            <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+	                            <span class="star"></span>
+	                        </label>
+	                        <button class="msg-edit" onClick="<@compId>.balanceSheetEdit()"></button>
+                       </div>
+                   </div>
+                   <div class="biz-date">
+                       단위 : 천원
+                   </div>
+               </div>     
+               <div class="tab-card-outline">
+                   <div class="table-allwrap tb-div-h03">
+                       <!-- table start -->
+                       <table class="table-inwrap">
+							<colgroup>
+                               <col width="31%">
+                               <col width="23%">
+                               <col width="23%">
+                               <col width="23%">
+							</colgroup>
+							<thead class="table-thead">
+								<tr>
+									<th>자산</th>
+									<th class="<@compId>_DATA_YEAR1"></th>
+									<th class="<@compId>_DATA_YEAR2"></th>
+									<th class="<@compId>_DATA_YEAR3"></th>
+								</tr>
+							</thead>							
+							<tbody id="<@compId>_getFinAnalStatus01">
+							</tbody>
+							<script type="text/x-jsrender" id="<@compId>_getFinAnalStatus01_template">
+							{{for list}}
+								{{if ACCOUNT_GUBUN === '재무상태표' && ITEM_GUBUN === '자산'}}
+								<tr {{if ACCOUNT_NAME === '자산(*)'}}class="bg-blue"{{/if}}{{if ACCOUNT_NAME === '유동자산(*)' || ACCOUNT_NAME === '비유동자산(*)'}}class="bg-num"{{/if}}>
+									<td style="text-align:left"><span style="margin-left: {{:DEPTH}}pt;">{{:ACCOUNT_NAME}}</span></td>
+									<td style="text-align:right">{{:YEAR1}}</td>
+									<td style="text-align:right">{{:YEAR2}}</td>
+									<td style="text-align:right">{{:YEAR3}}</td>
+								</tr>
+								{{/if}}
+							{{/for}}
+							</script>
+							<script type="text/x-jsrender" id="<@compId>_getFinAnalStatus01_noData_template">
+								<tr>
+									<td colspan=4>자료가 없습니다.</td>	
+								</tr>
+							</script>
+							</tbody>
+                       </table>
+                       <!-- table end -->            
+                   </div>
+               </div>
+               <div class="caption">기업의 상세재무제표 정보를 바탕으로 법인 컨설팅 관점에서 중요한 주요 계정을 요약한 재무상태표입니다.</div>
+           </div>
+           <div class="col4 col10-md col10-sm mb20" wgtframe5="<@compTemplateId>">
+               <div class="mt10 mb5 display-between">
+                   <div></div>
+                   <div class="biz-date mt15">
+                       단위 : 천원
+                   </div>
+               </div>     
+               <div class="tab-card-outline">
+                   <div class="table-allwrap tb-div-h03">
+                       <!-- table start -->
+                       <table class="table-inwrap">
+							<colgroup>
+                               <col width="31%">
+                               <col width="23%">
+                               <col width="23%">
+                               <col width="23%">
+							</colgroup>
+							<thead class="table-thead">
+								<tr>
+									<th>부채 및 자본</th>
+									<th class="<@compId>_DATA_YEAR1"></th>
+									<th class="<@compId>_DATA_YEAR2"></th>
+									<th class="<@compId>_DATA_YEAR3"></th>
+								</tr>
+							</thead>							
+							<tbody id="<@compId>_getFinAnalStatus02">
+							</tbody>
+							<script type="text/x-jsrender" id="<@compId>_getFinAnalStatus02_template">
+							{{for list}}
+								{{if ACCOUNT_GUBUN === '재무상태표' && (ITEM_GUBUN === '부채' || ITEM_GUBUN === '자본')}}
+								<tr {{if ACCOUNT_NAME === '부채(*)' || ACCOUNT_NAME === '자본(*)'}}class="bg-blue"{{/if}}{{if ACCOUNT_NAME === '유동부채(*)' || ACCOUNT_NAME === '비유동부채(*)'}}class="bg-num"{{/if}}>
+									<td style="text-align:left"><span style="margin-left: {{:DEPTH}}pt;">{{:ACCOUNT_NAME}}</span></td>
+									<td style="text-align:right">{{:YEAR1}}</td>
+									<td style="text-align:right">{{:YEAR2}}</td>
+									<td style="text-align:right">{{:YEAR3}}</td>
+								</tr>
+								{{/if}}
+							{{/for}}
+							</script>
+							<script type="text/x-jsrender" id="<@compId>_getFinAnalStatus02_noData_template">
+								<tr>
+									<td colspan=4>자료가 없습니다.</td>	
+								</tr>
+							</script>
+							</tbody>
+                       </table>
+                       <!-- table end -->           
+                   </div>
+               </div>
+           </div>                            
+           <div class="col2 col10-md col10-sm tab-card-outline w240" wgtgrp="<@compTemplateId>">
+               <div class="add-file-wrap">
+                   <div class="biz-subTitle">Check Point</div>
+               </div>
+               <div class="checkpoint-wrap">
+                   <h4 class="checkpoint-subTitle mb20">재무상태표 체크사항</h4>
+                   <div class="fs13 pb10">1 현금 유동성 수준</div>
+                   <div class="fs13 pb10">2 대표이사 가지급금 유무</div>
+                   <div class="fs13 pb10">3 법인보험계약 자산처리 계정</div>
+                   <div class="fs13 pb10">4 직전 5년 법인전환(기업인수) 기업</div>
+                   <div class="fs13 pb10">5 특허권 평가시 사후관리</div>
+                   <div class="fs13 pb10">6 은행대출 등 단기차입금 규모</div>
+                   <div class="fs13 pb10">7 대표이사 가수금 규모</div>
+                   <div class="fs13 pb10">8 퇴직연금 도입여부</div>
+                   <div class="fs13 pb10">9 유상증자(투자유치) 이력</div>
+                   <div class="fs13 pb10">10 자기주식 보유현황</div>
+                   <div class="fs13 pb10">11 유상감자 이력</div>
+                   <div class="fs13 pb10">12 과거 배당이력</div>
+                   <div class="fs13 pb10">13 미처분이익잉여금 규모</div>
+               </div>
+           </div>               
+       </div>
+    </div>
+	<!-- 요약 재무상태표​ area end -->
+</component>

@@ -1,0 +1,502 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,createChart 		: (container, categories, series)=>_lineRateChart(container, categories, series)
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,selectQueryGroup : function(pmt) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getFinAnalRate"
+						,requestParm	: pmt
+					}
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.showList("<@compId>_getFinAnalRate01", resultData.data['financialanalysis.getFinAnalRate']);
+				<@compId>.showList("<@compId>_getFinAnalRate02", resultData.data['financialanalysis.getFinAnalRate']);
+				<@compId>.showList("<@compId>_getFinAnalRate03", resultData.data['financialanalysis.getFinAnalRate']);
+				<@compId>.showList("<@compId>_getFinAnalRate04", resultData.data['financialanalysis.getFinAnalRate']);
+			});
+		 }
+		,goPage : (pageId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( pageId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+		}		
+		,setEachColumnValue : (loc, arr ,grp) => {
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+		}
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,indicatorsEdit : (indicator, CodeList) => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_CODE"
+					,columnMap 		: {
+						 "GRP_CODE_ID" 	: { headerText : "GRP_CODE_ID"	, hidden : "Y"					}
+					   	,"CODE_ID"		: { headerText : "CODE_ID"		, hidden : "Y"					}
+					   	,"CODE_NM"		: { headerText : "평가지표명"	, readOnly : "Y"				}
+					   	,"ATTR1"		: { headerText : "하위비율"		, dataType : "number"			}
+					   	,"ATTR2"		: { headerText : "상위비율"		, dataType : "number"			}
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }
+					 /*
+					,rowConfig		: {
+						onClickRow : function(rowObj) {
+							dalert(rowObj);
+						}
+					 }
+					,gridConfig : {
+						width : ""	
+					 }
+					 */
+					,primaryKeyList		: ["GRP_CODE_ID","CODE_ID"	]
+					,searchWhereMap		: {GRP_CODE_ID : "BUSINESS_INDEX", CODE_ID : CodeList}
+					,orderColumnList 	: ["CODE_ID"				]
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					,updateOnly			: "Y"
+					//,gridWidth		: "2000px"
+				 }
+				,popupTitle : indicator
+				,size 		: ""// MAX or ""
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 }		
+		,AnalBusinessIndexEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_FIN_ANAL_BUSINESS_INDEX"
+					,columnMap 		: {
+						 "YEAR" 					: { headerText : "기준년도"	, hidden : "N"					}
+					   	,"BUSINESS_TYPE_CODE"		: { headerText : "업종코드(001:전산업)"		, hidden : "N"	}
+					   	,"BUSINESS_INDEX_CODE"		: { headerText : "평가지표코드"	, readOnly : "N"			}
+					   	,"BUSINESS_INDEX"			: { headerText : "평가지표"		, dataType : "number", fix:"2"		}
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }				 
+					,primaryKeyList		: ["YEAR","BUSINESS_TYPE_CODE","BUSINESS_INDEX_CODE"]
+					,searchWhereMap		: {}
+					,orderColumnList 	: ["YEAR","BUSINESS_INDEX_CODE"]
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					,updateOnly			: "Y"
+					//,gridWidth		: "2000px"
+				 }
+				,popupTitle : "년별 한국은행 통계 업종평균"
+				,size 		: ""// MAX or ""
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 }
+		
+
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		//debugger;
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		<@compId>.selectQueryGroup(data);
+		
+		// 20250211 
+		// code by 위성열
+		// Main Widget 처리
+		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+			C_WIDGET.setWidgetState("<@compId>", widgetList);
+		});
+	});
+</script>
+<component>
+
+<!-- 재무비율분석​ area start -->
+
+    <div class="pop_tab_content_box fx-col2 fx-col2-md">
+        <div class="col8 col10-md col10-sm" wgtframe="<@compTemplateId>">
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+                <div class="biz-subTitle">
+                    안전성 지표
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.indicatorsEdit('안정성지표',['0101','0102','0103','0104'])"></button>
+                    </div>
+                </div>
+            </div>     
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">
+                <div class="table-allwrap table-line tb-div-h03">
+                    <!-- table start -->
+                    <table class="table-inwrap">
+                        <colgroup>
+                            <col width="40%">
+                            <col width="">
+                            <col width="">
+                            <col width="">                 
+                        </colgroup>
+                        <thead class="table-thead">
+                            <tr>
+                                <th>재무비율</th>
+                                <th>평가</th>
+                                <th>해당업체</th>
+                                <th>업종평균</th>
+                            </tr>
+                        </thead>
+      				<tbody id="<@compId>_getFinAnalRate01">
+      				</tbody>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate01_template">
+						 {{for list}}
+						   	{{if GRP_CD == '01' }}
+                            <tr>
+                            	<td rowspan='3'>{{:ITEM_NAME}}</td>
+								<td>{{:ICON_STR}}</td>
+						 	    <td>{{:COMPANY_RATE}}</td>
+						 	    <td>{{:SECTORS_AVG_RATE}}</td>
+                             </tr>
+                             <tr>
+						 	  	<td rowspan='2'>표준비율</td>
+                               	<td colspan='2'>{{:EVALUATION_MAX}}</td>
+                             </tr>
+                             <tr>
+						 	   	<td colspan='2'>{{:EVALUATION_MIN}}</td>
+                             </tr>
+						 	 {{/if}}
+						  {{/for}}
+	  				</script>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate01_noData_template">
+						 	 <tr>	
+						 	   	<td colspan=4>자료가 없습니다.</td>	
+						 	 </tr>
+      				</script>
+					</tbody>
+                    </table>
+                    <!-- table end -->           
+                </div>
+            </div>
+            <div class="caption-desc" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">기업이 재무구조를 건실하게 유지한다는 것은 부채를 적정하게 사용한다는 의미입니다. 안정성 지표는 기업의 기초체력인 안정성과 유동성을 측정하는데 이용되며, 채무변제능력을 판단하는 중요한 기준이됩니다.
+            </div>
+            <div class="caption deco-line pb10 mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">해당기업의 재무정보를 바탕으로 재무비율을 계산하고, 업종평균비율 및 표준비율과 비교 분석하였습니다.
+            </div>
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2" grpid="<@compTemplateId>_grp2" id="<@compTemplateId>_grp2_title">
+                <div class="biz-subTitle">
+                    성장성 지표
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp2_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp2')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.indicatorsEdit('성장성지표',['0301','0302','0303','0304'])"></button>
+                    </div>
+                </div>
+            </div>     
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">
+                <div class="table-allwrap table-line tb-div-h03">
+                    <!-- table start -->
+                    <table class="table-inwrap">
+                        <colgroup>
+                            <col width="40%">
+                            <col width="">
+                            <col width="">
+                            <col width="">                 
+                        </colgroup>
+                        <thead class="table-thead">
+                            <tr>
+                                <th>재무비율</th>
+                                <th>평가</th>
+                                <th>해당업체</th>
+                                <th>업종평균</th>
+                            </tr>
+                        </thead>
+      				<tbody id="<@compId>_getFinAnalRate02">
+      				</tbody>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate02_template">
+						 {{for list}}
+						   	{{if GRP_CD == '03' }}
+                            <tr>
+                            	<td rowspan='3'>{{:ITEM_NAME}}</td>
+								<td>{{:ICON_STR}}</td>
+						 	    <td>{{:COMPANY_RATE}}</td>
+						 	    <td>{{:SECTORS_AVG_RATE}}</td>
+                             </tr>
+                             <tr>
+						 	  	<td rowspan='2'>표준비율</td>
+                               	<td colspan='2'>{{:EVALUATION_MAX}}</td>
+                             </tr>
+                             <tr>
+						 	   	<td colspan='2'>{{:EVALUATION_MIN}}</td>
+                             </tr>
+						 	 {{/if}}
+						  {{/for}}
+	  				</script>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate02_noData_template">
+						 	 <tr>	
+						 	   	<td colspan=4>자료가 없습니다.</td>	
+						 	 </tr>
+      				</script>
+					</tbody>
+                    </table>
+                    <!-- table end -->         
+                </div>
+            </div>
+            <div class="caption-desc" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">성장성 지표는 기업의 당해년도 경영규모 및 선과가 전년도에 비하여 얼마나 증가 하였는지를 보여줍니다. 아울러 기업의 경쟁력이나 미래수익 창출능력을 간접적으로 나타내는 지표입니다.
+            </div>
+            <div class="caption mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">해당기업의 재무정보를 바탕으로 재무비율을 계산하고, 업종평균비율 및 표준비율과 비교 분석하였습니다.</div>
+        </div>
+        <div class="col8 col10-md col10-sm" wgtframe="<@compTemplateId>">
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3" id="<@compTemplateId>_grp3_title">
+                <div class="biz-subTitle">
+                    수익성 지표
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp3_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp3')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.indicatorsEdit('수익성지표',['0201','0202','0203','0204'])"></button>
+                    </div>
+                </div>
+            </div>     
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3">
+                <div class="table-allwrap table-line tb-div-h03">
+                    <!-- table start -->
+                    <table class="table-inwrap">
+                        <colgroup>
+                            <col width="40%">
+                            <col width="">
+                            <col width="">
+                            <col width="">                 
+                        </colgroup>
+                        <thead class="table-thead">
+                            <tr>
+                                <th>재무비율</th>
+                                <th>평가</th>
+                                <th>해당업체</th>
+                                <th>업종평균</th>
+                            </tr>
+                        </thead>
+      				<tbody id="<@compId>_getFinAnalRate03">
+      				</tbody>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate03_template">
+						 {{for list}}
+						   	{{if GRP_CD == '02' }}
+                            <tr>
+                            	<td rowspan='3'>{{:ITEM_NAME}}</td>
+								<td>{{:ICON_STR}}</td>
+						 	    <td>{{:COMPANY_RATE}}</td>
+						 	    <td>{{:SECTORS_AVG_RATE}}</td>
+                             </tr>
+                             <tr>
+						 	  	<td rowspan='2'>표준비율</td>
+                               	<td colspan='2'>{{:EVALUATION_MAX}}</td>
+                             </tr>
+                             <tr>
+						 	   	<td colspan='2'>{{:EVALUATION_MIN}}</td>
+                             </tr>
+						 	 {{/if}}
+						  {{/for}}
+	  				</script>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate03_noData_template">
+						 	 <tr>	
+						 	   	<td colspan=4>자료가 없습니다.</td>	
+						 	 </tr>
+      				</script>
+					</tbody>
+                    </table>
+                    <!-- table end --> 
+                </div>
+            </div>
+            <div class="caption-desc" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3">기업의 수익성은 기업 발전의 가장 중요한 원동력입니다. 매출수익성이 마진이라면 자본수익성은 투자수익률을 의미합니 다. ROE가 정기예금 이자율에도 못 미친다면, 기업경영 자체에 대한 근본적인 사업 타당성 검토가 필요합니다.</div>
+            <div class="caption deco-line pb10 mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3">해당기업의 재무정보를 바탕으로 재무비율을 계산하고, 업종평균비율 및 표준비율과 비교 분석하였습니다.</div>
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp4" id="<@compTemplateId>_grp4_title">
+                <div class="biz-subTitle">
+                    활동성 지표
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp4_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp4')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.indicatorsEdit('활동성지표',['0401','0402','0403','0404'])"></button>
+                    </div>
+                </div>
+            </div>     
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp4">
+                <div class="table-allwrap table-line tb-div-h03">
+                    <!-- table start -->
+                    <table class="table-inwrap">
+                        <colgroup>
+                            <col width="40%">
+                            <col width="">
+                            <col width="">
+                            <col width="">                 
+                        </colgroup>
+                        <thead class="table-thead">
+                            <tr>
+                                <th>재무비율</th>
+                                <th>평가</th>
+                                <th>해당업체</th>
+                                <th>업종평균</th>
+                            </tr>
+                        </thead>
+      				<tbody id="<@compId>_getFinAnalRate04">
+      				</tbody>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate04_template">
+						 {{for list}}
+						   	{{if GRP_CD == '04' }}
+                            <tr>
+                            	<td rowspan='3'>{{:ITEM_NAME}}</td>
+								<td>{{:ICON_STR}}</td>
+						 	    <td>{{:COMPANY_RATE}}</td>
+						 	    <td>{{:SECTORS_AVG_RATE}}</td>
+                             </tr>
+                             <tr>
+						 	  	<td rowspan='2'>표준비율</td>
+                               	<td colspan='2'>{{:EVALUATION_MAX}}</td>
+                             </tr>
+                             <tr>
+						 	   	<td colspan='2'>{{:EVALUATION_MIN}}</td>
+                             </tr>
+						 	 {{/if}}
+						  {{/for}}
+	  				</script>
+      				<script type="text/x-jsrender" id="<@compId>_getFinAnalRate04_noData_template">
+						 	 <tr>	
+						 	   	<td colspan=4>자료가 없습니다.</td>	
+						 	 </tr>
+      				</script>
+					</tbody>
+                    </table>
+                    <!-- table end --> 
+                </div>
+            </div>
+            <div class="caption-desc mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp4">활동성 지표는 매출을 올리는데 있어 기업이 자원을 얼마나 효율적으로 이용하였는지와 소요 운영자금의 규모를 보여줍니다. 회전율이 높을수록 현금화 속도는 빠르고, 지급능력도 우수함을 의미합니다.</div>
+        </div>                            
+        <div class="col2 col10-md col10-sm tab-card-outline w240" wgtgrp="<@compTemplateId>">
+            <div class="add-file-wrap">
+                <div class="biz-subTitle">Check Point</div>
+            </div>
+            <div class="checkpoint-wrap">
+                <h4 class="checkpoint-subTitle">업종평균 재무비율 정보 <button class="msg-edit" onClick="<@compId>.AnalBusinessIndexEdit()"></button></h4>
+                <p>(M 전문, 과학 및 기술 서비스업) 업종평균 재무비율은 한국은행 통계 <a href="https://www.bok.or.kr/portal/singl/newsData/list.do?pageIndex=&targetDepth=3&menuNo=200455&syncMenuChekKey=1&depthSubMain=&subMainAt=&searchCnd=1&searchKwd=&depth2=200699&depth3=200455&date=&sdate=&edate=&sort=1&pageUnit=10" target="_blank"><b>「기업경영분석지표」</b></a> 데이터를 참조합니다.</p>
+            </div>
+            <div class="checkpoint-wrap">
+                <h4 class="checkpoint-subTitle">재무비율 분석 평가 기준</h4>
+                <p>해당업체의 재무비율이 업종평균 이상인지, 이하인지 우선 비교하고, 일반적인 중소 기 업의 과거 경험 비율에 근거한 표준비율 대 비 "우수", "양호","위험" 여부를 최종적으로 확인합니다.</p>
+            </div>
+            <div class="checkpoint-wrap">
+                <h4 class="checkpoint-subTitle">자본완전잠식법인</h4>
+                <p>자본완전잠식법인의 경우 부채비율과 차입 금의존도 비율이 마이너스값으로 표시됩니다</p>
+            </div>
+        </div>               
+    </div>
+	<!-- 재무비율분석​ area end -->
+</component>

@@ -1,0 +1,201 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@pageId> = {
+        init : function( value ) {
+            const today = new Date();
+            let currentMonth = today.getMonth();
+            let currentYear = today.getFullYear();
+
+            const monthYearDiv = document.getElementById("explan-month-year");
+            const datesDiv = document.getElementById("explan-dates");
+            const prevBtn = document.getElementById("prevMonth");
+            const nextBtn = document.getElementById("nextMonth");
+            const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+
+            function renderCalendar(month, year) {
+              // 년/월 표시
+              monthYearDiv.textContent = `${year}년 ${month + 1}월`;
+
+              // 요일 이름 보여주기
+              const dayNamesDiv = document.getElementById("explan-day-names");
+              dayNamesDiv.innerHTML = '';
+              dayNames.forEach(day => {
+                const dayDiv = document.createElement('div');
+                dayDiv.textContent = day;
+                dayNamesDiv.appendChild(dayDiv);
+              });
+
+              // 날짜들 삭제
+              datesDiv.innerHTML = '';
+
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+              // 빈 칸 채우기
+              for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'explan-date-cell explan-empty-cell';
+                datesDiv.appendChild(emptyCell);
+              }
+
+              // 날짜 채우기
+              for (let i = 1; i <= daysInMonth; i++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'explan-date-cell';
+
+                // 오늘 날짜 강조
+                if (
+                  i === today.getDate() &&
+                  month === today.getMonth() &&
+                  year === today.getFullYear()
+                ) {
+                  dayCell.style.backgroundColor = '#ffeb3b';
+                  dayCell.style.borderRadius = '50%';
+                }
+                dayCell.textContent = i;
+                datesDiv.appendChild(dayCell);
+              }
+            }
+
+            // 이전 달 버튼 클릭 이벤트
+            prevBtn.addEventListener("click", () => {
+              currentMonth = (currentMonth === 0) ? 11 : currentMonth - 1;
+              if (currentMonth === 11) {
+                currentYear--;
+              }
+              renderCalendar(currentMonth, currentYear);
+            });
+
+            // 다음 달 버튼 클릭 이벤트
+            nextBtn.addEventListener("click", () => {
+              currentMonth = (currentMonth + 1) % 12;
+              if (currentMonth === 0) {
+                currentYear++;
+              }
+              renderCalendar(currentMonth, currentYear);
+            });
+
+            // 초기 화면 렌더링
+            renderCalendar(currentMonth, currentYear);
+        
+        }// init 
+    }
+    // Page Load가 완료된후 실행 된다.
+    C_PM.onLoadPage("<@pageId>", function() {
+    	
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+		
+		<@pageId>.init();
+    	
+    });
+    // History back으로 이동해왔을 경우 이루틴이 실행된다.
+    C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+    });
+</script>
+<page-component>
+	<div style="height:20px"></div>
+    <!-- sub title + button start -->
+    <compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+<!---------------------------------- 컴포넌트 카피 + 대체 시작 영역 -------------------------------------->
+
+
+
+
+     <div class="display-between display-sm-between col0 col0-md col10-sm">
+         <!-- title start -->
+         <div class="notice-wr-info col2 col10-sm ml--0 mb3 mt10">
+             <div class="fl"><span class="schedule-ico" title="설정">
+             </span> <span class="today-title ">오늘의 일정</span></div>
+			<div class="fr today-num">0 개</div>
+         </div>
+         <!-- button start -->
+         <div class="col10-sm display-w-end mb3" style="text-align: right; float: right;">
+            <button class="flat-btn mr5" type="button">일정등록하기</button>
+            <button class="flat-btn" type="button">구글등록하기</button>
+         </div>
+     </div>
+     <!-- path end -->
+
+     <!-- content area start -->
+     <div class="mem-allwrap">
+
+         <!-- schedule area start -->
+         <div class="col2 col3-md col3-sm col10-xs">
+             <!-- schedule start -->
+             <div class="schedule-allwrap tb-card-allwrap">
+				<div class="calendar-wrap">
+					<div id="explan-calendar">
+					  <!-- 년도-월과 화살표 네비게이션 -->
+					  <div id="explan-header-container">
+					      <div id="explan-nav">
+					          <button id="prevMonth" aria-label="이전 달"><</button>
+					          <div id="explan-month-year"></div>
+					          <button id="nextMonth" aria-label="다음 달">></button>
+					      </div>
+					  </div>
+					  <!-- 요일 이름 -->
+					  <div id="explan-day-names"></div>
+					  <!-- 날짜 배치 -->
+					  <div id="explan-dates"></div>
+					</div>
+				</div>
+				<div class="schedule-wrap">
+					<div class="schedule-tit">팀원 업무 스케쥴 확인</div>
+					<div class="schedule-list">
+						<li><input type="checkbox" class="schedule-check">전체</li>
+						<li><input type="checkbox" class="schedule-check">김태우</li>
+						<li><input type="checkbox" class="schedule-check">김준영</li>
+						<li><input type="checkbox" class="schedule-check">김아름</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+						<li><input type="checkbox" class="schedule-check">홍지수</li>
+					</div>
+					<div class="work-wrap">
+						<div class="schedule-tit">업무유형</div>
+						<div class="schedule-list-02">
+							<li><span class="work-red"></span>미팅</li>
+							<li><span class="work-yellow"></span>전화상담</li>
+							<li><span class="work-green"></span>그 외 업무</li>
+							<li><span class="work-blue"></span>이메일 전송</li>
+							<li><span class="work-purple"></span>회사 내부 일정</li>
+							<li><span class="work-green2"></span>세미나</li>
+						</div>
+					</div>                                        
+				</div>							
+			</div>
+             <!-- schedule end -->
+         </div>
+         <!-- schedule area end -->
+
+         <!-- calendararea start -->
+         <div class="col8 col7-md col7-sm col10-xs mem-inwrap">
+             <!-- calendar start -->
+             <div class="schedule-month-allwrap tb-card-allwrap col10 col10-md col10-sm col10-xs">     
+				여기에 달력이 들어갑니다.
+				여기에 달력이 들어갑니다.                        
+             </div>
+             <!-- calendar end -->        
+         </div>
+         <!-- calendar area end -->   
+     </div>
+     <!-- content area end -->
+
+<!---------------------------------- 컴포넌트 카피 + 대체 끝 영역 -------------------------------------->
+    
+</page-component>
+
+
+
+

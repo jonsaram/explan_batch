@@ -1,0 +1,147 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function() {
+			let searchValue = $("#<@compId> #searchWord").val();
+			let gridParm = {
+				 requestQuery	: {
+					  queryId		: "headerManage.getStoreMenuList"
+					 ,requestParm	: {
+						 STORE_ID : G_VAL.current.storeId
+					  }
+				 }
+				,tableName		: "TBL_EXP_STORE_MENU_MST"
+				,columnMap 		: {
+					 "STORE_ID"         : { headerText : "가맹점ID"	, hidden : "Y"	} 
+					,"MENU_CD" 			: { headerText : "메뉴CD"					} 
+					,"MENU_NM"          : { headerText : "메뉴명"       			} 
+					,"SELLING_PRICE"    : { headerText : "가격"	,dataType : "number"} 
+					,"BRAND_MENU_CD"  	: { headerText : "본사메뉴CD" 				} 
+					,"BRAND_MENU_NM"    : { headerText : "본사메뉴명"				}
+					,"GROUP_1_NM"      	: { headerText : "대분류CD"					}
+					,"GROUP_2_NM"      	: { headerText : "중분류CD"					}
+					,"BRAND_SELLING_PRICE": { headerText : "판매가"	,dataType : "number"} 
+				 }
+				,headerTextGroup	: {
+					"본사메뉴" : [
+						 "BRAND_MENU_CD"
+						,"BRAND_MENU_NM"
+						,"GROUP_1_NM"   
+						,"GROUP_2_NM"   
+						,"BRAND_SELLING_PRICE"
+					]
+				 }
+				,columnConfig : {
+				 }
+				,primaryKeyList		: ["STORE_ID"]
+				,searchColumnList	: ["A.MENU_CD", "A.MENU_NM", "B.BRAND_MENU_CD", "B.MENU_NM"]
+				,searchWhereMap		: { "BRAND_ID" : G_VAL.session.BRAND_ID, "STORE_ID" : function() { return G_VAL.current.storeId }}
+				,orderColumnList 	: ["MENU_CD ASC"] // ORDER BY에 사용
+				,rowCntId			: "<@compId>_rowCnt"
+				,readOnly			: "Y"
+			}
+			C_COMP.import("storeMenuManageGrid", "component_compGrid",{gridParm : gridParm} , function() {});		
+			
+		 }
+		,openEdit : function() {
+			C_POP.open("popup_headerManage_storeMenuEditPopup", {storeId : G_VAL.current.storeId, size : "MAX"}, function(retData){
+				if(retData.reload == "Y") {
+					<@compId>.reload();
+				}
+			});
+		 }
+		,reload : function(storeId) {
+			
+			if(isEmpty(storeId)) storeId = G_VAL.current.storeId;			
+
+			if(isEmpty(storeId)) { 
+				C_POP.alert('가맹점을 선택해 주세요.');
+				return;
+			}
+			G_VAL.current.storeId = storeId;
+		
+			let searchValue = $("#<@compId> #searchValue").val();
+			
+			let updateParm = {
+				 searchValue : searchValue
+				,STORE_ID	: storeId
+			}
+			
+			<@parentId>["storeMenuManageGrid"].reload(updateParm);
+		 }
+		,setStoreList : function(brandId, callback) {
+			if(isEmpty(brandId)) {
+				C_POP.alert('Brand ID가 필요합니다.');
+				return;
+			}
+			C_COM.getStoreList(brandId, function(selectList) {
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: "<@compId>_storeList"
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "single");
+	    		
+	    		if(selectList.length > 0 ) {
+	    			
+	    			if(isValid(G_VAL.current.storeId)) C_UICOM.setSingleBox("<@compId>_storeList", G_VAL.current.storeId);
+	    			
+	    			if(typeof callback == "function") callback(selectList[0]); 
+	    		}
+			});
+		 }
+		,changeStore : function(selectDom) {
+			let storeId = $(selectDom).find("option:selected").attr("value");
+			G_VAL.current.storeId = storeId;
+			<@compId>.reload(storeId);
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		
+		let brandId = parm.brandId;
+		if(isEmpty(brandId)) brandId = G_VAL.session.BRAND_ID;
+		
+		<@compId>.setStoreList(brandId, function(obj) {
+			if(isEmpty(obj)) {
+				C_POP.alert('가맹점 등록이 필요합니다.');
+				return;
+			}
+			if(isEmpty(G_VAL.current.storeId)) G_VAL.current.storeId = obj[0];
+
+			<@compId>.loadComponent();
+		});
+
+	});
+</script>
+<component>
+
+	<!-- search filter box start -->
+	<div class="display-between display-sm-between mt10">
+		<div class="col4-md col10-sm display-h-end">
+			<span class="col2-sm w150px mb3">가맹점</span>
+            <select class="form-control form-control-sm w300px col6-sm mr20" id="<@compId>_storeList" onChange="<@compId>.changeStore(this)">
+            </select>                
+			<span class="col2-sm w150px mb3">검색어</span>
+			<input type="text" class="form-control form-control-sm mr5" id="searchValue" onEnter="<@compId>.reload()">
+			<button class="srch-btn" type="button" onclick="<@compId>.reload()">검 색</button>
+		</div>
+		<div class="display-w-end col4 col4-md col10-sm mt10">
+			<span class="col2-sm w120px txt-r mr10">Total : <span class="txt-red" id="<@compId>_rowCnt"></span></span>
+			&nbsp;&nbsp;<button class="flat-btn col2-sm" type="button" onclick="<@compId>.openEdit()">편집</button>
+		</div>
+	</div>
+	<!-- search filter box end --> 
+
+    <!-- table area start -->
+	<div class="tb-card-allwrap mt10">
+		<div class="card-inwrap">
+			<div class="card-cnt-wrap">
+				<div class="table-allwrap">
+					<compnent id="storeMenuManageGrid"></compnent>
+				</div>
+			</div>
+		</div>    
+	</div>    
+    <!-- table area end -->
+
+</component>

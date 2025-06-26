@@ -1,0 +1,93 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		openEditMultiTable : function() {
+			C_POP.open("popup_headerManage_recipeMaterialsEditPopup", {}, function(retData){
+				if(retData.reload == "Y") {
+					<@parentId>["<@compId>_tableGrid"].reload();
+				}
+			});
+		}
+	}
+	
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm1) {
+		let sendParm = {
+			gridParm : {
+				 requestQuery 	: {
+					  queryId		: "headerManage.getRecipeIngredientList"
+					 ,requestParm	: {
+						 BRAND_ID : G_VAL.session.BRAND_ID
+					 }
+				 }	
+				,tableName		: "TBL_EXP_RECIPE"
+				,columnMap 		: {
+					 "RECIPE_CD" 				: { headerText : "레시피CD" }
+					,"RECIPE_NM" 				: { headerText : "레시피명" , align : "left"}
+					,"SUM_PRICE"				: { headerText : "원가" 	, dataType : "number"}
+					,"INGREDIENT_CD" 			: { headerText : "식자재CD" }
+					,"INGREDIENT_NM" 			: { headerText : "식자재명" }
+					,"UNIT" 					: { headerText : "사용단위" }
+					,"CONVERSION_UNIT_PRICE" 	: { headerText : "단가" 	, dataType : "number", fix : "1"}
+					,"QUANTITY" 				: { headerText : "사용량" 	, dataType : "number", fix : "1"}
+					,"BASE_PRICE"				: { headerText : "원가" 	, dataType : "number"}
+					,"PRODUCT_CLASS"			: { headerText : "분류"     ,columnType : "selectbox", useCodeId : "PRODUCT_CLASS" }
+					
+				 }
+				,headerTextGroup	: {
+					"구성 식자재 List" : [
+						 "INGREDIENT_CD" 
+						,"INGREDIENT_NM" 
+						,"UNIT" 		
+						,"CONVERSION_UNIT_PRICE" 		
+						,"QUANTITY" 	
+						,"BASE_PRICE" 	
+						,"PRODUCT_CLASS" 	
+					]
+				 }
+				,columnConfig 	: {
+	                onDblClickCell        : function(columnId, rowData) {
+	                    if( in_array(columnId, ["CONVERSION_UNIT_PRICE", "BASE_PRICE"] )) {
+	                    	commonCompFn.openEditUnitPriceConfig({ materialsCd : rowData.INGREDIENT_CD }, function() {
+	                    		<@parentId>["<@compId>_tableGrid"].reload();
+	                    	});
+	                    }
+	                }
+				 }
+				,primaryKeyList		: ["RECIPE_CD"]
+				,searchColumnList	: ["A.RECIPE_CD", "A.RECIPE_NM", "C.INGREDIENT_CD", "C.INGREDIENT_NM"]
+				,searchValue		: "<@directCallParm.recipeCd>"
+				,searchWhereMap		: { "A.BRAND_ID" : G_VAL.session.BRAND_ID }
+				,orderColumnList 	: ["A.RECIPE_CD", "C.INGREDIENT_CD"]
+				,readOnly			: "Y"
+				,cellMergeList		: [["RECIPE_CD", "SUM_PRICE", 1]]
+				
+			 }
+			,addButtonList : [
+				{
+					 title 		: "단가설정관리"
+					,onClick	: function() {
+						commonCompFn.openEditUnitPriceConfig({}, function() {
+                    		<@parentId>["<@compId>_tableGrid"].reload();
+                    	});					 }  
+				}
+			 ]
+			,callbackEditButton : function(parm) {
+				<@compId>.openEditMultiTable();
+			 }
+			,noTitle 			: "Y"
+			,noBreadcrumb		: "Y"
+		}
+		C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+
+	});
+</script>
+
+
+<component>
+
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+
+</component>

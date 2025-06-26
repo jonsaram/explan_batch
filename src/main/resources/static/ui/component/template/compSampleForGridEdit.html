@@ -1,0 +1,34 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function() {
+
+			// Code List 읽어오기
+			//var group1CdList = C_COM.getBrandCodeList(<@compId>.brandId, "STORE_MENU_GROUP1");
+
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_SAMPLE"
+					,columnMap 		: {
+						 "ITEM_ID" 		: { headerText : "아이템ID", hidden : "Y"	}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"ITEM1" 		: { headerText : "아이템1"					}
+						,"ITEM2" 		: { headerText : "아이템2"					}
+					 }
+				 }
+				,noTitle 		: "Y"
+				,noBreadcrumb	: "Y"
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		<@compId>.loadComponent();
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

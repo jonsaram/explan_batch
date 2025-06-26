@@ -1,0 +1,157 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 contractInfo : {}
+		,todoList	  : []
+		,loadTodoList : function() {
+			
+			var parm = {
+				 queryId 		: "faDashboard.getTodoList"
+				,requestParm	: {}
+				,noLoadingBar	: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				$.each(resultData.data, function(idx) {
+					if(this.EXEC_CHECK == "Y") 	resultData.data[idx].execCheckStr = "checked";
+					else						resultData.data[idx].execCheckStr = "";
+				});
+
+				var rparm = {
+					 targetId 		: "todoList"
+					,list			: resultData.data
+				}
+				C_COM.renderHtml("<@compId>", rparm);
+				
+				<@compId>.todoList = resultData.data
+			});  
+			 
+		 }
+		,registTodo : function() {
+
+			let parm = {
+				 title1 : "TO-DO 등록"	
+				,title2 : "TO-DO"
+			}
+
+			C_POP.open('popup_common_inputOnelinePopup', parm, function(retData) {
+				if(isValid(retData.msg)) {
+					// todo 등록					
+					<@compId>.registTodoProcess(retData.msg);
+				}
+			});
+			
+		}
+		,registTodoProcess : function(todoMsg) {
+			let parm = {
+				 queryId 		: "faDashboard.registTodo"
+				,requestParm	: {
+					 TODO_ID		: C_COM.makeUniqueId()
+					,TODO			: todoMsg
+				 }
+				,noLoadingBar	: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.loadTodoList();
+			});  
+			
+		 }
+		,updateTodo : function(idx) {
+			let todoInfo = <@compId>.todoList[idx];
+			
+			C_POP.open('popup_common_inputOnelinePopup', {title1 : "To do 항목 수정", title2 : "항목", msg : todoInfo.TODO }, function(retData) {
+
+				if( isEmpty(retData) )return;
+				
+				todoInfo.TODO = retData.msg;
+				let parm = {
+					 queryId 		: "faDashboard.updateTodoContent"
+					,requestParm	: todoInfo
+					,noLoadingBar 	: "Y"
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					<@compId>.loadTodoList();
+				});  
+				
+			});
+			
+		 }
+		,deleteTodo : function(idx) {
+			let todoInfo = <@compId>.todoList[idx];
+			
+			C_POP.confirm(`'${todoInfo.TODO}' 항목을 삭제 하시겠습니까?`, function() {
+				let parm = {
+					 queryId 		: "faDashboard.deleteTodo"
+					,requestParm	: todoInfo
+					,noLoadingBar	: "Y"
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					<@compId>.loadTodoList();
+				});  
+			});
+			
+		 }
+		,checkProcess : function(index) {
+			let execCheck = <@compId>.todoList[index].EXEC_CHECK;
+			if(execCheck == 'Y') 	execCheck = 'N';
+			else					execCheck = 'Y';
+			
+			<@compId>.todoList[index].EXEC_CHECK = execCheck;
+			
+			
+			// TODO 상태 Update
+			let parm = {
+				 queryId 		: "faDashboard.updateTodo"
+				,requestParm	: <@compId>.todoList[index]
+				,noLoadingBar 	: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.loadTodoList();
+			});  
+			
+			
+		 }
+	
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+		<@compId>.contractInfo =  data.contractInfo;
+
+		if("<@preload>" != "N") {
+			<@compId>.loadTodoList();	
+		}
+		
+	});
+</script>
+<component>
+	<div class="card-inwrap">
+		<div class="card-tit-wrap">
+			<div class="card-tit">TO-DO List</div>
+			<div class="card-btn">
+				<button class="" type="button"  onclick="javascript:<@compId>.registTodo()">등록</button>
+			</div>
+		</div>
+		<div class="card-cnt-wrap ">
+			<div class="table-allwrap tb-div-h">
+				<ul class="explan_todoList_wrap"  id="todoList">
+				</ul>
+				<script type="text/x-jsrender" id="todoList_template">
+				{{for list}}
+					<li>
+						<input type="checkbox" name="customer" class="check_undo" id="ck_{{:TODO_ID}}" onclick="<@compId>.checkProcess({{:#index}})" {{:execCheckStr}}>
+						<label for="ck_{{:TODO_ID}}"><span class="txt"><span>{{:UPDATE_DATE}} </span><span>: {{:TODO}}</span></span></label>
+						<div class="explan_fr">
+						<button class="explan_msg-edit" onclick="<@compId>.updateTodo({{:#index}})"></button>
+						<button class="explan_msg-del"  onclick="<@compId>.deleteTodo({{:#index}})"></button>
+						</div>
+					</li>
+				{{/for}}
+			</script>
+				<script type="text/x-jsrender" id="todoList_noData_template">	
+				<li class="txt-center"><span class="txt tc">등록된 내용이 없습니다.</span></li>
+			</script>	                      
+			</div>
+		</div>
+	</div>
+</component>

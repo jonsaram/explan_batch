@@ -1,0 +1,71 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 brandId	: G_VAL.session.BRAND_ID
+		,columnButtonFn : function(cellData, rowData) {
+			dalert(rowData);
+		 }
+		,loadComponent : function(parm) {
+
+			// Code List 읽어오기
+			var group1CdList = C_COM.getBrandCodeList(<@pageId>.brandId, "STORE_MENU_GROUP1");
+
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_SAMPLE"
+					,columnMap 		: {
+						 "ITEM_ID" 		: { headerText : "아이템ID"}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"ITEM1" 		: { headerText : "아이템1"}
+						,"ITEM2" 		: { headerText : "아이템2"}
+						,"ITEM3" 		: { headerText : "아이템3"}
+						,"MDF_BTN" 		: { headerText : "수정",width : "100px", columnType : "button", buttonNm : "수정", buttonFn : function(targetCell, rowData){
+											const parm = {
+												 gridParm : sendParm.gridParm
+												,gridHeaderTitle 	: "테스트 항목 수정"
+												,popupTitle 		: "테스트 항목 수정"
+												,targetRowData		: rowData
+											}
+											C_POP.open("popup_common_oneEditGridPopup", parm, function(retData){
+												<@pageId>["<@pageId>_tableGrid"].reload();
+											});
+										  }
+						 }
+					 }
+					,primaryKeyList		: ["ITEM_ID"]
+					,searchColumnList	: ["ITEM_ID"]		// Table 지정인경우 적용
+					,orderColumnList 	: ["ITEM_ID ASC"]	// Table 지정인경우 적용
+				 }
+				,addButtonList : [
+					{
+						 title 		: "등록"
+						,onClick	: function() {
+							const parm = {
+								 gridParm : sendParm.gridParm
+								,gridHeaderTitle 	: "테스트 항목 등록"
+								,popupTitle 		: "테스트 항목 등록"
+							}
+							C_POP.open("popup_common_oneEditGridPopup", parm, function(retData){
+								<@pageId>["<@pageId>_tableGrid"].reload();
+							});
+						 }  
+					}
+				]
+				
+			}
+			C_COMP.import("<@pageId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_editor"></compnent>    
+    <!-- table area end -->
+</page-component>

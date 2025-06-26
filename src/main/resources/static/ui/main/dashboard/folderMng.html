@@ -1,0 +1,75 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		init: function(){
+			
+			let BUYER_ID = G_VAL.session.BUYER_ID;
+	        let parm = {
+	            queryId        : "faDashboard.getBuyerFolder"
+	           ,requestParm    : {BUYER_ID 	: BUYER_ID} 
+	        }
+	        C_COM.requestQuery(parm, function(retData) {
+
+	        	if(retData.state == "S") {
+					let execFn = function(topFolderId) {
+
+	        			let parm = {
+	       					 BASE_FOLDER_ID	: topFolderId
+	       					,TOP_FOLDER_ID	: topFolderId
+	       					,BUYER_ID		: BUYER_ID
+	       					,calc			: "120"
+	       				}
+						
+	       				C_COMP.import("folderMng", "component_dashboard_compFolderMng", parm , function() {
+
+	       				});
+	        		}    
+					
+	        		
+	        		if(isValid(retData.data)) {
+	        			let topFolderId = retData.data[0].FOLDER_ID
+	        			execFn(topFolderId);
+	        		}else{
+	        			execFn('');
+	        		}
+
+				}			
+			});
+		}
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+
+		// 상단 메뉴Path처리
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+
+		<@pageId>.init();
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+        <!-- path start -->
+        <div class="srch-path-card">
+          <div class="srch-card-path-inwrap" id="<@pageId>_path"><!-- 빈스페이스 > 기업공유폴더 > 회의록 -->
+          </div>
+        </div>
+        <!-- path end -->
+  	<component id="folderMng">
+
+	</component>
+</page-component>

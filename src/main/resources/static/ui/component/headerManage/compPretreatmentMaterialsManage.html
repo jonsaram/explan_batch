@@ -1,0 +1,84 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		openEditMultiTable : function() {
+			C_POP.open("popup_headerManage_pretreatmentMaterialsEditPopup", {}, function(retData){
+				if(retData.reload == "Y") {
+					<@parentId>["<@compId>_tableGrid"].reload();
+				}
+			});
+		}
+	}
+	
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm1) {
+		let sendParm = {
+			gridParm : {
+				 requestQuery 	: {
+					  queryId		: "headerManage.getPretreatmentMaterialsList"
+					 ,requestParm	: {
+						 BRAND_ID : G_VAL.session.BRAND_ID
+					 }
+				 }	
+				,tableName		: "TBL_EXP_PRETREATMENT"
+				,columnMap 		: {
+					 "PRETREATMENT_CD" 			: { headerText : "제조식품CD" 	}
+					,"PRETREATMENT_NM" 			: { headerText : "제조식품명" 	, align : "left"}
+					,"PTMT_UNIT" 				: { headerText : "사용단위" 	}
+					,"PTMT_UNIT_PRICE"			: { headerText : "단가" 	  	, dataType : "number", fix : "2"}
+					,"SUM_QTT"					: { headerText : "제조용량" 	, dataType : "number", fix : "2"}
+					,"SUM_PRICE"				: { headerText : "제조원가" 	, dataType : "number", fix : "2"}
+					,"MATERIALS_CD" 			: { headerText : "식자재CD" }
+					,"MATERIALS_NM" 			: { headerText : "식자재명" }
+					,"UNIT" 					: { headerText : "사용단위" }
+					,"CONVERSION_UNIT_PRICE" 	: { headerText : "단가" 	, dataType : "number", fix : "2"}
+					,"QUANTITY" 				: { headerText : "사용량" 	, dataType : "number", fix : "2"}
+					,"BASE_PRICE"				: { headerText : "원가" 	, dataType : "number", fix : "2"}
+				 }
+				,headerTextGroup	: {
+					"구성 식자재 List" : [
+						 "MATERIALS_CD" 
+						,"MATERIALS_NM" 
+						,"UNIT" 		
+						,"CONVERSION_UNIT_PRICE" 		
+						,"QUANTITY" 	
+						,"BASE_PRICE" 	
+					]
+				 }
+				,columnConfig 	: {
+	                onDblClickCell        : function(columnId, rowData) {
+	                    if( in_array(columnId, ["CONVERSION_UNIT_PRICE", "BASE_PRICE"] )) {
+	                    	commonCompFn.openEditUnitPriceConfig({ materialsCd : rowData.MATERIALS_CD }, function() {
+	                    		<@parentId>["<@compId>_tableGrid"].reload();
+	                    	});
+	                    }
+	                }
+				 }
+				,primaryKeyList		: ["PRETREATMENT_CD"]
+				,searchColumnList	: ["A.PRETREATMENT_CD", "A.PRETREATMENT_NM", "C.MATERIALS_CD", "C.MATERIALS_NM"]
+				,searchValue		: "<@directCallParm.recipeCd>"
+				,searchWhereMap		: { "A.BRAND_ID" : G_VAL.session.BRAND_ID }
+				,orderColumnList 	: ["A.PRETREATMENT_CD", "C.MATERIALS_CD"]
+				,readOnly			: "Y"
+				,cellMergeList		: [["PRETREATMENT_CD", "SUM_PRICE", 1]]
+				
+			 }
+			,callbackEditButton : function(parm) {
+				<@compId>.openEditMultiTable();
+			 }
+			,noTitle 			: "Y"
+			,noBreadcrumb		: "Y"
+		}
+		C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+
+	});
+</script>
+
+
+<component>
+
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+
+</component>

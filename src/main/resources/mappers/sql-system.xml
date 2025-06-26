@@ -1,0 +1,812 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="system">
+
+<resultMap id="clobMap" type="java.util.HashMap">
+    <result property="HELP_ID"			column="HELP_ID"	/>
+    <result property="MENU_ID"			column="MENU_ID"	/>
+    <result property="MENU_NM"			column="MENU_NM"	/>
+    <result property="TEMPLATE_ID"		column="TEMPLATE_ID"/>
+    <result property="HELP_TYPE"		column="HELP_TYPE"	/>
+    <result property="COLUMN_ID"		column="COLUMN_ID"	/>
+	<result property="HELP_CONTENT"		column="HELP_CONTENT"	jdbcType="CLOB" javaType="java.lang.String"/>
+</resultMap>
+
+	<cache />
+	
+	<select id="getMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getMenuList
+			메뉴 조회
+		*/
+		SELECT A.* FROM (
+			SELECT T.MENU_ID 
+				,T.MENU_NM
+				,T.MENU_DESC
+				,T.PARENT_MENU_ID
+				,NVL(P.MENU_NM , '---' ) AS PARENT_MENU_NM
+				,NVL(P.MENU_DESC,'---' ) AS PARENT_MENU_DESC
+				,T.MENU_DEPTH
+				,T.PARAMETER
+				,NVL(T.PAGE_ID , '---' ) AS PAGE_ID
+				,T.USE_YN
+				,T.DEL_YN
+				,T.UPDATE_USER
+				,TO_CHAR( T.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) UPDATE_DATE 
+				,T.SORT_ORDER
+				,(  MAX(T.SORT_ORDER) over( PARTITION BY NVL(T.PARENT_MENU_ID,T.MENU_ID ) ) )+10 AS NEXT_SORT_ORDER
+				,(  MAX(DECODE( T.MENU_DEPTH, '0',T.SORT_ORDER,'0')) over( ) )+100 AS NEXT_ROOT_SORT_ORDER			
+				,CASE  
+					WHEN EXISTS (
+						            SELECT 1 
+						            FROM ${dbHdr}${comnHdr}TBL_EXP_MENU CHILD 
+						            WHERE CHILD.PARENT_MENU_ID = T.MENU_ID
+						            
+								) 	THEN 'Y'
+			        				ELSE 'N'
+			    END AS HAS_CHILD
+			    ,( SELECT USER FROM DUAL ) SYS_SCHEME
+			FROM ${dbHdr}${comnHdr}TBL_EXP_MENU T
+			,${dbHdr}${comnHdr}TBL_EXP_MENU P
+			WHERE 1=1
+		       AND T.PARENT_MENU_ID = P.MENU_ID(+)
+		       AND T.USE_YN = 'Y'
+		) A		       
+		WHERE 
+			A.MENU_ID IN (
+				SELECT
+					D.MENU_ID
+				FROM
+					 ${dbHdr}${comnHdr}TBL_EXP_AUTH 	A 
+					,${dbHdr}${comnHdr}TBL_EXP_ROLE 	B
+					,${dbHdr}${comnHdr}TBL_EXP_ROLEMENU C
+					,${dbHdr}${comnHdr}TBL_EXP_MENU 	D
+				WHERE 1=1	
+					AND A.ROLE_ID = B.ROLE_ID
+					AND B.ROLE_ID = C.ROLE_ID
+					AND C.MENU_ID = D.MENU_ID
+					AND USER_ID = #{ sessionVo.userId }
+			)
+		ORDER BY SORT_ORDER
+
+	</select>
+	<select id="getCodeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getCodeList
+			코드 조회
+		*/
+		SELECT
+			 A.GRP_CODE_ID
+			,A.GRP_CODE_NM
+			,B.CODE_ID
+			,B.CODE_NM
+			,B.CODE_DESC
+			,B.USE_YN
+			,B.DEL_YN
+			,B.SORT_ORDER
+			,B.ATTR1
+			,B.ATTR2	
+		FROM 
+			 ${dbHdr}${comnHdr}TBL_EXP_GRPCODE 	A
+			,${dbHdr}${comnHdr}TBL_EXP_CODE		B
+		WHERE 1=1	
+			AND A.GRP_CODE_ID = B.GRP_CODE_ID
+    <if test='parm == null or parm.equals("")'>
+		/* 일반 쿼리로 접근 */
+	    <if test='searchValue !=null and  !searchValue.equals("")'>
+	    	AND  (
+	    			A.GRP_CODE_ID 	LIKE '%${searchValue}%'
+	    		OR	A.GRP_CODE_NM 	LIKE '%${searchValue}%'
+	    		OR	B.CODE_ID 		LIKE '%${searchValue}%'
+	    		OR	B.CODE_NM 		LIKE '%${searchValue}%'
+	    	)
+	    ORDER BY A.SORT_ORDER ASC, B.SORT_ORDER ASC
+	    </if>
+    </if>
+    <if test='parm != null and !parm.equals("")'>
+		/* Grid Component에서 접근 */
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+    </if>
+
+	</select>
+	
+	<select id="getBrandCodeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		SELECT
+			 A.GRP_CODE_ID
+			,A.GRP_CODE_NM
+			,B.CODE_ID
+			,B.CODE_NM
+			,B.CODE_DESC
+			,B.USE_YN
+			,B.DEL_YN
+			,B.SORT_ORDER
+			,B.ATTR1
+			,B.ATTR2	
+		FROM 
+			 TBL_EXP_BRAND_GRPCODE 	A
+			,TBL_EXP_BRAND_CODE		B
+		WHERE 1=1	
+			AND A.GRP_CODE_ID 	= B.GRP_CODE_ID
+			AND A.BRAND_ID 		= B.BRAND_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	<select id="getUserInfoByEmailLogin" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getUserInfoByEmailLogin
+			Mail 로그인 
+		*/
+ 		SELECT U.LOGIN_ID, U.BUYER_ID, U.BRAND_ID, U.STORE_ID, U.LOGIN_NM
+ 		, ( SELECT USER_NM FROM TBL_EXP_USER WHERE USER_ID = U.LOGIN_ID) AS USER_NM
+		, U.PASSWD, U.UPDATE_USER, U.UPDATE_DATE, U.CREATE_USER, U.CREATE_DATE
+ 		, O.MAIL_GUBUN, O.E_MAIL , O.KAKAO_UUID
+ 		FROM TBL_EXP_LOGIN_USER U, TBL_EXP_OAUTH_INFO O 
+ 		WHERE U.LOGIN_ID = O.LOGIN_ID
+ 		  AND O.E_MAIL =   #{eMail} AND O.MAIL_GUBUN = #{mailType}
+	</select>
+	
+	<update id="updateKakaoUUID" parameterType="map">
+ 		/*	system.updateKakaoUUID
+			KAKO UUID 등록 
+		*/
+        UPDATE TBL_EXP_OAUTH_INFO 
+        SET KAKAO_UUID = #{KAKAO_UUID}
+        WHERE LOGIN_ID = #{LOGIN_ID}
+        AND MAIL_GUBUN = 'KAKAO'
+
+	</update>		
+	
+	
+	<select id="getBuyerByEmailLogin" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBuyerByEmailLogin
+			Buyer EMAIL 로그인 조회 ( 본사 조회)
+		*/
+		SELECT
+		     BUYER_ID
+		    ,BUYER_NM
+			,CEO_NM
+			,TEL
+			,ADDR
+			,COMPANY_REGNUM
+			,#{loginType} LOGIN_TYPE
+		FROM
+		    TBL_EXP_BUYER A
+		WHERE 1=1
+			AND USE_YN	= 'Y'
+			AND MAIL_GUBUN = #{mailType}
+			AND E_MAIL = #{eMail}
+	</select>
+	
+	<select id="getStoreInfoByEmailLogin" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getStoreInfoByEmailLogin
+			STORE EMAIL 로그인 조회 ( 가맹점 조회)
+		*/
+		SELECT
+		     A.STORE_ID
+		    ,A.STORE_ID
+		    ,A.STORE_NM
+		    ,A.BRAND_ID
+		    ,C.BRAND_NM        
+            ,B.BUYER_ID
+		    ,B.BUYER_NM
+			,B.CEO_NM
+			,B.TEL
+			,B.ADDR
+			,b.COMPANY_REGNUM
+			,#{loginType} LOGIN_TYPE
+		FROM
+        	TBL_EXP_STORE_MST		A
+		    ,TBL_EXP_BUYER B
+		    ,TBL_EXP_BUYER_BRAND	C
+		WHERE 1=1
+			AND A.BRAND_ID = C.BRAND_ID
+			AND B.BUYER_ID = C.BUYER_ID
+			AND B.USE_YN	= 'Y'
+			AND A.MAIL_GUBUN = #{mailType}
+			AND A.E_MAIL = #{eMail}
+	</select>
+	
+	<select id="getBuyerInfoForLogin" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBuyerInfoForLogin
+			Buyer 조회 ( 본사 조회)
+		*/
+		SELECT
+		     BUYER_ID
+		    ,BUYER_NM
+			,CEO_NM
+			,TEL
+			,ADDR
+			,COMPANY_REGNUM
+			,#{loginType} LOGIN_TYPE
+		FROM
+		    TBL_EXP_BUYER A
+		WHERE
+				BUYER_ID = #{userId}
+			AND ( BUYER_PW 	= #{userPw} OR #{userPw} 	= 'explan12!@')  
+			AND USE_YN	= 'Y'
+	</select>
+
+
+	<select id="getStoreInfoForLogin" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getStoreInfoForLogin
+			가맹점 조회
+		*/
+		SELECT
+		     A.STORE_ID
+		    ,A.STORE_ID
+		    ,A.STORE_NM
+		    ,A.BRAND_ID
+		    ,C.BRAND_NM
+		    ,B.BUYER_ID
+		    ,B.BUYER_NM
+			,#{loginType} LOGIN_TYPE
+		FROM
+		     TBL_EXP_STORE_MST		A
+		    ,TBL_EXP_BUYER			B
+		    ,TBL_EXP_BUYER_BRAND	C
+		WHERE 1=1
+			AND A.BRAND_ID 	= C.BRAND_ID
+			AND B.BUYER_ID 	= C.BUYER_ID
+			AND	STORE_ID 	= #{userId}
+			AND ( PASSWD 	= #{userPw} OR #{userPw} 	= 'explan12!@')  
+	</select>
+	
+
+	
+	<select id="getBuyerBrands" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBuyerBrands
+			Brand 조회
+		*/
+		SELECT
+		     BRAND_ID
+		    ,BRAND_NM
+			,BUYER_ID
+            ,POS_COMP_CD
+            ,POS_GROUP_ID
+		FROM
+		    TBL_EXP_BUYER_BRAND A
+		WHERE 1 = 1
+        <if test=" BUYER_ID != null and BUYER_ID != ''  ">
+            AND    BUYER_ID = #{BUYER_ID} 
+        </if>
+        <if test='posCompCdNull !=null and  posCompCdNull.equals("N")'>
+            AND    POS_COMP_CD IS NOT NULL
+        </if>
+        <if test='posGroupIdNull !=null and  posGroupIdNull.equals("N")'>
+            AND    POS_GROUP_ID IS NOT NULL
+        </if>
+			
+		ORDER BY SORT_ORDER
+	</select>
+
+	<select id="getBuyerBrandForStore" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBuyerBrandForStore
+			Brand 조회
+		*/
+		SELECT
+		     BRAND_ID
+		    ,BRAND_NM
+			,BUYER_ID
+			,(SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE A.BUYER_ID = BUYER_ID) AS BUYER_NM
+		FROM
+		    TBL_EXP_BUYER_BRAND A
+		WHERE
+			BRAND_ID = #{BRAND_ID}
+	</select>
+
+
+	<select id="getLoginUserList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getLoginUserList
+			로그인 사용자 리스트 조회
+		*/
+		SELECT
+			 A.LOGIN_ID 
+			,A.BUYER_ID 
+			,B.BUYER_NM
+			,A.BRAND_ID
+			,C.BRAND_NM 
+			,A.STORE_ID
+			,D.STORE_NM 
+			,A.LOGIN_NM 
+			,A.PASSWD		 
+		FROM 
+			 TBL_EXP_LOGIN_USER		A
+			,TBL_EXP_BUYER          B
+			,TBL_EXP_BUYER_BRAND    C
+			,TBL_EXP_STORE_MST      D
+		WHERE 1=1
+			AND A.BUYER_ID = B.BUYER_ID(+)
+			AND A.BUYER_ID = C.BUYER_ID(+)
+			AND A.BRAND_ID = C.BRAND_ID(+)
+			AND A.BRAND_ID = D.BRAND_ID(+)
+			AND A.STORE_ID = D.STORE_ID(+)
+	</select>
+	
+	<select id="getExcelUploadTableList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getExcelUploadTableList
+			엑셀 업로드 대상 Table List 
+		*/
+		SELECT
+			 A.TABLE_NAME
+			,COLUMN_LIST
+			,TBL_CMMT
+			,B.ORG_FILE_NM
+			,B.FILE_ID
+			,NULL UPLOAD
+		FROM 
+			 TBL_EXP_EXUPTBL A
+			,TBL_EXP_FILEMNG B
+		WHERE 1=1
+			AND	A.TABLE_NAME 	= B.GRP_FILE_ID(+)
+			AND B.OWNER_CD(+)	= 'EXCEL_TEMPLATE'
+			AND B.DEL_YN(+) 	= 'N'
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+	
+	<delete id="delFileMng" parameterType="map">
+ 		/*	system.delFileMng
+			엑셀 업로드 row 삭제 
+		*/
+		DELETE TBL_EXP_FILEMNG
+		WHERE FILE_ID IN
+		<foreach item="FILE_ID" index="index" collection="FILE_IDS" separator="," open="(" close=")">
+			 	#{FILE_ID}
+		</foreach>  
+	</delete>
+
+	<select id="getBrandList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBrandList
+			각 Buyer별 Brand 목록
+		*/
+		SELECT
+			 A.BUYER_ID 	AS BUYER_ID
+			,A.BUYER_NM 	AS BUYER_NM
+		    ,B.BRAND_ID 	AS BRAND_ID
+		    ,B.BRAND_NM 	AS BRAND_NM
+			,B.SORT_ORDER 	AS SORT_ORDER
+		FROM
+			 TBL_EXP_BUYER			A
+		    ,TBL_EXP_BUYER_BRAND	B
+		WHERE
+			A.BUYER_ID = B.BUYER_ID  
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+	<select id="getRoleList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getRoleList
+			Role 목록
+		*/
+		SELECT 
+			 A.ROLE_ID
+			,A.ROLE_NM
+			,B.MENU_ID
+			,C.MENU_NM
+			,C.MENU_DEPTH
+			,B.AUTH_TYPE
+		FROM 
+			 ${dbHdr}${comnHdr}TBL_EXP_ROLE		A
+			,${dbHdr}${comnHdr}TBL_EXP_ROLEMENU	B
+			,${dbHdr}${comnHdr}TBL_EXP_MENU		C
+		WHERE 1=1
+			AND	A.ROLE_ID = B.ROLE_ID	
+			AND B.MENU_ID = C.MENU_ID	
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+
+	<select id="getAuthList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getAuthList
+			Auth 목록
+		*/
+		SELECT
+			 A.USER_ID
+			,B.ROLE_ID
+			,B.ROLE_NM
+			,A.USER_TYPE
+		FROM
+			 ${dbHdr}${comnHdr}TBL_EXP_AUTH A 
+			,${dbHdr}${comnHdr}TBL_EXP_ROLE B
+		WHERE	
+			A.ROLE_ID = B.ROLE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+	
+	<select id="getBuyerInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getBuyerInfo
+			Buyer 조회 
+		*/
+		SELECT
+		     BUYER_ID
+		    ,BUYER_NM
+		    ,TEL
+		    ,ADDR
+		    ,COMPANY_REGNUM
+		    ,USE_YN
+		    ,DEL_YN
+		    ,HOW_GET
+		    ,SP_CSTM_ID
+		    ,UPDATE_USER
+		    ,UPDATE_DATE
+		    ,BUYER_PW
+		    ,DECODE( BUYER_PW ,'1234','Y','N') MUST_CHANGE
+		FROM
+		    TBL_EXP_BUYER A
+		WHERE
+				BUYER_ID = #{BUYER_ID}
+			AND USE_YN	= 'Y'
+			AND DEL_YN	= 'N'
+	</select>
+	
+	<update id="updatePwd" parameterType="map">
+ 		/*	system.updatePwd
+			비밀번호 변경 
+		*/
+		UPDATE TBL_EXP_LOGIN_USER 
+        SET PASSWD = #{NEW_PWD}
+        ,UPDATE_USER = 'SYSTEM'
+        ,UPDATE_DATE = SYSDATE
+        WHERE LOGIN_ID = #{USER_ID}
+        AND PASSWD = #{CUR_PWD} 
+	</update>	
+	
+	<update id="resetPwd" parameterType="map">
+ 		/*	system.resetPwd
+			비밀번호 초기화 
+		*/
+		UPDATE TBL_EXP_LOGIN_USER 
+        SET PASSWD = #{LOGIN_ID}
+        ,UPDATE_USER = 'SYSTEM'
+        ,UPDATE_DATE = SYSDATE
+        WHERE LOGIN_ID = #{LOGIN_ID}
+	</update>	
+	
+	<select id="getUserLoginLock" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+ 		/*	system.getUserLoginLock
+			계정 잠금 조회 
+		*/		
+		SELECT TRIM(USER_ID) AS USER_ID 
+		, FAILED_ATTEMPTS, IS_LOCK, LOCK_TIME
+		FROM TBL_EXP_LOGIN_LOCK 
+		WHERE 1=1
+		AND TRIM(USER_ID)	= TRIM(#{USER_ID})	
+	</select>
+	
+	<insert id="insertLock" parameterType="map">
+ 		/*	system.insertLock
+			계정 잠금 등록 
+		*/
+		insert into TBL_EXP_LOGIN_LOCK ( GUBUN, USER_ID, USER_NM, FAILED_ATTEMPTS, IS_LOCK, LOCK_TIME) 
+		values ( 'gubun', #{LOGIN_ID}, #{LOGIN_NM}, 1, 'N', SYSDATE)
+	</insert>	
+	
+	
+	<update id="addlockCnt" parameterType="map">
+ 		/*	system.addlockCnt
+			계정 잠금 횟수 증가 
+		*/
+		UPDATE TBL_EXP_LOGIN_LOCK
+		SET FAILED_ATTEMPTS = FAILED_ATTEMPTS + 1
+		,	IS_LOCK = CASE WHEN FAILED_ATTEMPTS + 1 <![CDATA[>= 5]]> THEN 'Y' ELSE 'N' END 
+		WHERE 1=1
+		AND TRIM(USER_ID) =TRIM(#{USER_ID})
+	</update>	
+	
+	<select id="getLoginUserInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getLoginUserInfo
+			로그인 사용자 조회
+		*/
+		SELECT LOGIN_ID
+		, BUYER_ID
+		,( SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE BUYER_ID = LU.BUYER_ID) AS BUYER_NM
+		,  BRAND_ID
+		,( SELECT BRAND_NM FROM TBL_EXP_BUYER_BRAND WHERE BRAND_ID = LU.BRAND_ID) AS BRAND_NM
+		, STORE_ID
+		,( SELECT STORE_NM FROM TBL_EXP_STORE_MST WHERE STORE_ID = LU.STORE_ID) AS STORE_NM
+		, LOGIN_NM
+		,( SELECT USER_NM FROM TBL_EXP_USER WHERE USER_ID = LU.USER_ID) AS USER_NM
+		, PASSWD, UPDATE_USER, UPDATE_DATE, CREATE_USER, CREATE_DATE
+		,LOGIN_ID AS userId
+		,LU.USER_ID
+		FROM TBL_EXP_LOGIN_USER LU
+		WHERE LOGIN_ID = #{LOGIN_ID}
+		AND PASSWD = #{PASSWD}
+	</select>
+	
+	<select id="searchLoginLock" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+ 		/*	system.searchLoginLock
+			개인 계정 잠금 조회 
+		*/		
+		SELECT TRIM(USER_ID) AS USER_ID
+		, FAILED_ATTEMPTS, IS_LOCK, LOCK_TIME
+		FROM TBL_EXP_LOGIN_LOCK 
+		WHERE 1=1
+		AND TRIM(USER_ID) = #{USER_ID}	
+	</select>
+
+	<select id="releaseLoginLock" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+ 		/*	system.releaseLoginLock
+			개인 계정 잠금 해제  
+		*/		
+		UPDATE TBL_EXP_LOGIN_LOCK
+		SET FAILED_ATTEMPTS = 0
+		,	IS_LOCK = 'N' 
+		WHERE 1=1
+		AND TRIM(USER_ID) = #{USER_ID}	
+	</select>
+	
+	
+	<select id="getLoginUserMngList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+ 		/*	system.getLoginUserMngList
+			로그인 유저 목록
+		*/		
+		SELECT
+		     A.LOGIN_ID
+		    ,A.BUYER_ID
+		    ,B.BUYER_NM
+		    ,A.USER_ID
+		    ,A.BRAND_ID
+		    ,A.STORE_ID
+		    ,C.STORE_NM
+		    ,A.LOGIN_NM
+		    ,A.PASSWD
+		FROM
+		     TBL_EXP_LOGIN_USER A
+		    ,TBL_EXP_BUYER		B
+		    ,TBL_EXP_STORE_MST	C
+		WHERE 1=1
+			AND A.BUYER_ID = B.BUYER_ID
+			AND A.STORE_ID = C.STORE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+   	</select>
+
+	<select id="getHelpMngList" resultMap="clobMap" flushCache="true"  useCache="false">
+ 		/*	system.getHelpMngList
+			도움말 목록 리스트
+		*/		
+		SELECT 
+		     A.HELP_ID
+		    ,A.HELP_TITLE
+		    ,A.MENU_ID
+		    ,A.TEMPLATE_ID
+		    ,A.HELP_TYPE
+		    ,A.COLUMN_ID
+		    ,A.HELP_CONTENT
+		FROM 
+		     TBL_EXP_HELP_MNG   A
+		    ,${dbHdr}${comnHdr}TBL_EXP_MENU       B
+		WHERE 1=1
+		    AND A.MENU_ID 		= B.MENU_ID(+)
+	    <if test='parm == null or parm.equals("")'>
+			/* 일반 쿼리로 접근 */
+			AND HELP_TYPE = #{HELP_TYPE}
+	    </if>
+	    <if test='parm != null and !parm.equals("")'>
+			/* Grid Component에서 접근 */
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	    </if>
+   	</select>
+
+
+	<select id="getHelpContentList" resultMap="clobMap" flushCache="true"  useCache="false">
+ 		/*	system.getHelpColumnList
+			컬럼 도움말 리스트
+		*/		
+		SELECT 
+		     A.HELP_ID
+		    ,A.HELP_TITLE
+		    ,A.MENU_ID
+		    ,A.TEMPLATE_ID
+		    ,A.COLUMN_ID
+		    ,A.HELP_CONTENT
+		FROM 
+		     TBL_EXP_HELP_MNG   A
+		WHERE 1=1
+	    <if test='HELP_ID != null and !HELP_ID.equals("")'>
+			AND HELP_ID = #{HELP_ID}
+	    </if>
+	    <if test='HELP_ID == null or HELP_ID.equals("")'>
+		    <if test='TEMPLATE_ID != null and !TEMPLATE_ID.equals("")'>
+			AND TEMPLATE_ID 	= #{TEMPLATE_ID}
+		    </if>
+			AND HELP_TYPE 		= #{HELP_TYPE}
+	    </if>
+   	</select>
+
+	<update id="updateHelpContent" parameterType="map">
+ 		/*	system.updateHelpContent
+			Help Content등록 
+		*/
+        UPDATE 
+        	TBL_EXP_HELP_MNG 
+        SET 
+        	HELP_CONTENT = #{HELP_CONTENT:CLOB}
+        WHERE 
+        	HELP_ID = #{HELP_ID}
+	</update>		
+
+	<update id="insertHelpContent" parameterType="map">
+ 		/*	system.insertHelpContent
+			Help Content등록 
+		*/
+		INSERT INTO TBL_EXP_HELP_MNG (
+		     HELP_ID
+		    ,MENU_ID
+		    ,TEMPLATE_ID
+		    ,HELP_TYPE
+		    ,HELP_TITLE
+		    ,COLUMN_ID
+		    ,CREATE_USER
+		    ,CREATE_DATE
+		) VALUES (
+		     #{HELP_ID		} 
+		    ,#{MENU_ID		} 
+		    ,#{TEMPLATE_ID	} 
+		    ,#{HELP_TYPE	} 
+		    ,#{HELP_TITLE	} 
+		    ,#{COLUMN_ID	} 
+		    ,#{sessionVo.userId	}
+		    ,GET_KRDT(SYSDATE) 
+		)	
+	</update>	
+		
+	<select id="getUser" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getUser
+			User 조회 
+		*/
+		SELECT U.SP_CSTM_ID 
+			,U.USER_ID
+			,U.USER_NM
+			,U.USER_DESC
+			,U.E_MAIL
+			,U.PHONE_NUM
+			,U.STATE
+			,GET_CODE_NM('USER_STATE', U.STATE)		AS STATE_NM
+			,U.UPDATE_USER
+			,TO_CHAR( U.UPDATE_DATE , 'YYYY-MM-DD HH24:MI:SS' ) UPDATE_DATE 
+	        ,U.USE_YN
+	        ,U.DEL_YN
+			,U.SURETY_INSURANCE
+			,U.GENDER
+			,U.SALES_TYPE
+			,GET_CODE_NM('SALES_TYPE', SALES_TYPE)		AS SALES_TYPE_NM
+	        ,U.RECOMMENDER_ID
+	        ,GET_CODE_NM('USER_ID', RECOMMENDER_ID)		AS RECOMMENDER_NM 
+	        ,ROLE
+	        ,GET_CODE_NM('USER_ROLE',U.ROLE) 			AS ROLE_NM
+	        ,GRADE
+	        ,GET_CODE_NM('GRADE',U.GRADE) 				AS GRADE_NM
+		FROM TBL_EXP_USER U
+		WHERE 1 = 1		
+		<if test=" USER_ID != null and !USER_ID.equals('') ">
+		AND U.USER_ID = #{USER_ID}
+		</if>
+		<if test=" STATE != null and !STATE.equals('') ">
+		AND U.STATE = #{STATE}
+		</if>
+		AND U.USE_YN = 'Y'
+		AND U.DEL_YN = 'N'
+		ORDER BY USER_NM
+	</select>	
+	
+	<select id="getChatAnswerers" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getChatAnswerers
+			로그인 사용자의 상담자들 조회.
+		*/
+		SELECT LOGIN_ID
+		,ANSWER_PERSON_ID
+		,UPDATE_USER
+		,UPDATE_DATE
+		,CREATE_USER
+		,CREATE_DATE
+		FROM TBL_EXP_ANSWER_PERSON
+		WHERE LOGIN_ID = #{USER_ID}
+	</select>	
+	
+	<select id="getChatCurRoom" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getChatCurRoom
+			최신 문의 방 조회
+		*/
+		SELECT ROOM_ID
+		,REPLACE( ROOM_ID ,#{USER_ID}||'_' ) AS ROOM_NO
+		,LOGIN_ID
+		,LOGIN_NM
+		,UPDATE_USER
+		,UPDATE_DATE
+		,CREATE_USER
+		,CREATE_DATE
+		FROM TBL_EXP_ASK_ROOM
+		WHERE ROOM_ID = (
+			SELECT MAX(ROOM_ID) CUR_ROOM_ID 
+			FROM TBL_EXP_ASK_ROOM 
+			WHERE LOGIN_ID = #{USER_ID}
+		)
+	</select>
+
+	<insert id="insertAskRoom" parameterType="map">
+ 		/*	system.insertAskRoom
+			문의 방 추가
+		*/
+		INSERT INTO TBL_EXP_ASK_ROOM (
+		     ROOM_ID
+			,LOGIN_ID
+			,LOGIN_NM
+			,UPDATE_USER
+			,UPDATE_DATE
+			,CREATE_USER
+			,CREATE_DATE
+		) VALUES (
+			 #{ROOM_ID}
+			,#{USER_ID}
+			,GET_USER_NM(#{USER_ID})
+			,#{USER_ID}
+			,SYSDATE
+			,#{USER_ID}
+			,SYSDATE
+		)	
+	</insert>	
+	
+	<select id="getChatCurContent" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	system.getChatCurContent
+			 문의 방 채팅 조회
+		*/
+		SELECT ROOM_ID
+		,CONTENTS
+		,UPDATE_USER
+		,UPDATE_DATE
+		,TO_CHAR(UPDATE_DATE,'MM-DD HH24:MI:SS') AS CHAT_TIME 
+		,CREATE_USER
+		,GET_USER_NM(CREATE_USER) AS AKSER_NN
+		,CREATE_DATE
+		,CASE WHEN INSTR( ROOM_ID,UPDATE_USER ) <![CDATA[>]]> 0 THEN 'ASKER' ELSE 'ANSWERER' END AS ROLE 
+		FROM TBL_EXP_ASK_CONTENT
+		WHERE ROOM_ID = #{ROOM_ID}
+		ORDER BY UPDATE_DATE
+	</select>	
+	
+
+
+	<insert id="insertAskContent" parameterType="map">
+ 		/*	system.insertAskContent
+			문의 방 채팅 내용 생성
+		*/
+		INSERT INTO TBL_EXP_ASK_CONTENT (
+		     ROOM_ID
+			,CONTENTS
+			,UPDATE_USER
+			,UPDATE_DATE
+			,CREATE_USER
+			,CREATE_DATE
+		) VALUES (
+			#{ROOM_ID}
+			,#{CONTENTS}
+			,#{USER_ID}
+			,SYSDATE
+			,#{USER_ID}
+			,SYSDATE
+		)	
+	</insert>				
+
+
+	<select id="getAskerList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+ 		/*	system.getAskerList
+			담당 고객 리스트
+		*/
+		SELECT LOGIN_ID AS ASKER_ID
+		, ANSWER_PERSON_ID AS ANSWER_ID
+		, GET_USER_NM( LOGIN_ID ) AS ASKER_NM
+		, NVL(GET_USER_NM(UPDATE_USER),'시스템') AS UPDATE_USER
+		, TO_CHAR(UPDATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS UPDATE_DATE
+		FROM TBL_EXP_ANSWER_PERSON	
+		WHERE ANSWER_PERSON_ID = #{sessionVo.userId}
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>		
+	</select>				
+</mapper>

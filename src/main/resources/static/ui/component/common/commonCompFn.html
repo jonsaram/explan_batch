@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		// 단가 설정 관리 공통
+		openEditUnitPriceConfig : function(parm, callback) {
+			
+			if(isEmpty(parm)) parm = {};
+			
+			let sendParm = {
+				 gridParmFst : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getMaterialsMasterList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_FOOD_MATERIALS_MASTER"
+					,columnMap 		: {
+						 "MATERIALS_CD"				: { headerText : "자재CD"																	} 
+						,"MATERIALS_NM"     		: { headerText : "자재명" 		,align : "left"												}
+						,"PRODUCT_CLASS"       		: { headerText : "자재구분"		,columnType : "selectbox", useCodeId : "PRODUCT_CLASS"		}
+						,"UNIT"                		: { headerText : "단위(g/ea)"																}
+						,"CONVERSION_UNIT_PRICE"	: { headerText : "단가(원)"	 	,dataType : "number", fix : "1"								}
+					 }
+					,addColumnMap	: {
+						readOnly : {
+							 "MATERIALS_CD"		: "Y"
+							,"MATERIALS_NM" 	: "Y"
+							,"PRODUCT_CLASS"	: "Y"
+							,"UNIT"				: "Y"
+						}
+					 }
+					,primaryKeyList		: ["MATERIALS_CD"	]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID}
+					,searchColumnList	: ["MATERIALS_CD", "MATERIALS_NM"	]
+					,searchValue		: parm.materialsCd
+					,orderColumnList 	: ["B.SORT_ORDER", "MATERIALS_CD"]
+				 }
+				,gridParmSnd : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getMaterialsCompanyProductList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_FOOD_COMPANY_PRODUCT"
+					,columnMap 		: {
+						 "PRODUCT_ID"         			: { headerText : "상품ID"	,hidden		:"Y"          				} 
+						,"COMPANY_ID"         			: { headerText : "업체ID"	,hidden		:"Y"          				} 
+						,"MATERIALS_CD"       			: { headerText : "상품CD"	,hidden		:"Y"          				}
+						,"MST_MATERIALS_NM"       		: { headerText : "상품명"	,hidden		:"Y"          				}
+						,"COMPANY_NM"         			: { headerText : "물류회사"											} 
+						,"PRODUCT_CD"       			: { headerText : "상품코드"        									} 
+						,"PRODUCT_NM"         			: { headerText : "상품명"   ,width		: "200px", align : "left"	} 
+						,"UNIT"							: { headerText : "판매단위" 										}
+						,"UNIT_PRICE"					: { headerText : "판매단가" 	    ,dataType : "number" 			}
+						,"CONVERSION_QUANTITY"			: { headerText : "판매단위용량"    	,dataType : "number" 			}
+						,"BASE_UNIT"					: { headerText : "기준단가"    		,dataType : "number", fix : "1"
+							,initSetData : function(cellText, rowData) {
+								return 	toNumber(rowData.UNIT_PRICE / rowData.CONVERSION_QUANTITY, 2);				
+							 }
+						 }
+					 }
+					,addColumnMap	: {
+						 readOnly : {
+							 "COMPANY_NM"	: "Y"
+							,"PRODUCT_CD"	: "Y"
+							,"PRODUCT_NM"	: "Y"
+							,"UNIT"			: "Y"
+							,"BASE_UNIT"	: "Y"
+						 }
+						,noSave : {
+							"MST_MATERIALS_NM" : "Y"
+						 }
+					 }
+					,columnConfig 	: {
+						 onChangeCell : {
+							 "UNIT_PRICE" : {
+								func :function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const baseUnit = toNumber(rowData.UNIT_PRICE / rowData.CONVERSION_QUANTITY, 2);	
+									gridObj.setCellToColumn(cellObj, baseUnit	, "BASE_UNIT");
+								}						
+							}
+							,"CONVERSION_QUANTITY" : {
+								func :function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const baseUnit = toNumber(rowData.UNIT_PRICE / rowData.CONVERSION_QUANTITY, 2);	
+									gridObj.setCellToColumn(cellObj, baseUnit	, "BASE_UNIT");
+								}						
+							}
+						 }
+					 }
+					,primaryKeyList		: ["PRODUCT_ID"]
+					,searchColumnList	: ["A.PRODUCT_CD", "A.PRODUCT_NM", "A.MATERIALS_CD", "B.MATERIALS_NM", "C.COMPANY_NM"]
+					,orderColumnList 	: ["C.COMPANY_CD","D.SORT_ORDER, B.SORT_ORDER, A.PRODUCT_CD"]
+					,searchWhereMap		: {"B.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,updateOnly			: "Y"
+					,addBottomRow	: {
+						 title		  	: "<b>기준단가선택</b>"
+						,targetColumn 	: ["UNIT"]
+						,baseType		: ""
+						,mergeColumnCnt	: 4
+						,userDefineFn	: {
+							"UNIT" : function(tableList, compObj) {
+								//let gridInstance = compObj.getGridInstance();
+								//alert(gridInstance)
+								
+								let maxPrice 	= 0	;
+								let minPrice		;
+								let sumPrice	= 0	;
+								let itemCnt		= tableList.length
+								$.each(tableList, function() {
+									const baseUnit = toNumber(nvl(this.BASE_UNIT, 0), 1);
+									if(maxPrice < baseUnit)	maxPrice	= baseUnit;
+									if(isEmpty(minPrice)) 	minPrice	= baseUnit;
+									if(minPrice > baseUnit)	minPrice	= baseUnit;
+									sumPrice += baseUnit;
+								});
+								
+								const materialsCd = tableList[0].MATERIALS_CD;
+								const materialsNm = tableList[0].MST_MATERIALS_NM;
+								
+								let avgPrice	= toNumber(sumPrice / itemCnt, 1) ;
+								return `<span class="txt-red">
+										  <a class="txt-red" href="javascript:<@compId>.setBasePrice(${maxPrice}, '${materialsCd}', '${materialsNm}')">최고가 : ${maxPrice}</a>
+										/ <a class="txt-red" href="javascript:<@compId>.setBasePrice(${minPrice}, '${materialsCd}', '${materialsNm}')">최저가 : ${minPrice}</a>
+										/ <a class="txt-red" href="javascript:<@compId>.setBasePrice(${avgPrice}, '${materialsCd}', '${materialsNm}')">평균가 : ${avgPrice}</a>
+										</span>`;
+							}
+						 }
+					 }
+				 }
+				,popupTitle 	: "본사 자재 단가 설정"
+				,fstGridTitle	: "본사 자재명 목록"
+				,sndGridTitle	: "물류 회사 자재명 목록"
+				,connectColumn 	: ["A.MATERIALS_CD"]					 	// 첫번쨰 Grid에서 두번쨰 그리드와 연계된 Column
+				,gridSize		: [5,5]
+				,titleComment	: "( 대상 자재명 : [MATERIALS_NM/] )"
+				,size			: "MAX"
+				//,hideDomIdList	: ["searchTitleSnd"]
+				,helpTemplateId	: "priceConfig"
+			}
+
+			C_POP.open("popup_common_multiTableEditPopup", sendParm, function(retData){
+				if(typeof callback == "function") callback();
+			});
+		  }
+		 ,setBasePrice : function(price, materialsCd, materialsNm) {
+			C_POP.confirm(`${materialsNm}(${materialsCd})의 단가(원) 항목의 값을 ${addComma(price)}(으)로 변경 합니다.`, function() {
+				const fstGridInstance = popup_common_multiTableEditPopup.getFstGridInstance();
+				let mapData = {
+					 MATERIALS_CD 			: materialsCd
+					,CONVERSION_UNIT_PRICE	: price
+				}
+				fstGridInstance.setRowDataByPk(mapData);
+			});
+		  }
+	
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+	})
+</script>
+<component></component>

@@ -1,0 +1,40 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 brandId	: G_VAL.session.BRAND_ID
+		,loadComponent : function(parm) {
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_FOOD_MATERIALS_COMPANY"
+					,columnMap 		: {
+						 "BRAND_ID"		: { headerText : "BRAND_ID"	, hidden : "Y", default : G_VAL.session.BRAND_ID	}
+						,"COMPANY_ID"	: { headerText : "회사ID"	, hidden : "Y", ifNewAutoSet : "random"					}
+						,"COMPANY_CD"	: { headerText : "회사CD"				 										}
+						,"COMPANY_NM"	: { headerText : "회사명" 														}
+						,"DEL_YN"    	: { headerText : "사용여부", columnType : "selectbox", useCodeId : "REVERSE_YN"	}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["COMPANY_ID"					]
+					,searchColumnList	: ["COMPANY_ID", "COMPANY_NM"	]				// Table 지정인경우 적용
+					,orderColumnList 	: ["COMPANY_ID ASC"				]				// Table 지정인경우 적용
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+					,fileterWhere		: `BRAND_ID = '${G_VAL.session.BRAND_ID}'`		// 기본 필터 조건이 있을때 사용
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent(parm);
+	});
+
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

@@ -1,0 +1,92 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 openEditMultiTable : function() {
+			C_POP.open("popup_headerManage_stockMasterEditPopup", {}, function(retData){
+				<@parentId>["stockMasterGrid"].reload();
+			});
+		 }
+		,loadComponent : function(parm) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId 		: "storeManage.getStockMasterList"
+						 ,requestParm 	: {}
+					 }
+					,tableName		: "TBL_EXP_STOCK_MST"
+					,columnMap 		: {
+						 "STOCK_MST_ID"		: { headerText : "재고ID"	, hidden : "Y", ifNewAutoSet : "random"					}
+						,"BRAND_ID"			: { headerText : "브랜드ID"	, hidden : "Y", default : G_VAL.session.BRAND_ID 		}
+						,"PRODUCT_CD"		: { headerText : "상품코드"		}
+						,"PRODUCT_CLASS"    : { headerText : "자재구분"		, columnType : "selectbox", useCodeId : "PRODUCT_CLASS"	}
+						,"PRODUCT_NM"		: { headerText : "상품명"		}
+						,"UNIT"				: { headerText : "단위"			}
+						,"SAVE_PERIOD"		: { headerText : "적정기간"		}
+						,"USE_YN"			: { headerText : "사용여부"		, columnType : "selectbox", useCodeId : "YES_OR_NO" 	}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["STOCK_MST_ID"]
+					,uniqueKeyList		: ["A.PRODUCT_CD"]
+					,searchColumnList	: ["A.PRODUCT_CD", "A.PRODUCT_TYPE", "PRODUCT_NM", "A.USE_YN"]		
+					,orderColumnList 	: ["C.SORT_ORDER"]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID }
+				 }
+				//,noEdit : "Y"
+				,callbackEditButton : function(parm) {
+					<@compId>.openEditMultiTable();
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						 {
+							 type				: "multiSelectBox"	
+							,title				: "자재구분"
+							,whereColumn		: "B.PRODUCT_CLASS"
+							,optionListGrpCode 	: "PRODUCT_CLASS"
+						 	,defaultValList		: ["PRIME", "RECMD"]
+							,onChange			: function(selectVal, thisObj) {
+								thisObj.reload();
+							 }
+						 }
+					]
+				 }
+				,addButtonList : [
+					{
+						 title 		: "재고마스터 Update"
+						,onClick	: function() {
+							var savePeriod = prompt("적정기간을 입력 하세요.");
+							
+							if(!isNumber(savePeriod)) {
+								C_POP.alert('숫자를 입력 해주세요.');
+								return;
+							}
+							var parm = {
+								 queryId 		: "headerManage.genStockBaseData"
+								,requestParm	: {
+									 BRAND_ID 		: G_VAL.session.BRAND_ID
+									,SAVE_PERIOD	: savePeriod
+								 } 
+							}
+							C_COM.requestQuery(parm, function(resultData) {
+								<@compId>.stockMasterGrid.reload();
+							});
+						 }  
+					}
+				 ]
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			
+			C_COMP.import("stockMasterGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent(parm);
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="stockMasterGrid"></compnent>    
+    <!-- table area end -->
+</component>

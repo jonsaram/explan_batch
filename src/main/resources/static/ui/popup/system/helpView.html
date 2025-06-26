@@ -1,0 +1,117 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 helpItem 	: ""
+		,helpType	: ""
+		,close 	: function(returnData) {
+			if(isEmpty(returnData)) returnData = {};
+			C_POP.close(returnData);
+		 }
+		,loadContent : function(){
+			
+			let templateId = '<@templateId>';
+			if(templateId == '' ) templateId = C_COM.getCurrentViewId();
+
+			const sendParm = {
+				 queryId 		: "system.getHelpContentList"
+				,requestParm 	: {
+					 TEMPLATE_ID	: templateId
+					,HELP_TYPE 		: <@popupId>.helpType
+				 }
+			}
+			C_COM.requestQuery(sendParm, function(retData) {
+				let item = retData.data[0];
+				if(isEmpty(item)) {
+					item = {
+						 HELP_ID		: getUniqueId("HELP")
+						,MENU_ID		: C_MENU.currentMenuId
+						,TEMPLATE_ID	: templateId
+						,HELP_TYPE 		: <@popupId>.helpType 
+						,HELP_TITLE		: "<@helpTitle>" 
+						,COLUMN_ID		: ""
+					}
+					const sendParm = {
+						 queryId 		: "system.insertHelpContent"
+						,requestParm 	: item
+					}
+					C_COM.requestQuery(sendParm);
+					
+					$("#<@popupId> #helpContent").html("등록된 도움말이 없습니다.");
+				} else {
+					if(isEmpty(item.HELP_CONTENT)) {
+						$("#<@popupId> #helpContent").html("등록된 도움말이 없습니다.");
+					}  else {
+						$("#<@popupId> #helpContent").html(item.HELP_CONTENT);
+					}
+				}
+				<@popupId>.helpItem = item;
+			});
+		 }
+		,editContent : function() {
+			let parm = {
+				 selectQueryId		: "system.getHelpContentList"
+				,updateQueryId		: "system.updateHelpContent"
+				,requestParm		: <@popupId>.helpItem
+			 	,targetColumnId 	: "HELP_CONTENT"
+			 	,gridTitle 		: "도움말 등록/편집"
+			}
+			C_POP.open("popup_common_textareaPopup",parm, function(retData) {
+				<@popupId>.loadContent();
+			});
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(parm) {
+		
+		if("<@helpType>" == "" )	<@popupId>.helpType = "MENU";
+		else						<@popupId>.helpType = "<@helpType>";	
+		
+		<@popupId>.loadContent();
+	});
+</script>
+
+  <!-- modal-popup start -->
+  <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle">도움말 보기</h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" onclick="C_POP.normalSize('<@popupId>')">
+            </button>
+            <!-- <button type="button" class="win-full" onclick="C_POP.fullSize('<@popupId>')"> -->
+            <button type="button" class="win-full" onclick="C_POP.maxSize('<@popupId>')">
+            
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+        <div class="modal-body">
+        	<div class="tb-card-allwrap col10 mt10">
+        		<div class="card-inwrap">
+        			<div id="tb-scroll" class="card-cnt-wrap">
+        				<div class="table-allwrap p10" id="helpContent">
+				          <!-- search filter box start -->
+							
+				          <!-- search filter box end -->
+        				</div>
+        			</div>
+        		</div>
+        	</div>
+        </div>
+        <!-- footer start -->
+        <div class="modal-footer" >
+          <button type="button" class="btn outline-btn mr5" onclick="<@popupId>.editContent()" style="display:<@session.showAuth>" >편집</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()"		>닫기</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- modal-popup end -->

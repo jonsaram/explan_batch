@@ -1,0 +1,191 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 sendParm : {}
+		,loadComponent : function(parm) {
+			<@pageId>.sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_SAMPLE"
+					,columnMap 		: {
+						 "ITEM_ID" 		: { headerText : "아이템ID"	}
+						,"ITEM1" 		: { headerText : "아이템1"	}
+						,"ITEM2" 		: { headerText : "아이템2"	}
+						,"ITEM3" 		: { headerText : "아이템3"	}
+					 }
+					,primaryKeyList		: ["ITEM_ID"			]
+					,searchColumnList	: ["ITEM_ID", "ITEM1"	]	// Table 지정인경우 적용
+					,orderColumnList 	: ["ITEM_ID ASC"		]	// Table 지정인경우 적용
+					,rowCntId 			: "<@pageId>_rowCnt"
+				 }
+			}
+			C_COMP.import("<@pageId>_grid", "component_compGrid",<@pageId>.sendParm , function() {});		
+		 }
+		,openEdit 				: function() {
+
+			let parm = {
+				 gridParm 	: <@pageId>.sendParm.gridParm	
+				,popupTitle : `예제 편집`
+				,size 		: "NORMAL"			// 최대화 "MAX"
+			}
+			
+			C_POP.open("popup_common_tableEditPopup", <@pageId>.sendParm, function(retData){
+				<@pageId>.reload();
+			});
+
+		 }
+		,excelDown : function() {
+			<@pageId>.<@pageId>_grid.excelDownload();
+		 }
+		,reload		: function() {
+			let searchValue = $("#<@pageId> #searchWord").val();
+			let updateGridParm = {
+				searchValue : searchValue	
+			}
+			<@pageId>.<@pageId>_grid.reload(updateGridParm);
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+		
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+
+		// Grid Load		
+		<@pageId>.loadComponent(parm);
+		
+		
+		//Single Selectbox 처리
+		//var selectList = [["AA", "AA"],["BB", "BB"],["CC", "CC"]]
+        //var selectList = C_COM.getBrandCodeList("STORE_MENU_GROUP1");
+        var selectList = C_COM.getCodeList("PRODUCT_CLASS");
+		
+   		var singleboxList = { 
+			 data 			: selectList
+		 	,targetId 		: "singleselectbox"
+		 	,defaultItem	: [""	, "ALL"	]	// 생략 가능
+		 	,defaultVal		: "ETC"				// 생략 가능
+		}
+		C_UICOM.makeSelectBox(singleboxList, "single");
+
+	
+		// Multi Selectbox 처리
+		// var selectList = [["AA", "AA"],["BB", "BB"],["CC", "CC"]
+        //var selectList = C_COM.getCodeList("PRODUCT_CLASS");
+        var selectList = C_COM.getBrandCodeList(G_VAL.session.BRAND_ID, "STORE_MENU_GROUP1");
+		
+   		var multiboxList = { 
+			 data 			: selectList
+		 	,targetId 		: "multiselectbox"
+		 	,defaultValList	: ["01", "02"]			// 생략 가능
+		}
+		C_UICOM.makeSelectBox(multiboxList, "multi");
+	
+   		
+   		var singleByFilterSelectbox = { 
+   			 data 			: selectList
+   		 	,targetId 		: "singleByFilterSelectbox"
+		 	,defaultItem	: [""	, "ALL"	]	// 생략 가능
+   		 	,defaultVal		: "01"
+   		 	,onChange		: function(data) {
+   		 		alert(data);
+   		 	 }
+   		}
+   		C_UICOM.makeSelectBox(singleByFilterSelectbox, "singleByFilter");
+   		   		
+	
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+	<!-- search filter box start -->
+	<div class="srch-card mt10">
+	    <div class="srch-card-inwrap">
+	        <div class="col9 col10-sm srch-card-form">
+
+	            <div class="col25 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">Single Box</label>
+	                <!-- 싱글 박스 인경우 -->
+	                <select class="form-control form-control-sm col10" id="singleselectbox"></select>
+	            </div>
+
+	            <div class="col25 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">Single Box By Filter</label>
+	                <!-- 필터 포함 싱글 박스 인경우 -->
+	                <div id="singleByFilterSelectbox" style="width:200px"></div>
+	            </div>
+
+	            <div class="col25 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">Multi Box</label>
+	                <!-- 멀티 박스 인경우 -->
+					<div id="multiselectbox" style="width:200px"></div>
+	            </div>
+
+	            <div class="col25 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">Date</label>
+	                <!-- 멀티 박스 인경우 -->
+					<input type="date" class="form-control form-control-sm col7  calender-form">
+	            </div>
+
+	            <div class="col25 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">검색어</label>
+	                <input type="text" class="form-control form-control-sm col10" id="searchWord">
+	            </div> 
+	        </div>
+	        <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+	            <button class="srch-btn col10 mr5" type="button" onclick="<@pageId>.reload()">검 색</button>
+	        </div>
+	    </div>
+	</div>
+	<!-- search filter box end -->
+
+
+	<!-- button / total start -->
+
+    <div class="display-between display-sm-between mt10">
+        <div class="col4-md col10-sm display-h-end mb5">
+        </div>
+        <div class="display-w-end col4 col4-md col10-sm mb5">
+          <span class="col2-sm w80px">Total : <span class="txt-red" id="<@pageId>_rowCnt"		>12</span></span>
+       	  <button class="flat-btn col2-sm mr5"	type="button" onclick="<@pageId>.openEdit()"	>편 집</button>
+		  <button class="flat-btn col2-sm" 		type="button" onclick="<@pageId>.excelDown()"	>엑셀다운</button>
+        </div>
+    </div>
+
+	<!-- button / total end -->
+
+
+    <!-- table area start -->
+	<div class="tb-card-allwrap col10">
+		<div class="card-inwrap">
+			<div class="card-cnt-wrap">
+				<div class="table-allwrap">
+					<compnent id="<@pageId>_grid"></compnent>    
+				</div>
+			</div>
+		</div>
+	</div>    
+    <!-- table area end -->
+</page-component>

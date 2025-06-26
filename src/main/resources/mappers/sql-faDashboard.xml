@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="faDashboard">
+
+	<cache />
+
+ 	<select id="getTodoList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getTodoList
+			FA 대시보드 TODO 리스트
+		*/
+		SELECT 
+			 TODO_ID
+			,TODO
+			,EXEC_CHECK
+			,TO_CHAR( UPDATE_DATE , 'MM-DD HH24:MI' ) AS UPDATE_DATE
+		FROM 
+		 	TBL_EXP_TODO_FA  A
+		WHERE  1=1
+			AND	UPDATE_USER = #{sessionVo.userId}
+			AND DEL_YN		= 'N'
+		ORDER BY UPDATE_DATE DESC		
+	</select>	
+	<update id="registTodo">
+		/*	faDashboard.registTodo
+			FA 대시보드 TODO 등록
+		*/
+		INSERT INTO TBL_EXP_TODO_FA (
+			 TODO_ID
+			,TODO
+			,EXEC_CHECK
+			,UPDATE_DATE
+			,UPDATE_USER
+		) VALUES (
+			 #{TODO_ID		}
+			,#{TODO			}
+			,'N'
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+		)
+	</update>
+
+	<update id="deleteTodo">
+		/*	faDashboard.deleteTodo
+			FA 대시보드 TODO 삭제
+		*/
+		UPDATE 
+			TBL_EXP_TODO_FA 
+		SET 
+			DEL_YN = 'Y' 
+		WHERE 
+			TODO_ID = #{TODO_ID}
+	</update>
+
+	<update id="updateTodo">
+		/*	faDashboard.updateTodo
+			FA 대시보드 TODO 실행 상태 변경
+		*/
+		UPDATE 
+			TBL_EXP_TODO_FA 
+		SET 
+			EXEC_CHECK = #{EXEC_CHECK}
+		WHERE 
+			TODO_ID = #{TODO_ID}
+	</update>	
+
+	<update id="updateTodoContent">
+		/*	faDashboard.updateTodoContent
+			대시보드 TODO 항목 내용 변경
+		*/
+		UPDATE 
+			TBL_EXP_TODO_FA 
+		SET 
+			TODO = #{TODO}
+		WHERE 
+			TODO_ID = #{TODO_ID}
+	</update>	
+	
+	<select id="getFolderInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getFolderInfo
+			FA 대시보드 기업폴더관리 폴더 정보 가져오기
+		*/
+		SELECT
+		     FOLDER_ID
+		    ,FOLDER_NM
+		    ,UP_FOLDER_ID
+		    ,BUYER_ID
+		    ,UPDATE_USER
+		    ,UPDATE_DATE
+		FROM
+		    TBL_EXP_FOLDER
+		WHERE 1=1
+			AND FOLDER_ID 	= #{FOLDER_ID}
+		ORDER BY 
+			ORDER_IDX
+			
+	</select>
+
+	<select id="getFolderPath" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getFolderPath
+			FA 대시보드 기업폴더관리 폴더 정보 가져오기
+		*/
+		SELECT
+			 FOLDER_ID
+			,FOLDER_NM
+		FROM
+			TBL_EXP_FOLDER
+		WHERE
+			DEL_YN = 'N'	
+		START WITH
+			FOLDER_ID = #{FOLDER_ID}
+		CONNECT BY
+			PRIOR UP_FOLDER_ID = FOLDER_ID
+		ORDER BY LEVEL DESC  
+	</select>
+
+	
+	<update id="insertFolder">
+		INSERT INTO TBL_EXP_FOLDER( 
+			 FOLDER_ID
+			,FOLDER_NM
+			,UP_FOLDER_ID
+			,BUYER_ID
+			,ORDER_IDX
+		    ,UPDATE_DATE
+		    ,UPDATE_USER
+		) VALUES ( 
+			 #{FOLDER_ID   }
+			,#{FOLDER_NM   }			
+			,#{UP_FOLDER_ID}	
+			,#{BUYER_ID    }
+			,NVL((SELECT MAX(ORDER_IDX) + 1 FROM TBL_EXP_FOLDER WHERE UP_FOLDER_ID = #{UP_FOLDER_ID}), 1)
+   			,GET_KRDT(SYSDATE)
+   			,#{sessionVo.userId		}
+		)
+	</update>
+
+	<update id="saveFolder">
+		/*	faDashboard.saveFolder
+			FA 대시보드 기업폴더관리 폴더 등록
+		*/
+		MERGE INTO TBL_EXP_FOLDER T
+		USING (
+		  SELECT 
+		  	#{FOLDER_ID}	AS FOLDER_ID
+		  FROM DUAL
+		) S
+		ON (
+			T.FOLDER_ID	= S.FOLDER_ID 
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.FOLDER_NM = #{FOLDER_NM}
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+				 FOLDER_ID
+				,FOLDER_NM
+				,UP_FOLDER_ID
+				,BUYER_ID
+				,ORDER_IDX
+			    ,UPDATE_DATE
+			    ,UPDATE_USER
+			) VALUES ( 
+				 #{FOLDER_ID   }
+				,#{FOLDER_NM   }			
+				,#{UP_FOLDER_ID}	
+				,#{BUYER_ID    }
+				,NVL((SELECT MAX(ORDER_IDX) + 1 FROM TBL_EXP_FOLDER WHERE UP_FOLDER_ID = #{UP_FOLDER_ID}), 1)
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+			)
+	</update>	
+		
+		
+	<select id="getShareMsgList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getShareMsgList
+			FA 대시보드 기업폴더관리 폴더 대화 내용 가져오기
+		*/
+		SELECT
+		     FOLDER_MSG_ID
+		    ,CONTENT
+		    ,FOLDER_ID
+		    ,REGISTER_ID
+		    ,REGISTER_TYPE
+		    ,UPDATE_USER
+		    ,GET_USER_NM(UPDATE_USER) 									  AS UPDATE_USER_NM
+		    ,TO_CHAR( UPDATE_DATE , 'MM-DD HH24:MI:SS' )				  AS UPDATE_DATE
+		    ,UPDATE_DATE							 					  AS ODR
+		FROM
+		    TBL_EXP_FOLDER_MSG A
+		WHERE 1=1
+			AND FOLDER_ID 	= #{FOLDER_ID} 
+			AND DEL_YN 		= 'N'
+		ORDER BY ODR 
+	</select>
+		
+		
+	<select id="searchMsgList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.searchMsgList
+			FA 대시보드 기업폴더관리 폴더 대화 내용 찾기
+		*/
+		SELECT
+		     FOLDER_MSG_ID
+		    ,CONTENT
+		    ,FOLDER_ID
+		    ,REGISTER_ID
+		    ,REGISTER_TYPE
+		    ,UPDATE_USER
+		    ,GET_USER_NM(UPDATE_USER) 									  AS UPDATE_USER_NM
+		    ,TO_CHAR( UPDATE_DATE , 'MM-DD HH24:MI:SS' )				  AS UPDATE_DATE
+		    ,UPDATE_DATE							 					  AS ODR
+		FROM
+		    TBL_EXP_FOLDER_MSG A
+		WHERE 1=1
+			AND FOLDER_ID 	IN (
+									SELECT FOLDER_ID
+									FROM(
+											SELECT 
+											    FOLDER_ID, FOLDER_NM,
+											    UP_FOLDER_ID, BUYER_ID, ORDER_IDX,
+											    LEVEL AS LEVEL_DEPTH
+											FROM 
+											    TBL_EXP_FOLDER
+											WHERE 1=1 
+											START WITH FOLDER_ID = #{FOLDER_ID} 
+											CONNECT BY PRIOR FOLDER_ID = UP_FOLDER_ID  
+											AND BUYER_ID = #{BUYER_ID}  
+											AND DEL_YN = 'N'
+											ORDER SIBLINGS BY FOLDER_ID
+									)
+			
+			)
+			AND DEL_YN 		= 'N'
+			AND CONTENT		LIKE '%'|| #{SEARCH_ITEM} || '%'
+		ORDER BY ODR 
+	</select>
+		
+	
+	
+	<update id="saveShareMsg">
+		/*	faDashboard.saveShareMsg
+			FA 대시보드 기업폴더관리 메시지 등록
+		*/
+		MERGE INTO TBL_EXP_FOLDER_MSG T
+		USING (
+		  SELECT 
+		  	#{FOLDER_MSG_ID}	AS FOLDER_MSG_ID
+		  FROM DUAL
+		) S
+		ON (
+			T.FOLDER_MSG_ID	= S.FOLDER_MSG_ID 
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.CONTENT = #{CONTENT}
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+			     FOLDER_MSG_ID
+			    ,CONTENT
+			    ,FOLDER_ID
+			    ,REGISTER_ID
+			    ,REGISTER_TYPE
+			    ,UPDATE_DATE
+			    ,UPDATE_USER
+			) VALUES ( 
+				 #{FOLDER_MSG_ID }
+				,#{CONTENT       }			
+				,'${FOLDER_ID    }'			
+				,NULL			
+				,NULL			
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+			)
+	</update>	
+
+	<update id="delShareMsg">
+		/*	faDashboard.delShareMsg
+			FA 대시보드 기업폴더관리 메시지 삭제
+		*/
+		UPDATE 
+			TBL_EXP_FOLDER_MSG 
+		SET 
+			DEL_YN = 'Y'
+		WHERE 
+			FOLDER_MSG_ID = #{FOLDER_MSG_ID}
+	</update>
+		
+	<update id="deleteFolder">
+		/*	faDashboard.deleteFolder
+			FA 대시보드 기업폴더관리 폴더 삭제
+		*/
+		UPDATE 
+			TBL_EXP_FOLDER
+		SET 
+			DEL_YN = 'Y'
+		WHERE 
+			FOLDER_ID = #{FOLDER_ID}
+	</update>
+	
+
+	<update id="makeBuyerFolder">
+		/*	faDashboard."makeBuyerFolder"
+			FA 대시보드 기업폴더관리 기업전용폴더 생성
+		*/
+		MERGE INTO TBL_EXP_FOLDER T
+		USING (
+		  SELECT 
+		  	 #{BUYER_ID}	AS BUYER_ID
+		  	,'BASE'			AS UP_FOLDER_ID
+		  	,'0'			AS ORDER_IDX
+		  FROM DUAL
+		) S
+		ON (
+				T.BUYER_ID		= S.BUYER_ID 
+			AND T.UP_FOLDER_ID	= S.UP_FOLDER_ID 
+			AND T.ORDER_IDX		= S.ORDER_IDX 
+		)
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+				 FOLDER_ID
+				,FOLDER_NM
+				,UP_FOLDER_ID
+				,BUYER_ID
+				,ORDER_IDX
+			    ,UPDATE_DATE
+			    ,UPDATE_USER
+			) VALUES ( 
+				 #{FOLDER_ID	}
+				,#{FOLDER_NM	}					
+				,'BASE'	
+				,#{BUYER_ID    }
+				,0
+	   			,GET_KRDT(SYSDATE)
+	   			,#{sessionVo.userId		}
+			)
+	</update>	
+	
+	<select id="getBuyerFolder" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getBuyerFolder
+			FA 대시보드 기업폴더관리 기업 전용 폴더 정보 가져오기
+		*/
+		SELECT
+			 FOLDER_ID
+			,FOLDER_NM
+		FROM
+			TBL_EXP_FOLDER
+		WHERE 1=1
+			AND BUYER_ID 	 = #{BUYER_ID}
+			AND UP_FOLDER_ID = 'BASE'
+			AND ORDER_IDX 	 = '0'
+			AND DEL_YN 		 = 'N'
+	</select>
+		
+	<sql id="getBuyerAllFolder" >
+		/*	faDashboard.getBuyerFolderRecursive
+			
+		*/
+		SELECT 
+		    FOLDER_ID, FOLDER_NM,
+		    UP_FOLDER_ID, BUYER_ID, ORDER_IDX,
+		    LEVEL AS LEVEL_DEPTH
+		FROM 
+		    TBL_EXP_FOLDER
+		WHERE  
+		    BUYER_ID = #{BUYER_ID}
+		AND DEL_YN = 'N'    
+		START WITH UP_FOLDER_ID = 'BASE' AND ORDER_IDX = 0
+		CONNECT BY PRIOR FOLDER_ID = UP_FOLDER_ID  
+		AND BUYER_ID = #{BUYER_ID}
+		AND DEL_YN = 'N' 
+		ORDER SIBLINGS BY FOLDER_ID
+	</sql>
+	<select id="getBuyerFolderRecursive" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		<include refid="getBuyerAllFolder"/>
+	</select>
+		
+
+	<select id="getFoldersByName" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getFoldersByName
+			
+		*/
+		SELECT *
+		FROM(
+			<include refid="getBuyerAllFolder"/>
+		)
+		WHERE UPPER(FOLDER_NM) like '%'|| UPPER(#{FOLDER_NM}) ||'%' 
+	</select>
+				
+		
+	<select id="getSubFolderList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	faDashboard.getSubFolderList
+			FA 대시보드 기업폴더관리 하위 폴더리스트 가져오기
+		*/
+		SELECT
+		     FOLDER_ID
+		    ,FOLDER_NM
+		    ,UP_FOLDER_ID
+		    ,BUYER_ID
+		    ,UPDATE_USER
+		    ,UPDATE_DATE
+		FROM
+		    TBL_EXP_FOLDER
+		WHERE 1=1
+			AND	BUYER_ID 		= #{BUYER_ID}    
+			AND UP_FOLDER_ID 	= #{FOLDER_ID}
+			AND DEL_YN 			= 'N'
+		ORDER BY 
+			ORDER_IDX
+			
+	</select>
+	 			
+</mapper>

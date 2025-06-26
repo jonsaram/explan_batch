@@ -1,0 +1,93 @@
+
+
+<script type="text/javascript">
+
+    var <@pageId> = {
+            
+           init : function() {
+              
+               $('#<@pageId>_dateStart1').val(<@pageId>.getCurrentDateFormatted());
+               $('#<@pageId>_dateEnd1').val(<@pageId>.getCurrentDateFormatted());
+               $('#<@pageId>_dateStart2').val(<@pageId>.getCurrentDateFormatted());
+               $('#<@pageId>_dateEnd2').val(<@pageId>.getCurrentDateFormatted());
+               
+           }//init : function
+          ,getCurrentDateFormatted : function() {
+        	    const today = new Date();
+
+        	    const year = today.getFullYear();
+        	    const month = String(today.getMonth() + 1).padStart(2, '0'); // 0부터 시작하므로 +1 필요
+        	    const day = String(today.getDate()).padStart(2, '0');
+
+        	    return `${year}-${month}-${day}`;
+        	}  
+          ,unionsoftStoreSalesManual : () =>  {
+        	  
+                let requestParm = {}; 
+                let startDate   = $('#<@pageId>_dateStart1').val();
+                let endDate     = $('#<@pageId>_dateEnd1').val();
+                
+                requestParm["startDate"]  = startDate.trim().replace(/-/g, '');
+                requestParm["endDate"]    = endDate.trim().replace(/-/g, '');
+                
+                var parm = {
+                     serviceId              : "JobSchedulerService.unionsoftStoreSalesManual"
+                    ,requestParm            : requestParm
+                }
+                C_COM.requestService(parm, function(resultData) {
+                   console.log(resultData);
+                });
+           }
+          ,unionposMenuSaleManual : () =>  {
+              
+              let requestParm = {}; 
+              let startDate   = $('#<@pageId>_dateStart2').val();
+              let endDate     = $('#<@pageId>_dateEnd2').val();
+
+              requestParm["startDate"]  = startDate.trim().replace(/-/g, '');
+              requestParm["endDate"]    = endDate.trim().replace(/-/g, '');
+              
+              var parm = {
+                   serviceId              : "JobSchedulerService.unionposMenuSaleManual"
+                  ,requestParm            : requestParm
+              }
+              C_COM.requestService(parm, function(resultData) {
+                 console.log(resultData);
+              });
+         }
+    }//var <@compId>
+    // Component Load가 완료된후 실행 된다.
+    C_PM.onLoadPage("<@pageId>", function() {
+        <@pageId>.init();// 초기화
+        
+    });
+</script>
+<page-component>
+	<div class="container">
+	  <h2>배치실행</h2>            
+	  <table class="table table-striped">
+	    <thead>
+	      <tr>
+	        <th>배치명</th>
+	        <th>시작일</th>
+	        <th>종료일</th>
+	        <th>실행</th>
+	      </tr>
+	    </thead>
+	    <tbody>
+	      <tr>
+	        <td>일별매출</td>
+	        <td><input id="<@pageId>_dateStart1" type="date" class="form-control form-control-sm col5 calender-form"></td>
+	        <td><input id="<@pageId>_dateEnd1"   type="date" class="form-control form-control-sm col5 calender-form"></td>
+	        <td><button class="flat-btn col2-sm" type="button" id="<@pageId>_exe1" onclick="<@pageId>.unionsoftStoreSalesManual()">실행</button></td>
+	      </tr>
+	      <tr>
+	        <td>일별메뉴매출</td>
+            <td><input id="<@pageId>_dateStart2" type="date" class="form-control form-control-sm col5 calender-form"></td>
+            <td><input id="<@pageId>_dateEnd2"   type="date" class="form-control form-control-sm col5 calender-form"></td>
+	        <td><button class="flat-btn col2-sm" type="button" id="<@pageId>_exe2" onclick="<@pageId>.unionposMenuSaleManual()">실행</button></td>
+	      </tr>
+	    </tbody>
+	  </table>
+	</div>
+</page-component>

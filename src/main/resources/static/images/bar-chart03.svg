@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="496" height="225" viewBox="0 0 496 225">
+  <defs>
+    <linearGradient id="linear-gradient" x1="0.5" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#727fd9"/>
+      <stop offset="1" stop-color="#455197"/>
+    </linearGradient>
+    <clipPath id="clip-path">
+      <rect width="451" height="20" fill="none"/>
+    </clipPath>
+  </defs>
+  <g id="bar-chart03" transform="translate(-23 14.33)">
+    <g id="line" transform="translate(62.893 11.5)">
+      <line id="선_17" data-name="선 17" x2="442.946" transform="translate(0 171.67)" fill="none" stroke="#707070" stroke-width="1.5"/>
+      <line id="선_18" data-name="선 18" x2="442.946" transform="translate(0 132.617)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_41" data-name="선 41" x2="442.946" transform="translate(0 100.887)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_42" data-name="선 42" x2="442.946" transform="translate(0 68.343)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_19" data-name="선 19" x2="442.946" transform="translate(0 35.799)" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_20" data-name="선 20" x2="442.946" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="1" opacity="0.56"/>
+      <line id="선_21" data-name="선 21" y2="171.67" transform="translate(8.607)" fill="none" stroke="#aaabac" stroke-width="1" stroke-dasharray="2 2"/>
+    </g>
+    <g id="그룹_24" data-name="그룹 24" transform="translate(490.5 19.193) rotate(90)">
+      <g id="사각형_26" data-name="사각형 26" transform="translate(3.477 264.636)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="15" height="154.364" stroke="none"/>
+        <rect x="0.5" y="0.5" width="14" height="153.364" fill="none"/>
+      </g>
+      <g id="사각형_27" data-name="사각형 27" transform="translate(36.477 349)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="15" height="70" stroke="none"/>
+        <rect x="0.5" y="0.5" width="14" height="69" fill="none"/>
+      </g>
+      <g id="사각형_28" data-name="사각형 28" transform="translate(69.477 39)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="15" height="380" stroke="none"/>
+        <rect x="0.5" y="0.5" width="14" height="379" fill="none"/>
+      </g>
+      <g id="사각형_29" data-name="사각형 29" transform="translate(102.477 200)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="15" height="219" stroke="none"/>
+        <rect x="0.5" y="0.5" width="14" height="218" fill="none"/>
+      </g>
+      <g id="사각형_30" data-name="사각형 30" transform="translate(136.477 0)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="15" height="419" stroke="none"/>
+        <rect x="0.5" y="0.5" width="14" height="418" fill="none"/>
+      </g>
+    </g>
+    <g id="그룹_27" data-name="그룹 27" transform="translate(444 -14.714)">
+      <g id="사각형_35" data-name="사각형 35" transform="translate(0 3.384)" stroke="#28509f" stroke-width="1" fill="url(#linear-gradient)">
+        <rect width="10" height="10" stroke="none"/>
+        <rect x="0.5" y="0.5" width="9" height="9" fill="none"/>
+      </g>
+      <text id="매출액" transform="translate(47 13.384)" font-size="11" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-30.36" y="0">매출액</tspan></text>
+    </g>
+    <g id="그룹_26" data-name="그룹 26" transform="translate(24 11.286)">
+      <text id="동성로" transform="translate(19 129.385)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-19.32" y="0">동성로</tspan></text>
+      <text id="아데인" transform="translate(19 53.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-19.32" y="0">아데인</tspan></text>
+      <text id="마곡" transform="translate(25 167.385)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-12.88" y="0">마곡</tspan></text>
+      <text id="인투온" transform="translate(19 91.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-19.32" y="0">인투온</tspan></text>
+      <text id="가락" transform="translate(25 16.384)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-12.88" y="0">가락</tspan></text>
+    </g>
+    <g id="반복_그리드_6" data-name="반복 그리드 6" transform="translate(68 190.67)" clip-path="url(#clip-path)">
+      <g transform="translate(-68 -230)">
+        <text id="_0" data-name="0" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-7.98" y="0">0</tspan></text>
+      </g>
+      <g transform="translate(-32 -230)">
+        <text id="_10" data-name="10" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">10</tspan></text>
+      </g>
+      <g transform="translate(4 -230)">
+        <text id="_20" data-name="20" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">20</tspan></text>
+      </g>
+      <g transform="translate(40 -230)">
+        <text id="_30" data-name="30" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">30</tspan></text>
+      </g>
+      <g transform="translate(76 -230)">
+        <text id="_40" data-name="40" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">40</tspan></text>
+      </g>
+      <g transform="translate(112 -230)">
+        <text id="_50" data-name="50" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">50</tspan></text>
+      </g>
+      <g transform="translate(148 -230)">
+        <text id="_60" data-name="60" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">60</tspan></text>
+      </g>
+      <g transform="translate(184 -230)">
+        <text id="_70" data-name="70" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">70</tspan></text>
+      </g>
+      <g transform="translate(220 -230)">
+        <text id="_80" data-name="80" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">80</tspan></text>
+      </g>
+      <g transform="translate(256 -230)">
+        <text id="_90" data-name="90" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-15.96" y="0">90</tspan></text>
+      </g>
+      <g transform="translate(292 -230)">
+        <text id="_100" data-name="100" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-23.94" y="0">100</tspan></text>
+      </g>
+      <g transform="translate(328 -230)">
+        <text id="_110" data-name="110" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-23.94" y="0">110</tspan></text>
+      </g>
+      <g transform="translate(364 -230)">
+        <text id="_120" data-name="120" transform="translate(76 246)" font-size="14" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.7"><tspan x="-23.94" y="0">120</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>

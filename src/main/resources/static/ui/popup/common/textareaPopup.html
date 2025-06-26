@@ -1,0 +1,95 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 parm	: {}
+		,close 	: function(returnData) {
+			if(isEmpty(returnData)) returnData = {};
+			C_GRID.unlockGridEvent();
+
+			C_POP.close(returnData);
+		 }
+		,loadComponent : function(parm) {
+			const sendParm = {
+				 queryId 		: parm.selectQueryId
+				,requestParm 	: parm.requestParm
+			}
+			C_COM.requestQuery(sendParm, function(retData) {
+				
+				if(isEmpty(retData) || isEmpty(retData.data)) return;
+				
+				const initData = retData.data[0][parm.targetColumnId];
+				
+				C_COMP.import("compTextarea", "component_common_compTextarea",{ initData : initData } , function() {});
+	        });
+		 }
+		,save : function() {
+			let content = <@popupId>.compTextarea.getData();
+			const parm = <@popupId>.parm;
+			let requestParm = parm.requestParm;
+			requestParm[parm.targetColumnId] = content;
+
+			const sendParm = {
+				 queryId 		: parm.updateQueryId
+				,requestParm 	: requestParm
+			}
+			C_COM.requestQuery(sendParm, function(retData) {
+				C_POP.alert('저장되었습니다.');
+				<@popupId>.close();
+			});
+		 }
+		,preview : function() {
+			let content = <@popupId>.compTextarea.getData();
+			C_POP.open("popup_common_preview",{content : content}, function(retData) {
+				
+			})
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(parm) {
+		
+		C_GRID.lockGridEvent();
+		
+		<@popupId>.parm = parm;
+		
+		<@popupId>.loadComponent(parm);
+	});
+</script>
+
+  <!-- modal-popup start -->
+  <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle"><@gridTitle></h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" onclick="C_POP.normalSize('<@popupId>')">
+            </button>
+            <!-- <button type="button" class="win-full" onclick="C_POP.fullSize('<@popupId>')"> -->
+            <button type="button" class="win-full" onclick="C_POP.maxSize('<@popupId>')">
+            
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+        <div class="modal-body">          
+          <!-- search filter box start -->
+			<component id="compTextarea"></component>
+          <!-- search filter box end -->
+        </div>
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn mr5" onclick="<@popupId>.preview()"	>미리보기</button>
+          <button type="button" class="btn outline-btn mr5" onclick="<@popupId>.save()"		>저장</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()"	>닫기</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+  </div>                      
+  <!-- modal-popup end -->

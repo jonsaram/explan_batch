@@ -1,0 +1,718 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@compId> = {
+
+            BRAND_ID : ''
+           ,pageInit : () => {
+
+               var now = new Date();   // 현재 날짜 및 시간
+               var thisYear = now.getFullYear();   // 연도
+               var thisMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+               
+               // 12개월 전 날짜 계산
+               now.setMonth(now.getMonth() - 11);
+
+               // 년도와 월 가져오기
+               const preYear  = now.getFullYear();
+               const preMonth = (now.getMonth() + 1).toString().padStart(2, '0');; // 월은 0부터 시작하므로 +1
+               
+               
+               
+               var startDate = new Date();
+               startDate.setFullYear(startDate.getFullYear() - 5);// 현재년도의 과거 5년
+               var startYear = startDate.getFullYear();   // 연도
+               
+               const yearsArray = Array.from({ length: 6 }, (_, index) => {
+                   const year = thisYear - index;
+                   return [year.toString(), year + "년"];
+               });
+               
+               
+               const monthsArray = Array.from({ length: 12 }, (_, index) => {
+                     const months = ("0"+(1 + index) ).slice(-2);
+                     return [months.toString(), months ];
+               });
+
+               var startYearsArrayList = { data : yearsArray,targetId : "<@compId>_startYears"}
+               C_UICOM.makeSelectBox(startYearsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_startYears", preYear);
+                
+               var startMonthsArrayList = { data : monthsArray,targetId : "<@compId>_startMonths"}
+               C_UICOM.makeSelectBox(startMonthsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_startMonths", preMonth);
+                
+               var endYearsArrayList = { data : yearsArray,targetId : "<@compId>_endYears"}
+               C_UICOM.makeSelectBox(endYearsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_endYears", thisYear);
+                
+               var endMonthsArrayList = { data : monthsArray,targetId : "<@compId>_endMonths"}
+               C_UICOM.makeSelectBox(endMonthsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_endMonths", thisMonth);
+               
+               <@compId>.brandIdSet(<@compId>.BRAND_ID);
+                
+            }
+
+           ,brandIdSet : (brandId) => {
+
+               <@compId>.BRAND_ID = brandId;
+               // 권역
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "STORE_REGION");
+               var selectBoxRegionList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxRegion" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxRegionList, "single");
+               
+
+               // 슈퍼바이저
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "SUPERVISOR");
+               var selectBoxSupervisorList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxSupervisor" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxSupervisorList, "single");
+               <@compId>.searchBtn();
+           }
+
+           /* ******  UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    */
+           ,getMonthDifference : (start, end) =>{
+               var startYear = parseInt(start.split('-')[0], 10);
+               var startMonth = parseInt(start.split('-')[1], 10);
+               var endYear = parseInt(end.split('-')[0], 10);
+               var endMonth = parseInt(end.split('-')[1], 10);
+   
+               var yearDifference = endYear - startYear;
+               var monthDifference = endMonth - startMonth;
+   
+               return yearDifference * 12 + monthDifference;
+               
+           }
+           ,checkDay : function(selectDom) {
+
+               var startYears  = C_UICOM.getData("<@compId>_startYears");
+               var startMonths = C_UICOM.getData("<@compId>_startMonths");
+               var endYears    = C_UICOM.getData("<@compId>_endYears");
+               var endMonths   = C_UICOM.getData("<@compId>_endMonths");
+               
+               var startDate  = startYears+"-"+startMonths;
+               var endDate    = endYears+"-"+endMonths;
+               
+               var dateStart  = startYears+startMonths;
+               var dateEnd    = endYears+endMonths;
+
+               //시작일이 종료일보다 클경우 종료일을 시작일로 변경
+               if( Number(dateStart) > Number(dateEnd) ){
+                   C_UICOM.setSingleBox("<@compId>_endYears", startYears);
+                   C_UICOM.setSingleBox("<@compId>_endMonths", startMonths);
+               }
+               
+               var monthDifference = <@compId>.getMonthDifference(startDate, endDate);
+               
+               /*
+               //조회 기간은 12 개월이상일 경우 종료일을 12개월로 변경
+               if( 12 <= monthDifference  ){
+
+                   var date = new Date(startYears, startMonths - 1);
+                   date.setMonth(date.getMonth() + 11);
+                   var resultYear = date.getFullYear();
+                   var resultMonth = ('0' + (date.getMonth() + 1)).slice(-2); // 월은 0부터 시작하므로 다시 1을 더해주고, 두 자리로 맞춤
+
+                   C_UICOM.setSingleBox("<@compId>_endYears", resultYear.toString());
+                   C_UICOM.setSingleBox("<@compId>_endMonths", resultMonth.toString());
+                   
+               }
+               */
+               
+           }
+           /* #######  UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    UTIL    */
+           
+           /* 가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    */
+           ,searchList : (  startDate, endDate, brandId ) => {
+
+               var region     = C_UICOM.getData("<@compId>_selectBoxRegion");
+               region = region == "ALL" ? undefined : region; 
+               var supervisor = C_UICOM.getData("<@compId>_selectBoxSupervisor");
+               supervisor = supervisor == "ALL" ? undefined : supervisor; 
+               
+               if( Number(startDate.replace(/-/gi,"")) > Number(endDate.replace(/-/gi,"")) ){
+                   C_POP.alert("시작일이 종료일보다 클 수 없습니다.");
+                   $("#<@compId>_startYears").focus();
+                   return false;
+               }
+
+               let sendParm = {
+			   		gridParm : {
+				   		 tableName		: "TBL_EXP_STORE_MST"
+				   		,columnMap 		: {
+							 "BRAND_ID"        : { headerText : "BrandID"     , hidden : "Y", default : G_VAL.session.BRAND_ID		}
+							,"STORE_ID"		   : { headerText : "가맹점ID"    , hidden : "Y"										}
+							,"STORE_CD"		   : { headerText : "가맹점CD"    , notNull : "Y"										}
+							,"STORE_NM"        : { headerText : "가맹점명"    }
+							,"ADDRESS"         : { headerText : "주소"        , columnClass:"hide-area"}
+							,"STORE_MANAGER_NM": { headerText : "담당자명"    }
+							,"REGION"          : { headerText : "지역"        , columnClass:"hide-area", columnType : "selectbox", useCodeId : "STORE_REGION"	}
+							,"NOTE"            : { headerText : "Note"        , columnClass:"hide-area"}
+							,"PHONE_MANAGER"   : { headerText : "대표전화번호", columnClass:"hide-area"}
+							,"PHONE_STORE"     : { headerText : "지점전화번호"}
+	                        ,"USE_YN"          : { headerText : "사용여부"		,columnType : "selectbox", useCodeId : "YES_OR_NO"	}
+	                        //,"TAXPAL_USE_YN"   : { headerText : "세친구사용"	,columnType : "selectbox", useCodeId : "YES_OR_NO"	}
+	                        //,"TAXPAL_REGIST_YN": { headerText : "세친구등록"	,columnType : "selectbox", useCodeId : "YES_OR_NO"	}
+	                        ,"POS_USE_YN"      : { headerText : "포스사용"		,columnType : "selectbox", useCodeId : "YES_OR_NO"	}
+	                        ,"OPENING_DAY"     : { headerText : "개업일"		,dataType : "date", dateFormat : "YYYY-MM-DD"	}
+	                        ,"CLOSING_DATE"    : { headerText : "폐점일"		,dataType : "date", dateFormat : "YYYY-MM-DD"	}
+	                        ,"TRANSFER_DAY"    : { headerText : "양수도일"		,dataType : "date", dateFormat : "YYYY-MM-DD"	}
+				   		 }
+				   		,primaryKeyList		: ["STORE_ID"			]
+				   		,searchColumnList	: ["STORE_NM"			]
+				   		,searchWhereMap	: {
+				   			 BRAND_ID 			: G_VAL.session.BRAND_ID
+				   			,REGION 			: region
+				   			,SUPERVISOR 		: supervisor
+				   			//,OPENING_DAY		: { type : "range", start : startDate, end : endDate, dateFormat : "YYYY-MM" } 
+				   		 }
+				   		,orderColumnList 	: ["STORE_NM ASC"		]
+				   		,rowCntId 			: "<@compId>_rowCnt"
+						,rowConfig		: {
+							onDblClickRow : function(rowData) {
+								const parm = {
+									 gridParm : sendParm.gridParm
+									,gridHeaderTitle 	: "가맹점 상세보기"
+									,popupTitle 		: "가맹점 상세보기"
+									,targetRowData		: rowData
+									,mode				: "R"
+								}
+								C_POP.open("popup_common_oneEditGridPopup", parm, function(retData){
+									
+								});
+							}
+						 }
+				   		,readOnlyHideColumnList : ["STORE_CD", "USE_YN", "POS_USE_YN", "POS_USE_YN" ]	// readOnly인경우에만 숨겨지는 컬럼 목록 설정
+				   	 }
+               		,noTitle 		: "Y"
+               		,noBreadcrumb	: "Y"
+               		,noEdit			: "Y"
+               		,noSearchBox	: "Y"
+               		,subTitle		: "가맹점 리스트"
+               		,frameHeight	: "300px"
+			   }
+			   C_COMP.import("<@compId>_storeList", "component_compTableEditor",sendParm , function() {});		
+            }
+           // 신규 가맹점 리스트
+			,newStoreList : function(startDate, endDate, region, supervisor) {
+				
+				if(region == "ALL"		) region = undefined;
+				if(supervisor == "ALL"	) supervisor = undefined;
+				
+				startDate 	= startDate + "-01";
+				endDate 	= endDate + "-" + getLastDayOfMonth(endDate);
+				
+	   			let sendParm = {
+   					gridParm : {
+   						 tableName		: "TBL_EXP_STORE_MST"
+   						,columnMap 		: {
+							 "STORE_ID"		: { headerText : "가맹점ID"    , hidden : "Y"										}
+	   						,"STORE_NM" 	: { headerText : "가맹점명"	,align : "left"}
+	   						,"OPENING_DAY"  : { headerText : "개업일"		,dataType : "date", dateFormat : "YYYY-MM-DD"	}
+   						 }
+   						,primaryKeyList		: ["STORE_ID"	]
+   						,searchWhereMap		: {
+   							 BRAND_ID 	 : G_VAL.session.BRAND_ID
+   							,OPENING_DAY : {type : "range", start : startDate, end : endDate} 
+   							,REGION		 : region
+   							,SUPERVISOR	 : supervisor 
+   						 }
+   						,orderColumnList 	: ["OPENING_DAY DESC"]
+   					 }
+              		,noTitle 		: "Y"
+               		,noBreadcrumb	: "Y"
+               		,noEdit			: "Y"
+               		,noExcelDown	: "Y"
+               		,noSearchBox	: "Y"
+               		,subTitle		: "신규 가맹점"
+               		,frameHeight	: "264px"
+   				}
+   				C_COMP.import("<@compId>_newStoreList", "component_compTableEditor",sendParm , function(dataList) {
+   					// 신규 가맹점 개수
+   	                $('#<@compId>_openCnt').text(dataList.length);
+   				});		
+            }
+           ,closeStoreList : function(startDate, endDate, region, supervisor) {
+
+				if(region == "ALL"		) region 	 = undefined;
+				if(supervisor == "ALL"	) supervisor = undefined;
+        	   
+        	    startDate 	= startDate + "-01";
+				endDate 	= endDate + "-" + getLastDayOfMonth(endDate);
+        	   
+	   			let sendParm = {
+   					gridParm : {
+   						 tableName			: "TBL_EXP_STORE_MST"
+   						,columnMap 			: {
+							 "STORE_ID"			: { headerText : "가맹점ID" ,hidden 	: "Y"								}
+	   						,"STORE_NM" 		: { headerText : "가맹점명"	,align 		: "left"							}
+	   						,"CLOSING_DATE" 	: { headerText : "폐점일"	,dataType 	: "date", dateFormat : "YYYY-MM-DD"	}
+   						 }
+   						,primaryKeyList		: ["STORE_ID"	]
+   						,searchWhereMap		: {
+   							 BRAND_ID 	 		: G_VAL.session.BRAND_ID
+   							,CLOSING_DATE 		: {type : "range", start : startDate, end : endDate} 
+							,REGION		 		: region
+   							,SUPERVISOR	 		: supervisor 
+   						 }
+   						,orderColumnList 	: ["CLOSING_DATE DESC"]
+   					 }
+              		,noTitle 		: "Y"
+               		,noBreadcrumb	: "Y"
+               		,noEdit			: "Y"
+               		,noExcelDown	: "Y"
+               		,noSearchBox	: "Y"
+               		,subTitle		: "폐점 가맹점"
+               		,frameHeight	: "264px"
+   				}
+   				C_COMP.import("<@compId>_closeStoreList", "component_compTableEditor",sendParm , function(dataList) {
+   					// 폐점 가맹점 개수
+   	                $('#<@compId>_closeCnt').text(dataList.length);
+   				});		
+            }
+           /* 가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    가맹점 리스트    */
+           
+            /* 신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    */
+            ,searchList1 : ( startDate, endDate, brandId ) => { 
+                
+                var region     = C_UICOM.getData("<@compId>_selectBoxRegion");
+                var supervisor = C_UICOM.getData("<@compId>_selectBoxSupervisor");
+                
+                
+                let requestParm = {};   
+                requestParm["brandId"]     = brandId;         
+                requestParm["startDate"]   = startDate + "-01";
+                requestParm["endDate"]     = endDate + "-" + getLastDayOfMonth(endDate);           
+                requestParm["region"]      = region ;
+                requestParm["supervisor"]  = supervisor ;
+                
+                var parm = {
+                     serviceId              : "DashboardService.getOpenCloseCnt"
+                    ,requestParm            : requestParm
+                }
+                C_COM.requestService(parm, function(resultData) {
+                    <@compId>.setChart1( resultData );
+                    //<@compId>.setSignboard( resultData );
+                });
+                
+                
+            }//searchList1
+
+            ,setChart1 : (resultData) =>{
+
+                let ymdArry = [];
+                let openArry = [];
+                let closeArry = [];
+                let allArry = [];
+                
+                var j = 0;
+
+                for (var i=0; i< resultData.data.list.length; i++){                        
+                    ymdArry[i] = resultData.data.list[i].YYYYMM.replace('-', '.');
+                    openArry[i] = parseInt(resultData.data.list[i].OPEN);
+                    closeArry[i] = parseInt(resultData.data.list[i].CLOSE);
+                    allArry[i] = parseInt(resultData.data.list[i].ALL);
+                }
+                
+                $('#<@compId>_chart1').highcharts({
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                        zoomType: 'xy'
+                    },
+                    title: {
+                        text: '',
+                        align: 'left'
+                    },
+                    colors: ['#27187F', '#F29423','#66ff00', '#0099ff'],
+                    subtitle: {
+                        text: ''
+                    },
+                    xAxis: {
+                        categories: ymdArry
+                    },
+                    yAxis: [
+                        { // Primary yAxis
+                            labels: {
+                                format: '',
+                                style: {
+                                    color: Highcharts.getOptions().colors[0]
+                                }
+                            },
+                            title: {
+                                text: '',
+                                style: {
+                                    color: Highcharts.getOptions().colors[0]
+                                }
+                            }
+                        },
+                        { // Secondary yAxis
+                            title: {
+                                text: '',
+                                style: {
+                                    color: Highcharts.getOptions().colors[0]
+                                }
+                            },
+                            labels: {
+                                format: '',
+                                style: {
+                                    color: Highcharts.getOptions().colors[0]
+                                }
+                            },
+                            opposite: true
+                        }
+                    ],
+                    tooltip: {
+                        shared: true
+                    },
+                    series: [
+                        {
+                            name: '신규가맹점',
+                            type: 'column',
+                            yAxis: 1,
+                            data: openArry,
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}' // 숫자 표시
+                            }
+                        }, 
+                        {
+                            name: '폐점가맹점',
+                            type: 'column',
+                            yAxis: 1,
+                            data: closeArry,
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}'
+                            }
+                        }, 
+                        {
+                            name: '가맹점수',
+                            type: 'spline',
+                            data: allArry,
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}'
+                            }
+                        }
+                    ]
+                });
+            }//setChart1
+            /* 신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    신규,폐점가맹점    */
+            
+            /* 지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    */
+            ,searchList2 : ( startDate, endDate, brandId ) => {
+                                
+
+                var region     = C_UICOM.getData("<@compId>_selectBoxRegion");
+                var supervisor = C_UICOM.getData("<@compId>_selectBoxSupervisor");
+                
+                let requestParm = {};
+                requestParm["brandId"]     = brandId;            
+                requestParm["startDate"]   = startDate + "-01";
+                requestParm["endDate"]     = endDate + "-" + getLastDayOfMonth(endDate);           
+                requestParm["region"]      = region ;
+                requestParm["supervisor"]  = supervisor ;
+                
+                let parm = {
+                     queryId        : "dashboardCorPerformance.getRegionCnt"
+                    ,requestParm    : requestParm
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                    
+                    <@compId>.setChart2( resultData );
+                });
+                
+                
+            }//searchList1
+
+            ,setChart2 : (resultData) =>{
+
+                let regionNm = [];
+                let cnt      = [];
+
+                for(var i =0; i < resultData.data.length; i++){
+                    regionNm[i] = resultData.data[i].REGION_NM;
+                    cnt[i]      = resultData.data[i].CNT;
+                }
+                
+                $('#<@compId>_chart2').highcharts({
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                         type: 'column'
+                        ,height:250
+                    },
+                    title: {
+                        text: '',
+                        align: 'left'
+                    },
+                    subtitle: {
+                        text:
+                            '',
+                        align: 'left'
+                    },
+                    xAxis: {
+                        categories: regionNm,
+                        crosshair: true,
+                        accessibility: {
+                            description: ''
+                        }
+                    },
+                    yAxis: {
+                        min: 0,
+                        title: {
+                            text: ''
+                        }
+                    },
+                    tooltip: {
+                        valueSuffix: ''
+                    },
+                    plotOptions: {
+                        column: {
+                            dataLabels: {
+                                enabled: true
+                            },
+                            pointPadding: 0.2,
+                            borderWidth: 0
+                        }
+                    },
+                    series: [
+                        {
+                            name: '가맹점수',
+                            data: cnt
+                        }
+                    ]
+                });
+            }//setChart2
+            /* 지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    지역별가맹점    */
+            
+            /* 사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    */
+            ,searchList3 : (  startDate, endDate, brandId ) => {
+
+                var region     = C_UICOM.getData("<@compId>_selectBoxRegion");
+                var supervisor = C_UICOM.getData("<@compId>_selectBoxSupervisor");
+                
+                let requestParm = {};
+                requestParm["brandId"]     = brandId;            
+                requestParm["startDate"]   = startDate;
+                requestParm["endDate"]     = endDate + "-" + getLastDayOfMonth(endDate);;           
+                requestParm["region"]      = region ;
+                requestParm["supervisor"]  = supervisor ;
+                
+                let parm = {
+                     queryId        : "dashboardCorPerformance.getOpenCloseCntSummary"
+                    ,requestParm    : requestParm
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                    
+                    <@compId>.setFranchiseCnt( resultData );
+                });
+            }
+
+            ,setFranchiseCnt : (resultData) =>{
+                for(var i =0; i < resultData.data.length; i++){
+                    $('#<@compId>_franchiseCnt').text(resultData.data[i].OPEN_CNT);
+                }
+            }
+            /*
+            ,setSignboard : (resultData) =>{
+                let openCnt  = 0;
+                let closeCnt = 0;
+                
+                for (var i=0; i< resultData.data.list.length; i++){
+                	openCnt  += parseInt(resultData.data.list[i].OPEN);
+                	closeCnt += parseInt(resultData.data.list[i].CLOSE);
+                }
+
+                $('#<@compId>_openCnt').text(openCnt);
+                $('#<@compId>_closeCnt').text(closeCnt);
+            }
+            */
+            /* 사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    사인보드    */
+            
+           ,searchBtn : function(selectDom) {
+
+                   let startYear   = C_UICOM.getData("<@compId>_startYears");
+                   let startMonth  = C_UICOM.getData('<@compId>_startMonths');
+
+                   let endYear     = C_UICOM.getData('<@compId>_endYears');
+                   let endMonth    = C_UICOM.getData('<@compId>_endMonths');
+
+                   var region     = C_UICOM.getData("<@compId>_selectBoxRegion");
+                   var supervisor = C_UICOM.getData("<@compId>_selectBoxSupervisor");
+                   
+                   if ( startYear.length < 1) {
+                       C_POP.alert("조회 시작년을 선택해 주세요.");
+                       $("#<@compId>_startYears").focus();
+                       return false;
+                   }
+                   if ( startMonth.length < 1) {
+                       C_POP.alert("조회 시작월을 선택해 주세요.");
+                       $("#<@compId>startMonth").focus();
+                       return false;
+                   }
+
+                   if ( endYear.length < 1) {
+                       C_POP.alert("조회 종료년을 선택해 주세요.");
+                       $("#<@compId>_startYears").focus();
+                       return false;
+                   }
+                   if ( endMonth.length < 1) {
+                       C_POP.alert("조회 종료월을 선택해 주세요.");
+                       $("#<@compId>startMonth").focus();
+                       return false;
+                   }
+                   
+                   let startDate = startYear + '-' + startMonth;
+                   let endDate   = endYear + '-' + endMonth;
+                   var monthDifference = <@compId>.getMonthDifference(startDate, endDate);
+
+                   //var brandId = <@parentId>.getParentBrandId();
+                   var brandId     = <@compId>.BRAND_ID;
+                   if(brandId == undefined){
+                       C_POP.alert("브랜드가 없습니다.");
+                       return;
+                   }
+                   
+                   <@compId>.searchList(  startDate, endDate, brandId );//가맹점 리스트
+                   <@compId>.searchList1( startDate, endDate, brandId );//가맹점수,신규 가맹점,폐점가맹점
+                   <@compId>.searchList2( startDate, endDate, brandId );//지역별가맹점
+                   <@compId>.searchList3( startDate, endDate, brandId );//사인보드
+                   
+                   
+                   
+                   
+                   <@compId>.newStoreList(startDate, endDate, region, supervisor);			//신규가맹점 리스트
+                   <@compId>.closeStoreList(startDate, endDate, region, supervisor);		//폐점가맹점 리스트
+                   
+
+               }
+
+        }
+        // Component Load가 완료된후 실행 된다.
+        C_COMP.onLoadComp("<@compId>", function(parm) {
+    
+    
+            <@compId>.BRAND_ID = parm.brandId;
+            
+            if(isEmpty(<@compId>.BRAND_ID)){
+                <@compId>.BRAND_ID = G_VAL.session.BRAND_ID;
+            } 
+            
+            <@compId>.pageInit();
+
+			// 20250211 
+			// code by 위성열
+			// Main Widget 처리
+			C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+				C_WIDGET.setWidgetState("<@compId>", widgetList);
+			});
+        
+        });
+</script>
+<component>
+    <div class="pop_tab_content_box">
+        <!-- title start -->
+        <div class="mt10 mb5 mt30 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+            <div class="biz-subTitle">
+                가맹점 리스트 및 현황
+                <div class="ml20">
+                    <label class="star-wrap">
+	                    <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                        <span class="star"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <!-- title end -->
+        
+		 <!-- search filter box start -->
+		 <div class="srch-card mb10">
+		     <div class="srch-card-inwrap">
+		         <div class="col9 col10-sm srch-card-form">
+		             <div class="col4 col10-md col10-sm mb5 display-h-end">
+		                 <select class="form-control form-control-sm col4" id="<@compId>_startYears" onChange="<@compId>.checkDay(this)">
+                         </select>&nbsp;&nbsp;
+                         <select class="form-control form-control-sm col3" id="<@compId>_startMonths" onChange="<@compId>.checkDay(this)">
+                         </select>
+		                 <span class="p5">~</span>
+		                 <select class="form-control form-control-sm col4" id="<@compId>_endYears" onChange="<@compId>.checkDay(this)">
+                        </select>&nbsp;&nbsp;
+                        <select class="form-control form-control-sm col3" id="<@compId>_endMonths" onChange="<@compId>.checkDay(this)">
+                        </select>
+		             </div>                                        
+		             <div class="col3 col5-md col10-sm display-h-end mb5">
+		                 <label class="src-title">권역</label>
+		                 <select class="form-control form-control-sm col4" id="<@compId>_selectBoxRegion" >
+                        </select>
+		             </div> 
+		             <div class="col3 col5-md col10-sm display-h-end mb5">
+		                 <label class="src-title">슈바이져</label>
+		                 <select class="form-control form-control-sm col4" id="<@compId>_selectBoxSupervisor"> 
+                        </select>
+		             </div>
+		
+		         </div>
+		         <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+		             <button class="srch-btn col10" type="button" onclick="<@compId>.searchBtn()">검 색</button>
+		         </div>
+		     </div>
+		 </div>
+        <!-- search filter box end -->
+        <!-- 가맹점 리스트 및 현황 area start -->
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md">
+            <div class="col5 col10-md col10-sm">
+                <div class="display-between col10-md col10-sm tab-card-outline mb10">
+                    <div class="col33 display-column-center p20 deco-line-rt">
+                        <span class="fs50 txt-cyan mb10" id="<@compId>_franchiseCnt"></span>
+                        <span class="round-container fs-w txt-center">누적 가맹점 수</span>
+                    </div>
+                    <div class="col33 display-column-center p20 deco-line-rt">
+                        <span class="fs50 txt-cyan mb10" id="<@compId>_openCnt"></span>
+                        <span class="round-container fs-w txt-center">신규 가맹점</span>
+                    </div>
+                    <div class="col33 display-column-center p20">
+                        <span class="fs50 txt-cyan mb10" id="<@compId>_closeCnt"></span>
+                        <span class="round-container fs-w txt-center">폐점 가맹점</span>
+                    </div>
+                </div>
+                <div class="col10-md col10-sm tab-card-outline mb20">
+                    <!-- chart start -->
+                    <div class="card-cnt-wrap p20">
+                        <div id="<@compId>_chart1" width="100%"></div>
+                    </div>
+                    <!-- chart end -->
+                </div>
+            </div>
+            <div class="col5 col10-md col10-sm mb20">
+                <div class="col10-md col10-sm tab-card-outline mb10">
+                    <!-- chart start -->
+	                <div class="card-cnt-wrap p20">
+	                    <div id="<@compId>_chart2" width="100%"></div>
+	                </div>
+                    <!-- chart end -->
+                </div>
+                <div class="display-between col10-md col10-sm mb10">
+                    <div class="col5 display-column-center p5">
+                    	<compnent id="<@compId>_newStoreList"></compnent>
+                    </div>
+                    <div class="col5 display-column-center p5">
+                    	<compnent id="<@compId>_closeStoreList"></compnent>
+                    </div>
+                </div>
+            </div>  
+        </div>
+        <!-- 가맹점 리스트 및 현황 area end -->
+
+        <!-- 가맹점 리스트 area end -->
+		<compnent id="<@compId>_storeList"></compnent>
+        <!-- 가맹점 리스트 area end -->
+    </div>
+
+</component>

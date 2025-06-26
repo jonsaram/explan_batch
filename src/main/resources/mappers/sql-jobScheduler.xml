@@ -1,0 +1,2167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="jobScheduler">
+
+	<cache />
+
+    <!-- 배치 실행 상태 입력 -->
+    <insert id="insertApiBachState" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertApiBachState */
+        INSERT INTO TBL_EXP_API_BACH_STATE (
+                BATCH_STATE_ID
+               ,BRAND_ID      
+               ,STORE_ID      
+               ,YYYYMMDD      
+               ,API_CD 
+               ,SUCCESS_YN    
+               ,API_COMP_CD
+               ,CREATE_USER   
+               ,CREATE_DATE       
+        )
+        VALUES(
+             #{id}                   /* BATCH_STATE_ID */
+            ,NVL(#{brandId}, '')     /* BRAND_ID       */    
+            ,NVL(#{storeId}, '')     /* STORE_ID       */    
+            ,NVL(#{yyyymmdd}, '')    /* YYYYMMDD       */   
+            ,NVL(#{apiCd}, '')       /* API_CD         */   
+            ,NVL(#{successYn}, '')   /* SUCCESS_YN     */   
+            ,NVL(#{apiCompCd}, '')   /* API_COMP_CD    */   
+            ,NVL(#{createUser}, '')  /* CREATE_USER    */   
+            ,GET_KRDT(SYSDATE)       /* CREATE_DATE    */
+        ) 
+    </insert>
+
+    <!-- 배치 실행 상태 수정 -->
+    <update id="updateApiBachState" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateApiBachState */
+        UPDATE TBL_EXP_API_BACH_STATE
+        SET    UPDATE_USER  = #{updateUser, jdbcType=VARCHAR}    
+              ,UPDATE_DATE  = GET_KRDT(SYSDATE)
+               <if test=" successYn != null and successYn != '' ">
+                   ,SUCCESS_YN   = #{successYn, jdbcType=VARCHAR} 
+               </if>
+        WHERE 1 = 1
+        <if test=" id != null and id != ''  ">
+              AND    BATCH_STATE_ID =  #{id}
+        </if> 
+        <if test=" brandId != null and brandId != ''  ">
+              AND    BRAND_ID =  #{brandId}
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+              AND    STORE_ID =  #{storeId}
+        </if>
+        <if test=" yyyymmdd != null and yyyymmdd != ''  ">
+              AND    YYYYMMDD =  #{yyyymmdd}
+        </if>
+        <if test=" apiCd != null and apiCd != ''  ">
+              AND    API_CD =  #{apiCd}
+        </if>
+    </update>
+    <!-- 배치 실행 상태 조회 -->
+    <select id="getApiBachState" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  jobScheduler.getApiBachState */
+        SELECT  BATCH_STATE_ID
+               ,BRAND_ID      
+               ,STORE_ID      
+               ,YYYYMMDD      
+               ,API_CD     
+               ,SUCCESS_YN    
+               ,API_COMP_CD
+               ,UPDATE_USER   
+               ,UPDATE_DATE   
+               ,CREATE_USER   
+               ,CREATE_DATE   
+        FROM   TBL_EXP_API_BACH_STATE
+        WHERE  1 = 1
+        <if test=" logId != null and logId != ''  ">
+              AND    BATCH_STATE_ID =  #{logId}
+            </if>
+        <if test=" brandId != null and brandId != ''  ">
+              AND    BRAND_ID =  #{brandId}
+            </if>
+        <if test=" storeId != null and storeId != ''  ">
+              AND    STORE_ID =  #{storeId}
+            </if>
+        <if test=" yyyymmdd != null and yyyymmdd != ''  ">
+              AND    YYYYMMDD =  #{yyyymmdd}
+            </if>
+        <if test=" apiCd != null and apiCd != ''  ">
+              AND    API_CD =  #{apiCd}
+        </if>
+    </select>
+    
+    <!-- API 전송로그 조회 -->
+    <select id="getApiTransferLog" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  jobScheduler.getApiTransferLog */
+        SELECT LOG_ID
+              ,COMPANY_CD
+              ,API_CD
+              ,REQ_TYPE
+              ,URL
+              ,REQ_PARAM
+              ,RES_PARAM
+              ,SUCCESS_YN
+              ,ERROR_CD
+              ,ERROR_MSG
+              ,UPDATE_USER
+              ,UPDATE_DATE
+              ,CREATE_USER
+              ,CREATE_DATE
+        FROM   TBL_EXP_API_TRANSFER_LOG
+        WHERE  1 = 1  
+        <if test=" logId != null and logId != ''  ">
+          AND    LOG_ID =  #{logId}
+        </if>
+        <if test=" companyCd != null and companyCd != ''  ">
+          AND    COMPANY_CD =  #{companyCd}
+        </if>
+        <if test=" successYn != null and successYn != ''  ">
+          AND    SUCCESS_YN =  #{successYn}
+        </if>
+        <if test=" startDate != null and startDate != ''  ">
+          AND  TRUNC(CREATE_DATE) BETWEEN TO_DATE( #{startDate}, 'YYYY-MM-DD') AND TO_DATE( #{endDate}, 'YYYY-MM-DD')
+        </if>
+    </select>
+    
+    <!-- API 전송로그 입력 -->
+    <insert id="insertApiTransferLog" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertApiTransferLog */
+        INSERT INTO TBL_EXP_API_TRANSFER_LOG (
+             LOG_ID         
+            ,COMPANY_CD     
+            ,API_CD       
+            ,REQ_TYPE  
+            ,URL            
+            ,REQ_PARAM      
+            ,RES_PARAM      
+            ,SUCCESS_YN     
+            ,ERROR_CD       
+            ,ERROR_MSG      
+            ,CREATE_USER    
+            ,CREATE_DATE    
+        )
+        VALUES(
+             #{logId}               /* LOG_ID  */
+            ,NVL(#{companyCd}, '')  /* COMPANY_CD  */    
+            ,NVL(#{apiCd}, '')      /* API_CD      */    
+            ,NVL(#{reqType}, '')    /* REQ_TYPE    */   
+            ,NVL(#{url}, '')        /* URL         */   
+            ,NVL(#{reqParam}, '')   /* REQ_PARAM   */   
+            ,NVL(#{resParam}, '')   /* RES_PARAM   */   
+            ,NVL(#{successYn}, '')  /* SUCCESS_YN  */   
+            ,NVL(#{errorCd}, '')    /* ERROR_CD    */   
+            ,NVL(#{errorMsg}, '')   /* ERROR_MSG   */   
+            ,NVL(#{createUser}, '') /* CREATE_USER */   
+            ,GET_KRDT(SYSDATE)      /* CREATE_DATE */
+        ) 
+    </insert>
+
+    <!-- API 전송로그 삭제 -->
+    <delete id="delApiTransferLog" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.delApiTransferLog */
+        DELETE FROM TBL_EXP_API_TRANSFER_LOG
+        WHERE 1 = 1
+        <if test=" logId != null and logId != '' ">
+            AND    LOG_ID = #{logId}
+        </if>
+        <if test=" delDate != null and delDate != '' " >
+            AND   CREATE_DATE <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+        </if>
+    </delete>
+    
+    <!-- API 전송로그 수정 -->
+    <update id="updateApiTransferLog" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateApiTransferLog */
+        UPDATE TBL_EXP_API_TRANSFER_LOG
+        SET    UPDATE_USER  = #{updateUser, jdbcType=VARCHAR}    
+              ,UPDATE_DATE  = GET_KRDT(SYSDATE)
+               <if test=" companyCd != null and companyCd != '' ">
+                   ,COMPANY_CD   = #{companyCd, jdbcType=VARCHAR} 
+               </if>
+               <if test=" apiCd != null and apiCd != '' ">
+                   ,API_CD       = #{apiCd, jdbcType=VARCHAR} 
+               </if>
+               <if test=" reqType != null and reqType != '' ">
+                   ,REQ_TYPE     = #{reqType, jdbcType=VARCHAR} 
+               </if>
+               <if test=" url != null and url != '' ">
+                   ,URL          = #{url, jdbcType=VARCHAR}  
+               </if>
+               <if test=" reqParam != null and reqParam != '' ">
+                   ,REQ_PARAM    = #{reqParam, jdbcType=VARCHAR}
+               </if>
+               <if test=" resParam != null and resParam != '' ">
+                   ,RES_PARAM    = #{resParam, jdbcType=VARCHAR}
+               </if>
+               <if test=" successYn != null and successYn != '' ">
+                   ,SUCCESS_YN   = #{successYn, jdbcType=VARCHAR}
+               </if>
+               <if test=" errorCd != null and errorCd != '' ">
+                   ,ERROR_CD     = #{errorCd, jdbcType=VARCHAR}
+               </if>
+               <if test=" errorMsg != null and errorMsg != '' ">
+                   ,ERROR_MSG    = #{errorMsg, jdbcType=VARCHAR}
+               </if>
+        WHERE 1 = 1 
+        AND   LOG_ID   = #{logId}
+    </update>
+    <!-- 지점매출 입력 -->
+    
+    <insert id="insertStoreSalesMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStoreSalesMst */
+            INSERT INTO ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST(
+                        STORE_SALES_ID,
+                        STORE_ID,
+                        YEAR,
+                        MONTH,
+                        DAY,
+                        YYYYMMDD,
+                        TAXABLE_AMOUNT,
+                        SURTAX_SUM,
+                        NET_SALES,
+                        AVERAGE_SALES,
+                        CUSTOMERS_NUM,
+                        RECEIPT_CNT,
+                        RECEIPT_PRICE,
+                        CARD_SALES,
+                        CASH_SALES,
+                        DISCOUNT_PRICE,
+                        ETC_SALES,
+                        CREATE_USER,
+                        CREATE_DATE,
+                        GROSS_SALES,
+                        GROSS_SALES_POS
+            )
+            VALUES (
+                      #{STORE_SALES_ID},
+                      #{STORE_ID},      
+                      #{YEAR}, 
+                      #{MONTH}, 
+                      #{DAY},  
+                      #{YYYYMMDD}, 
+                      NULL,             
+                      NULL,             
+                      #{RECEIVE_AMT},   
+                      NULL,           
+                      #{CUST_AMT},      
+                      #{SELL_CNT},      
+                      NULL,           
+                      #{CARD_AMT},      
+                      #{CASH_AMT},      
+                      #{DC_AMT},        
+                      NULL,           
+                      'SYSTEM',       
+                      GET_KRDT(SYSDATE),       
+                      #{RECEIVE_AMT},   
+                      #{RECEIVE_AMT}   
+            ) 
+    </insert>
+    <update id="insertStoreSalesMst_BAK" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStoreSalesMst */
+            MERGE INTO ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST tgt
+			USING (
+			        SELECT  #{STORE_SALES_ID} AS STORE_SALES_ID,
+			                #{STORE_ID} AS STORE_ID,      
+			                #{YEAR} AS YEAR, 
+			                #{MONTH} AS MONTH, 
+			                #{DAY} AS DAY,  
+			                #{YYYYMMDD} AS YYYYMMDD, 
+			                #{RECEIVE_AMT} AS RECEIVE_AMT,   
+			                #{CUST_AMT} AS CUST_AMT,      
+			                #{SELL_CNT} AS SELL_CNT,      
+			                #{CARD_AMT} AS CARD_AMT,      
+			                #{CASH_AMT} AS CASH_AMT,      
+			                #{DC_AMT} AS DC_AMT   
+			        FROM DUAL) src
+			ON (tgt.STORE_ID = src.STORE_ID
+			    AND tgt.YEAR = src.YEAR
+			    AND tgt.MONTH = src.MONTH
+			    AND tgt.DAY = src.DAY)
+			WHEN MATCHED THEN
+			    UPDATE SET NET_SALES = src.RECEIVE_AMT,
+			               CUSTOMERS_NUM = src.CUST_AMT,
+			               RECEIPT_CNT = src.SELL_CNT,
+			               CARD_SALES = src.CARD_AMT,
+			               CASH_SALES = src.CASH_AMT,
+			               DISCOUNT_PRICE = src.DC_AMT,
+			               GROSS_SALES = src.RECEIVE_AMT,
+			               GROSS_SALES_POS = src.RECEIVE_AMT,
+			               CREATE_USER = 'SYSTEM',
+			               CREATE_DATE = GET_KRDT(SYSDATE)
+			WHEN NOT MATCHED THEN
+			    INSERT (
+			        STORE_SALES_ID,
+			        STORE_ID,
+			        YEAR,
+			        MONTH,
+			        DAY,
+			        YYYYMMDD,
+			        TAXABLE_AMOUNT,
+			        SURTAX_SUM,
+			        NET_SALES,
+			        AVERAGE_SALES,
+			        CUSTOMERS_NUM,
+			        RECEIPT_CNT,
+			        RECEIPT_PRICE,
+			        CARD_SALES,
+			        CASH_SALES,
+			        DISCOUNT_PRICE,
+			        ETC_SALES,
+			        CREATE_USER,
+			        CREATE_DATE,
+			        GROSS_SALES,
+			        GROSS_SALES_POS
+			    ) VALUES (
+			        src.STORE_SALES_ID,
+			        src.STORE_ID,      
+			        src.YEAR, 
+			        src.MONTH, 
+			        src.DAY,  
+			        src.YYYYMMDD, 
+			        NULL,              
+			        NULL,              
+			        src.RECEIVE_AMT,   
+			        NULL,              
+			        src.CUST_AMT,      
+			        src.SELL_CNT,      
+			        NULL,              
+			        src.CARD_AMT,      
+			        src.CASH_AMT,      
+			        src.DC_AMT,        
+			        NULL,              
+			        'SYSTEM',       
+			        GET_KRDT(SYSDATE),       
+			        src.RECEIVE_AMT,   
+			        src.RECEIVE_AMT   
+			    )
+
+    </update>
+    
+    <update id="updateStoreSalesMst1" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateStoreSalesMst1 */
+        UPDATE ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST        
+        SET    UPDATE_USER     = #{updateUser} 
+              ,UPDATE_DATE     = GET_KRDT(SYSDATE)
+               <if test=" grossSales != null and grossSales != ''  ">
+                   ,GROSS_SALES     = #{grossSales}
+               </if>
+               <if test=" netSales != null and netSales != ''  ">
+                   ,NET_SALES     = #{netSales} 
+               </if>
+               <if test=" deliveryAmount != null and deliveryAmount != ''  ">
+                   ,DELIVERY_AMOUNT     = #{deliveryAmount}
+               </if>
+               <if test=" deliveryCount != null and deliveryCount != ''  ">
+                   ,DELIVERY_COUNT     = #{deliveryCount}
+               </if>
+        WHERE 1 = 1
+        AND    STORE_SALES_ID = #{storeSalesId}
+
+    </update>
+    
+    <!-- 지점매출 입력,수정 -->
+    <update id="mergeStoreSalesMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.mergeStoreSalesMst */ 
+        MERGE INTO ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST T2
+        USING (   
+                SELECT STORE_SALES_ID
+                      ,STORE_ID
+                      ,YEAR
+                      ,MONTH
+                      ,DAY
+                      ,GROSS_SALES
+                      ,TAXABLE_AMOUNT
+                      ,SURTAX_SUM
+                      ,NET_SALES
+                      ,AVERAGE_SALES
+                      ,CUSTOMERS_NUM
+                      ,RECEIPT_CNT
+                      ,RECEIPT_PRICE
+                      ,CARD_SALES
+                      ,CASH_SALES
+                      ,DISCOUNT_PRICE
+                      ,ETC_SALES
+                FROM   ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST
+                WHERE  1 = 1
+                AND    STORE_ID = #{storeId}
+                AND    YEAR     = #{year}
+                AND    MONTH    = #{month}
+                AND    DAY      = #{day}
+              ) T1
+        ON (    T2.STORE_ID = T1.STORE_ID 
+            AND T2.YEAR     = T1.YEAR  
+            AND T2.MONTH    = T1.MONTH  
+            AND T2.DAY      = T1.DAY  
+           )
+        WHEN MATCHED THEN
+            UPDATE
+            SET GROSS_SALES     = #{grossSales}
+               ,CUSTOMERS_NUM   = #{customersNum}
+               ,CARD_SALES      = #{cardSales}
+               ,CASH_SALES      = #{cashSales}
+               ,UPDATE_USER     = 'SYSTEM'
+               ,UPDATE_DATE     = GET_KRDT(SYSDATE)
+        WHEN NOT MATCHED THEN
+            INSERT (
+                      STORE_SALES_ID
+                     ,STORE_ID
+                     ,YEAR
+                     ,MONTH
+                     ,DAY
+
+                     ,GROSS_SALES
+                     ,CUSTOMERS_NUM
+                     ,CARD_SALES
+                     ,CASH_SALES
+                     ,CREATE_USER
+                     ,CREATE_DATE
+            )
+            VALUES (
+                      LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) 
+                     ,#{storeId}
+                     ,#{year}
+                     ,#{month}
+                     ,#{day}
+
+                     ,#{grossSales}
+                     ,#{customersNum}
+                     ,#{cardSales}
+                     ,#{cashSales}
+                     ,'SYSTEM'
+                     ,GET_KRDT(SYSDATE)
+            ) 
+    </update>
+    
+    <update id="stockInoutIn" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.stockInoutIn */ 
+        
+        MERGE INTO TBL_EXP_STOCK_INOUT T2
+        USING (                  
+                
+                SELECT STOCK_MST_ID
+                     , STORE_ID
+                     , BRAND_ID
+                     , YEAR
+                     , MONTH
+                     , DAY
+                     , STOCK_INOUT
+                     , REF_TABLE
+                     , REF_ID
+                     , SUM(QUANTITY) AS QUANTITY
+                FROM   (
+                        SELECT C.STOCK_MST_ID
+                              ,A.STORE_ID
+                              ,D.BRAND_ID
+                              ,A.YEAR
+                              ,A.MONTH
+                              ,A.DAY
+                              ,'IN' AS STOCK_INOUT
+                              ,'TBL_EXP_FOOD_MATERIALS_SALES' AS REF_TABLE
+                              ,'FOOD_MATERIALS_QUANTITY'      AS REF_ID
+                              ,A.FOOD_MATERIALS_QUANTITY      AS QUANTITY
+                        FROM   TBL_EXP_FOOD_MATERIALS_SALES A  /* 식자재 매출 */
+                               JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B /* 식자재 업체 상품 */
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.PRODUCT_ID = B.PRODUCT_ID 
+                                 AND B.MATERIALS_CD IS NOT NULL
+                               JOIN TBL_EXP_STORE_MST D /* 지점정보 */
+                                 ON  1 = 1
+                                 AND A.STORE_ID  = D.STORE_ID  
+                               JOIN TBL_EXP_STOCK_MST C /* 재고마스터 */
+                                 ON  1 = 1
+                                 AND D.BRAND_ID     = C.BRAND_ID
+                                 AND B.MATERIALS_CD = C.PRODUCT_CD 
+                                 AND C.PRODUCT_TYPE = 'M' 
+                                 AND C.USE_YN       = 'Y'
+                        WHERE  1 = 1
+                        AND    A.DEL_YN = 'N'
+                        AND    A.YEAR   = #{year}
+                        AND    A.MONTH  = #{month}
+                        AND    A.DAY    = #{day}
+                        ORDER BY A.YEAR
+                                ,A.MONTH
+                                ,A.DAY
+                                ,A.STORE_ID
+                                ,B.MATERIALS_CD
+                        ) A
+                GROUP BY STOCK_MST_ID
+                     , STORE_ID
+                     , BRAND_ID
+                     , YEAR
+                     , MONTH
+                     , DAY
+                     , STOCK_INOUT
+                     , REF_TABLE
+                     , REF_ID          
+                          
+              ) T1
+        ON (    T2.STOCK_MST_ID = T1.STOCK_MST_ID  
+            AND T2.STORE_ID     = T1.STORE_ID 
+            AND T2.BRAND_ID     = T1.BRAND_ID
+            AND T2.YEAR         = T1.YEAR
+            AND T2.MONTH        = T1.MONTH
+            AND T2.DAY          = T1.DAY
+            AND T2.STOCK_INOUT  = T1.STOCK_INOUT
+           )
+        WHEN NOT MATCHED THEN
+            INSERT (
+                      STOCK_INOUT_ID
+                     ,STOCK_MST_ID
+                     ,STORE_ID
+                     ,BRAND_ID
+                     ,YEAR
+
+                     ,MONTH
+                     ,DAY
+                     ,STOCK_INOUT
+                     ,REF_TABLE
+                     ,REF_ID
+
+                     ,QUANTITY
+                     ,NOTE
+                     ,CREATE_USER
+                     ,CREATE_DATE
+            )
+            VALUES (
+                      LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) 
+                     ,T1.STOCK_MST_ID
+                     ,T1.STORE_ID
+                     ,T1.BRAND_ID
+                     ,T1.YEAR
+
+                     ,T1.MONTH
+                     ,T1.DAY
+                     ,T1.STOCK_INOUT
+                     ,T1.REF_TABLE
+                     ,T1.REF_ID
+
+                     ,T1.QUANTITY
+                     ,NULL
+                     ,'SYSTEM'
+                     ,GET_KRDT(SYSDATE)
+                    ) 
+    </update>
+    
+    <update id="insertStockOfDay" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStockOfDay */ 
+        MERGE INTO TBL_EXP_STOCK_OF_DAY T2
+        USING (   
+                SELECT A.STOCK_MST_ID
+                      ,A.BRAND_ID
+                      ,A.STORE_ID
+                      ,A.YEAR
+                      ,A.MONTH
+                      ,A.DAY
+                      ,A.QUANTITY AS QUANTITY1
+                      ,B.QUANTITY AS QUANTITY2
+                      ,A.QUANTITY + NVL(B.QUANTITY,0) AS QUANTITY
+                FROM   (
+                            SELECT STOCK_MST_ID
+                                  ,BRAND_ID
+                                  ,STORE_ID
+                                  ,YEAR
+                                  ,MONTH
+                                  ,DAY
+                                  ,SUM(CASE WHEN STOCK_INOUT = 'IN'  THEN QUANTITY 
+                                            WHEN STOCK_INOUT = 'OUT' THEN -QUANTITY
+                                            ELSE 0 END
+                                       ) AS QUANTITY
+                            FROM   TBL_EXP_STOCK_INOUT
+                            WHERE  1 = 1
+                            AND    YEAR  = #{year}
+                            AND    MONTH = #{month}           
+                            AND    DAY   = #{day}             
+                            GROUP BY STOCK_MST_ID
+                                  ,BRAND_ID
+                                  ,STORE_ID
+                                  ,YEAR
+                                  ,MONTH
+                                  ,DAY 
+                       ) A
+                       LEFT OUTER JOIN TBL_EXP_STOCK_OF_DAY B
+                         ON  1 = 1
+                         AND A.STOCK_MST_ID = B.STOCK_MST_ID  
+                         AND A.STORE_ID     = B.STORE_ID 
+                         AND A.BRAND_ID     = B.BRAND_ID
+                         AND B.YEAR         = #{preYear}
+                         AND B.MONTH        = #{preMonth}
+                         AND B.DAY          = #{preDay}
+              ) T1
+        ON (    T2.STOCK_MST_ID = T1.STOCK_MST_ID  
+            AND T2.STORE_ID     = T1.STORE_ID 
+            AND T2.BRAND_ID     = T1.BRAND_ID
+            AND T2.YEAR         = T1.YEAR
+            AND T2.MONTH        = T1.MONTH
+            AND T2.DAY          = T1.DAY
+           )
+        WHEN NOT MATCHED THEN
+            INSERT (
+                      STOCK_OF_DAY_ID
+                     ,BRAND_ID
+                     ,STORE_ID
+                     ,STOCK_MST_ID
+                     ,YEAR
+
+                     ,MONTH
+                     ,DAY
+                     ,QUANTITY
+                     ,CREATE_USER
+                     ,CREATE_DATE
+            )
+            VALUES (
+                      LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) 
+                     ,T1.BRAND_ID
+                     ,T1.STORE_ID
+                     ,T1.STOCK_MST_ID
+                     ,T1.YEAR
+
+                     ,T1.MONTH
+                     ,T1.DAY
+                     ,T1.QUANTITY
+                     ,'SYSTEM'
+                     ,GET_KRDT(SYSDATE)
+                    ) 
+    </update>
+    
+    
+    <insert id="insertMaterialsInventory" parameterType="map" >
+        /*  jobScheduler.insertMaterialsInventory */
+        INSERT INTO TBL_EXP_STORE_MATERIALS_INVENTORY (
+               INVENTORY_ID
+              ,STORE_ID    
+              ,MATERIALS_CD
+              ,YEAR        
+              ,MONTH  
+              
+              ,DAY         
+              ,QUANTITY    
+              ,UNIT
+              ,CREATE_USER 
+              ,CREATE_DATE     
+        )
+        VALUES(
+              LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))
+             ,#{STORE_ID, jdbcType=VARCHAR}
+             ,#{MATERIALS_CD, jdbcType=VARCHAR}
+             ,#{YEAR, jdbcType=VARCHAR}
+             ,#{MONTH, jdbcType=VARCHAR}
+
+             ,#{DAY, jdbcType=VARCHAR}
+             ,#{QUANTITY, jdbcType=DECIMAL}
+             ,#{UNIT, jdbcType=VARCHAR}
+             ,'SYSTEM'
+             ,GET_KRDT(SYSDATE)
+        )
+    </insert>
+
+    <!-- 재고마스터 데이타 조회 -->
+    <select id="getTblExpStockMst" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTblExpStockMst  */
+        SELECT A.BRAND_ID
+              ,A.STORE_ID
+              ,A.STORE_ID
+              ,A.STORE_NM
+              ,B.STOCK_MST_ID
+        FROM   TBL_EXP_STORE_MST A
+               FULL OUTER JOIN TBL_EXP_STOCK_MST B
+                 ON   A.BRAND_ID = B.BRAND_ID
+                 AND  B.USE_YN = 'Y'
+        WHERE 1 = 1
+        AND  A.CLOSING_DATE IS NULL
+        AND  B.STOCK_MST_ID IS NOT NULL
+    </select>
+
+    <!-- 일별재고량 데이타에 있는지 확인 -->
+    <select id="stockOfDayCheck" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.stockOfDayCheck  */
+        SELECT CASE 
+                   WHEN EXISTS (
+                       SELECT 1
+                       FROM   TBL_EXP_STOCK_OF_DAY
+                       WHERE  1 = 1
+                       AND    BRAND_ID  = #{brandId}
+                       AND    STORE_ID  = #{storeId}
+                       AND    STOCK_MST_ID = #{stockMstId}
+                       AND    YEAR  = #{year}
+                       AND    MONTH = #{month}
+                       AND    DAY   = #{day}
+                   )
+                   THEN 'Y'
+                   ELSE 'N'
+               END AS DATA_EXISTS
+        FROM DUAL
+    </select>
+    
+    <!-- 최근 일별 재고 데이타 조회 -->
+    <select id="getLaststockOfDay" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getLaststockOfDay  */
+        SELECT STOCK_OF_DAY_ID
+              ,BRAND_ID
+              ,STORE_ID
+              ,STOCK_MST_ID
+              ,YEAR
+        
+              ,MONTH
+              ,DAY
+              ,NVL(QUANTITY, 0) AS QUANTITY 
+        FROM   TBL_EXP_STOCK_OF_DAY A
+        WHERE  TO_DATE( A.YEAR || '-' || A.MONTH || '-' || A.DAY, 'YYYY-MM-DD')  = (
+                        SELECT MAX(TO_DATE(YEAR || '-' || MONTH || '-' || DAY, 'YYYY-MM-DD')) AS MAX_DATE
+                        FROM   TBL_EXP_STOCK_OF_DAY
+                        WHERE  1 = 1
+                        AND    BRAND_ID     = #{brandId}
+                        AND    STORE_ID     = #{storeId}
+                        AND    STOCK_MST_ID = #{stockMstId}
+                     )
+        AND   A.BRAND_ID = #{brandId}
+        AND   A.STORE_ID = #{storeId}
+        AND   A.STOCK_MST_ID = #{stockMstId}
+    </select>
+    
+    <insert id="insertLastStockOfDay" parameterType="map" >
+        /*  jobScheduler.insertLastStockOfDay */
+        INSERT INTO TBL_EXP_STOCK_OF_DAY( 
+               STOCK_OF_DAY_ID
+              ,BRAND_ID
+              ,STORE_ID
+              ,STOCK_MST_ID
+              ,YEAR
+        
+              ,MONTH
+              ,DAY
+              ,QUANTITY
+              ,CREATE_USER
+              ,CREATE_DATE
+        )
+        VALUES(
+              LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))                              
+             ,#{brandId}                                      
+             ,#{storeId}                                   
+             ,#{stockMstId}                                        
+             ,#{year}    
+             
+             
+              ,#{month} 
+              ,#{day} 
+              ,#{quantity, jdbcType=NUMERIC} 
+              ,'SYSTEM'
+              ,GET_KRDT(SYSDATE)
+        )
+    </insert>
+    
+    <!-- 일별 재고저장 데이타 조회 -->
+    <select id="getSaveStockOfDay" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getSaveStockOfDay  */
+        SELECT A.STOCK_MST_ID
+              ,A.BRAND_ID
+              ,A.STORE_ID
+              ,A.YEAR
+              ,A.MONTH
+              ,A.DAY
+              ,A.QUANTITY AS QUANTITY1
+              ,B.QUANTITY AS QUANTITY2
+              ,A.QUANTITY + NVL(B.QUANTITY,0) AS QUANTITY
+        FROM   (
+                    SELECT STOCK_MST_ID
+                          ,BRAND_ID
+                          ,STORE_ID
+                          ,YEAR
+                          ,MONTH
+                          ,DAY
+                          ,SUM(CASE WHEN STOCK_INOUT = 'IN'  THEN QUANTITY 
+                                    WHEN STOCK_INOUT = 'OUT' THEN -QUANTITY
+                                    ELSE 0 END
+                               ) AS QUANTITY
+                    FROM   TBL_EXP_STOCK_INOUT
+                    WHERE  1 = 1
+                    AND    YEAR  = #{year}
+                    AND    MONTH = #{month}           
+                    AND    DAY   = #{day}             
+                    GROUP BY STOCK_MST_ID
+                          ,BRAND_ID
+                          ,STORE_ID
+                          ,YEAR
+                          ,MONTH
+                          ,DAY 
+               ) A
+               LEFT OUTER JOIN TBL_EXP_STOCK_OF_DAY B
+                 ON  1 = 1
+                 AND A.STOCK_MST_ID = B.STOCK_MST_ID  
+                 AND A.STORE_ID     = B.STORE_ID 
+                 AND A.BRAND_ID     = B.BRAND_ID
+                 AND B.YEAR         = #{preYear}
+                 AND B.MONTH        = #{preMonth}
+                 AND B.DAY          = #{preDay}
+    </select>
+    
+    <!-- 지점매입 입력 -->
+    <insert id="insertStorePurchaseMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStorePurchaseMst */
+            INSERT INTO TBL_EXP_STORE_PURCHASE_MST(
+                      PURCHASE_ID
+                     ,STORE_ID
+                     ,YYYYMMDD
+                     ,CARD_AMOUNT
+                     ,CARD_COUNT
+
+                     ,CASH_AMOUNT
+                     ,CASH_COUNT
+                     ,TOTAL_AMOUNT
+                     ,TOTAL_COUNT
+                     ,CREATE_USER
+
+                     ,CREATE_DATE
+            )
+            VALUES (
+                      #{purchaseId}
+                     ,#{storeCd}
+                     ,#{yyyymmdd}
+                     ,#{cardAmount}
+                     ,#{cardCount}
+
+                     ,#{cashAmount}
+                     ,#{cashCount}
+                     ,#{totalAmount}
+                     ,#{totalCount}
+                     ,#{createUser}
+                     
+                     ,GET_KRDT(SYSDATE)
+            ) 
+    </insert>
+
+    <!-- 지점매입 수정 -->
+    <update id="updateStorePurchaseMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateStorePurchaseMst */
+        UPDATE TBL_EXP_STORE_PURCHASE_MST        
+        SET    CARD_AMOUNT    = #{cardAmount}
+              ,CARD_COUNT     = #{cardCount}
+              ,CASH_AMOUNT    = #{cashAmount}
+              ,CASH_COUNT     = #{cashCount}
+              ,TOTAL_AMOUNT   = #{totalAmount}
+
+              ,TOTAL_COUNT    = #{totalCount}
+              ,UPDATE_USER    = #{updateUser} 
+              ,UPDATE_DATE    = GET_KRDT(SYSDATE)
+        WHERE 1 = 1
+        <if test=" purchaseId != null and purchaseId != ''  ">
+            AND    PURCHASE_ID = #{purchaseId} 
+        </if>
+        <if test=" storeCd != null and storeCd != ''  ">
+            AND    STORE_ID = #{storeCd} 
+        </if>
+        <if test=" yyyymmdd != null and yyyymmdd != ''  ">
+            AND    YYYYMMDD = #{yyyymmdd} 
+        </if>
+        
+    </update>
+    
+    
+
+    <!-- 포스데이타 임시 입력 -->
+    <insert id="insertPosMenuLowDataTemp" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertPosMenuLowDataTemp */
+        INSERT INTO TBL_EXP_POS_MENU_LOW_DATA_TEMP(
+            BRAND_ID    
+           ,POS_COMP_CD 
+           ,YYYYMMDD    
+           ,COLUMN_01   
+           ,COLUMN_02   
+
+           ,COLUMN_03   
+           ,COLUMN_04   
+           ,COLUMN_05   
+           ,COLUMN_06   
+           ,COLUMN_07   
+
+           ,COLUMN_08   
+           ,COLUMN_09   
+           ,COLUMN_10   
+           ,COLUMN_11   
+           ,COLUMN_12   
+
+           ,CREATE_USER 
+           ,CREATE_DATE
+        )
+        VALUES (
+        
+            #{brandId  } /* BRAND_ID    */
+           ,#{posCompCd} /* POS_COMP_CD */
+           ,#{yyyymmdd } /* YYYYMMDD    */
+           ,#{column01 , jdbcType=VARCHAR} /* COLUMN_01   */
+           ,#{column02 , jdbcType=VARCHAR} /* COLUMN_02   */
+                       
+           ,#{column03 , jdbcType=VARCHAR} /* COLUMN_03   */
+           ,#{column04 , jdbcType=VARCHAR} /* COLUMN_04   */
+           ,#{column05 , jdbcType=VARCHAR} /* COLUMN_05   */
+           ,#{column06 , jdbcType=VARCHAR} /* COLUMN_06   */
+           ,#{column07 , jdbcType=VARCHAR} /* COLUMN_07   */
+                       
+           ,#{column08 , jdbcType=VARCHAR} /* COLUMN_08   */
+           ,#{column09 , jdbcType=VARCHAR} /* COLUMN_09   */
+           ,#{column10 , jdbcType=VARCHAR} /* COLUMN_10   */
+           ,#{column11 , jdbcType=VARCHAR} /* COLUMN_11   */
+           ,#{column12 , jdbcType=VARCHAR} /* COLUMN_12   */
+            
+           ,#{createUser } /* CREATE_USER */
+           ,GET_KRDT(SYSDATE) /* CREATE_DATE */
+        ) 
+    </insert>
+    
+    <!-- 포스데이타 임시 삭제 -->
+    <delete id="delPosMenuLowDataTemp" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.delPosMenuLowDataTemp */
+        DELETE FROM TBL_EXP_POS_MENU_LOW_DATA_TEMP
+        WHERE 1 = 1
+        <if test=" brandId != null and brandId != '' ">
+            AND   BRAND_ID = #{brandId}
+        </if>
+        <if test=" posCompCd != null and posCompCd != '' " >
+            AND   POS_COMP_CD = #{posCompCd}
+        </if> 
+        <if test=" yyyymmdd != null and yyyymmdd != '' " >
+            AND   YYYYMMDD = #{yyyymmdd}
+        </if>
+        <if test=" column01 != null and column01 != '' " >
+            AND   COLUMN_01 = #{column01}
+        </if>
+        <if test=" delDate != null and delDate != '' " >
+            AND   CREATE_DATE <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+        </if>
+    </delete>
+    
+    <!-- 본푸드 오봉집 엑셀 템프데이타 삭제  -->
+    <delete id="deleteBonfoodSales">
+        /* jobScheduler.deleteBonfoodSales */
+        DELETE  FROM TBL_EXP_BONFOOD_SALES_TEMP
+        WHERE  1 = 1
+        AND    TO_DATE( YYYYMMDD, 'YYYYMMDD') <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+    </delete>
+    
+    <!-- 하람 오봉집 엑셀 템프데이타 삭제  -->
+    <delete id="deleteHaramSales">
+        /* jobScheduler.deleteJanggaSales */
+        DELETE  FROM TBL_EXP_HARAM_SALES_TEMP
+        WHERE  1 = 1
+        AND    TO_DATE( YYYYMMDD, 'YYYY-MM-DD') <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+    </delete>
+
+    <!-- 장가 오봉집 엑셀 템프데이타 삭제  -->
+    <delete id="deleteJanggaSales">
+        /* jobScheduler.deleteJanggaSales */
+        DELETE  FROM TBL_EXP_JANGGA_SALES_TEMP
+        WHERE  1 = 1
+        AND    TO_DATE( YYYYMMDD, 'YYYY-MM-DD') <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+    </delete>
+
+    <!-- SPC 오봉집 엑셀 템프데이타 삭제  -->
+    <delete id="deleteSpcSales">
+        /* jobScheduler.deleteSpcSales */
+        DELETE  FROM TBL_EXP_SPC_SALES_TEMP
+        WHERE  1 = 1
+        AND    TO_DATE( YYYYMMDD, 'YYYY-MM-DD') <![CDATA[<=]]> TO_DATE( #{delDate}, 'YYYY-MM-DD')
+    </delete>
+    
+    <select id="getStoreMenuMst" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getStoreMenuMst  */
+        SELECT A.BRAND_ID
+              ,A.STORE_NM
+              ,B.STORE_ID
+              ,B.MENU_CD
+              ,B.MENU_NM
+              ,B.GROUP_1
+              ,B.GROUP_2
+              ,B.SELLING_PRICE
+              ,B.BRAND_MENU_CD 
+        FROM   TBL_EXP_STORE_MST A
+               JOIN TBL_EXP_STORE_MENU_MST B
+                 ON  1 = 1
+                 AND B.STORE_ID = A.STORE_ID
+        WHERE  1 = 1
+        <if test=" brand_id != null and brand_id != ''  ">
+            AND    A.BRAND_ID = #{brand_id} 
+        </if>
+    </select>
+    
+    <update id="updateStoreMenuPrice" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateStoreMenuPrice */
+        MERGE INTO TBL_EXP_STORE_MENU_PRICE A
+        USING (
+                SELECT A.BRAND_ID
+                      ,A.STORE_NM
+                      ,B.MENU_ID
+                      ,B.STORE_ID
+                      ,#{year} AS YEAR   
+                      ,#{month} AS MONTH   
+                      ,B.MENU_CD
+                      ,B.MENU_NM
+                      ,B.GROUP_1
+                      ,B.GROUP_2
+                      ,B.SELLING_PRICE
+                      ,B.BRAND_MENU_CD 
+                      ,B.COST_PRICE
+                FROM   TBL_EXP_STORE_MST A
+                       JOIN TBL_EXP_STORE_MENU_MST B
+                         ON  1 = 1
+                         AND B.STORE_ID = A.STORE_ID
+                WHERE  1 = 1
+                    AND    A.BRAND_ID = #{brandId}
+        ) B
+        ON (
+                 A.MENU_ID = B.MENU_ID
+             AND A.YEAR    = B.YEAR
+             AND A.MONTH   = B.MONTH
+           )
+        WHEN MATCHED THEN
+          UPDATE SET A.COST_PRICE    = B.COST_PRICE
+                    ,A.SELLING_PRICE = B.SELLING_PRICE
+                    ,A.UPDATE_USER   = #{updateUser}
+                    ,A.UPDATE_DATE   = GET_KRDT(SYSDATE)
+        WHEN NOT MATCHED THEN 
+            INSERT (
+                MENU_PRICE_ID
+               ,MENU_ID,   BRAND_ID,   STORE_ID,   MENU_CD,   YEAR,   MONTH,   COST_PRICE,   SELLING_PRICE,   CREATE_USER,   CREATE_DATE            
+            )
+            VALUES (
+                LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) 
+               ,B.MENU_ID, B.BRAND_ID, B.STORE_ID, B.MENU_CD, B.YEAR, B.MONTH, B.COST_PRICE, B.SELLING_PRICE, #{createUser}, GET_KRDT(SYSDATE) 
+            )
+    </update>
+    
+    <insert id="insertPosStoreMenuSalesMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStoreMenuSalesMst */
+        INSERT INTO TBL_EXP_POS_STORE_MENU_SALES_MST (
+              BRAND_ID    
+             ,POS_COMP_CD 
+             ,YYYYMMDD    
+             ,COLUMN_01   
+             ,COLUMN_02   
+             ,COLUMN_03   
+             ,COLUMN_04   
+             ,COLUMN_05   
+             ,COLUMN_06   
+             ,COLUMN_07   
+             ,COLUMN_08   
+             ,COLUMN_09   
+             ,COLUMN_10   
+             ,COLUMN_11   
+             ,COLUMN_12 
+             ,CREATE_USER 
+             ,CREATE_DATE 
+        )
+        VALUES(
+              #{brandId}
+             ,#{posCompCd}
+             ,#{yyyymmdd}
+             ,#{column_01, jdbcType=VARCHAR}
+             ,#{column_02, jdbcType=VARCHAR}
+             ,#{column_03, jdbcType=VARCHAR}
+             ,#{column_04, jdbcType=VARCHAR}
+             ,#{column_05, jdbcType=VARCHAR}
+             ,#{column_06, jdbcType=VARCHAR}
+             ,#{column_07, jdbcType=VARCHAR}
+             ,#{column_08, jdbcType=VARCHAR}
+             ,#{column_09, jdbcType=VARCHAR}
+             ,#{column_10, jdbcType=VARCHAR}
+             ,#{column_11, jdbcType=VARCHAR}
+             ,#{column_12, jdbcType=VARCHAR}
+             ,#{createUser}    
+             ,GET_KRDT(SYSDATE)
+        )
+    </insert> 
+    
+    <insert id="delPosStoreMenuSalesMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.delPosStoreMenuSalesMst */
+        DELETE TBL_EXP_POS_STORE_MENU_SALES_MST
+        WHERE  1 = 1
+        <if test=" posCompCd != null and posCompCd != ''  ">
+            AND    POS_COMP_CD = #{posCompCd} 
+        </if>
+        <if test=" yyyymmdd != null and yyyymmdd != ''  ">
+            AND    YYYYMMDD = #{yyyymmdd} 
+        </if>
+    </insert> 
+    
+    <select id="getTEST_EXP_TEST_01" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTEST_EXP_TEST_01  */
+        SELECT TEST_01, TEST_02
+        FROM   TEST_EXP_TEST_01
+        WHERE  1 = 1
+        AND    TEST_02 = 'Y'
+        AND    ROWNUM = 1
+        ORDER BY TEST_01
+    </select>
+    
+    <update id="updateTEST_EXP_TEST_01" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateTEST_EXP_TEST_01 */
+        UPDATE TEST_EXP_TEST_01        
+        SET    TEST_02    = 'N'
+        WHERE 1 = 1
+        AND    TEST_01 = #{TEST_01} 
+    </update>
+    
+    <update id="insertStoreMenuMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStoreMenuMst */
+        MERGE INTO TBL_EXP_STORE_MENU_MST A
+        USING (
+                SELECT B.STORE_ID   AS STORE_ID
+                      ,A.COLUMN_01
+                      ,A.COLUMN_02  AS MENU_CD
+                      ,A.COLUMN_03  AS MENU_NM
+                      ,NVL(A.COLUMN_04,'99999')  AS GROUP_1 
+                      ,A.COLUMN_05  AS GROUP_1_NM 
+                      ,NVL(A.COLUMN_04,'99999')  AS GROUP_2 
+                      ,A.COLUMN_05  AS GROUP_2_NM 
+                      ,CASE     WHEN REGEXP_LIKE(A.COLUMN_06, '^(-?\d+\.?\d*|\d*\.?\\d+)([eE][-+]?\d+)?$') 
+                                THEN TO_NUMBER(A.COLUMN_06)
+                                ELSE NULL
+                       END AS SELLING_PRICE
+                      ,CASE     WHEN REGEXP_LIKE(A.COLUMN_08, '^(-?\d+\\.?\d*|\d*\\.?\d+)([eE][-+]?\d+)?$') 
+                                THEN TO_NUMBER(A.COLUMN_08)
+                                ELSE NULL
+                       END AS COST_PRICE
+                      ,NVL(TO_CHAR(TO_DATE(SUBSTR(A.COLUMN_07, 1, 10), 'YYYY-MM-DD'), 'YYYYMMDD'), NULL) AS DEL_FLAG
+                FROM   TBL_EXP_POS_MENU_LOW_DATA_TEMP A
+                       JOIN TBL_EXP_STORE_MST B
+                           ON  1 = 1
+                           AND A.BRAND_ID = B.BRAND_ID
+                           AND A.COLUMN_01 = B.POS_CD
+                WHERE  1 = 1
+                AND    A.BRAND_ID = #{brandId}
+        ) B
+        ON (
+                 A.STORE_ID  = B.STORE_ID
+             AND A.MENU_CD   = B.MENU_CD
+             AND A.GROUP_1   = B.GROUP_1
+             AND A.GROUP_2   = B.GROUP_2
+           )
+        WHEN MATCHED THEN
+          UPDATE SET A.COST_PRICE    = B.COST_PRICE
+                    ,A.SELLING_PRICE = B.SELLING_PRICE
+                    ,A.MENU_NM       = B.MENU_NM
+                    ,A.GROUP_1_NM    = B.GROUP_1_NM
+                    ,A.GROUP_2_NM    = B.GROUP_2_NM
+                    ,A.DEL_FLAG      = B.DEL_FLAG
+                    ,A.UPDATE_USER   = #{updateUser}
+                    ,A.UPDATE_DATE   = GET_KRDT(SYSDATE)
+        WHEN NOT MATCHED THEN 
+            INSERT ( 
+                MENU_ID
+               ,STORE_ID,          MENU_CD,          MENU_NM,          GROUP_1,          GROUP_1_NM               
+               ,GROUP_2,           GROUP_2_NM,       SELLING_PRICE,    COST_PRICE,       DEL_FLAG
+               ,CREATE_USER,       CREATE_DATE            
+            )
+            VALUES (
+                LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) 
+               ,B.STORE_ID,        B.MENU_CD,        B.MENU_NM,        B.GROUP_1,        B.GROUP_1_NM               
+               ,B.GROUP_2,         B.GROUP_2_NM,     B.SELLING_PRICE,  B.COST_PRICE,     B.DEL_FLAG
+               ,#{createUser},     GET_KRDT(SYSDATE) 
+            )
+    </update>
+    
+    <update id="updateStoreMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.updateStoreMst */
+        UPDATE TBL_EXP_STORE_MST
+        SET    UPDATE_DATE   = GET_KRDT(SYSDATE)
+              ,UPDATE_USER   = #{updateUser}
+              <if test=" posCd != null and posCd != ''  ">
+		         ,POS_CD = #{posCd} 
+		      </if>
+              <if test=" taxpalRegistYn != null and taxpalRegistYn != ''  ">
+                 ,TAXPAL_REGIST_YN = #{taxpalRegistYn} 
+              </if>
+        WHERE 1 = 1 
+        <if test=" storeId != null and storeId != ''  ">
+            AND   STORE_ID = #{storeId} 
+        </if>
+        <if test=" brandId != null and brandId != ''  ">
+            AND   BRAND_ID = #{brandId} 
+        </if>
+        <if test=" businessRegnum != null and businessRegnum != ''  ">
+            AND   BUSINESS_REGNUM = #{businessRegnum} 
+        </if>
+    </update>
+                    
+    <update id="mergeStoreMenuSalesMst" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.mergeStoreMenuSalesMst */
+        MERGE INTO ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST A
+        USING (
+                SELECT A.STORE_NM
+                      ,A.STORE_ID
+                      ,B.BRAND_ID
+                      ,NVL(B.COLUMN_02,'99999')  AS GROUP_1
+                      ,NVL(B.COLUMN_03,'99999')  AS GROUP_2
+                      ,C.MENU_ID
+                      ,B.COLUMN_04               AS MENU_CD
+                      ,SUBSTR(B.YYYYMMDD, 1, 4)  AS YEAR
+                      ,SUBSTR(B.YYYYMMDD, 5, 2)  AS MONTH
+                      ,SUBSTR(B.YYYYMMDD, 7, 2)  AS DAY
+					  ,SUBSTR(YYYYMMDD, 1, 4) || '-' || 
+					   SUBSTR(YYYYMMDD, 5, 2) || '-' || 
+					   SUBSTR(YYYYMMDD, 7, 2) AS YYYYMMDD
+                      ,TO_NUMBER(B.COLUMN_05)    AS SALES         
+                      ,0                         AS DAY_AVERAGE   
+                      ,TO_NUMBER(B.COLUMN_06)    AS SALES_QUANTITY
+                      ,TO_NUMBER(B.COLUMN_07)    AS CASH          
+                      ,TO_NUMBER(B.COLUMN_08)    AS CARD          
+                      ,0                         AS OTHER         
+                      ,TO_NUMBER(B.COLUMN_10)    AS DISCOUNT
+                FROM  TBL_EXP_STORE_MST A
+                      JOIN TBL_EXP_POS_STORE_MENU_SALES_MST B
+                        ON  1 = 1
+                        AND A.STORE_ID = B.COLUMN_01
+                      JOIN TBL_EXP_STORE_MENU_MST C
+                        ON  1 = 1
+                        AND A.STORE_ID  = C.STORE_ID
+                        AND B.COLUMN_02 = C.GROUP_1
+                        AND B.COLUMN_03 = C.GROUP_2
+                        AND B.COLUMN_04 = C.MENU_CD
+                WHERE  1 = 1
+                AND    A.BRAND_ID = #{brandId}
+        ) B
+        ON (
+                 A.STORE_ID  = B.STORE_ID
+             AND A.MENU_CD   = B.MENU_CD
+             AND A.YYYYMMDD  = B.YYYYMMDD
+
+           )
+        WHEN MATCHED THEN
+          UPDATE SET A.GROUP_1         = B.GROUP_1
+                    ,A.GROUP_2         = B.GROUP_2
+                    ,A.SALES           = B.SALES
+                    ,A.DAY_AVERAGE     = B.DAY_AVERAGE
+                    ,A.SALES_QUANTITY  = B.SALES_QUANTITY
+                    ,A.CASH            = B.CASH
+                    ,A.CARD            = B.CARD
+                    ,A.OTHER           = B.OTHER
+                    ,A.DISCOUNT        = B.DISCOUNT
+                    ,A.UPDATE_USER     = #{updateUser}
+                    ,A.UPDATE_DATE     = GET_KRDT(SYSDATE)
+        WHEN NOT MATCHED THEN 
+            INSERT ( 
+                MENU_SALES_ID  
+               ,STORE_ID          ,GROUP_1        ,GROUP_2    ,MENU_ID    ,MENU_CD 
+               ,YEAR              ,MONTH          ,DAY        ,SALES      ,DAY_AVERAGE   
+               ,SALES_QUANTITY    ,CASH           ,CARD       ,OTHER      ,DISCOUNT  
+               ,CREATE_USER       ,CREATE_DATE    ,YYYYMMDD   ,BRAND_ID  
+            )
+            VALUES (
+                LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))  
+               ,B.STORE_ID        ,B.GROUP_1      ,B.GROUP_2  ,B.MENU_ID  ,B.MENU_CD 
+               ,B.YEAR            ,B.MONTH        ,B.DAY      ,B.SALES    ,B.DAY_AVERAGE   
+               ,B.SALES_QUANTITY  ,B.CASH         ,B.CARD     ,B.OTHER    ,B.DISCOUNT  
+               ,#{createUser}     , GET_KRDT(SYSDATE) ,B.YYYYMMDD, B.BRAND_ID
+            )
+    </update>
+    
+    <!-- 지점정보 조회 -->
+    <select id="getStoreMst" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getStoreMst  */
+        SELECT A.STORE_ID
+              ,A.STORE_ID
+              ,B.BRAND_ID
+              ,B.POS_COMP_CD
+              ,B.POS_GROUP_ID
+              ,A.STORE_NM
+              ,A.STORE_NM1
+              ,A.STORE_NM2
+              ,A.STORE_NM3
+              ,A.STORE_NM4
+              ,A.STORE_NM5
+              ,A.ADDRESS
+              ,A.STORE_MANAGER_NM
+              ,A.REGION
+              ,A.DEPARTMENT_CHARGE
+              ,A.CONTRACT_DATE
+              ,A.OPENING_DAY
+              ,A.TRANSFER_DAY
+              ,A.CLOSING_DATE
+              ,A.FRANCHISE_STORE
+              ,A.NOTE
+              ,A.TB_ROTATION
+              ,A.TB_ROTATION_GOAL
+              ,A.START_MARKETING
+              ,A.SUPERVISOR
+              ,A.PHONE_MANAGER
+              ,A.PHONE_STORE
+              ,A.ROYALTY
+              ,A.UPDATE_USER
+              ,A.UPDATE_DATE
+              ,A.CREATE_USER
+              ,A.CREATE_DATE
+              ,A.PASSWD
+              ,A.BUSINESS_REGNUM
+              ,A.POS_CD
+              ,A.TAXPAL_USE_YN
+        FROM   TBL_EXP_STORE_MST A
+               JOIN TBL_EXP_BUYER_BRAND B
+                 ON  1 = 1
+                 AND A.BRAND_ID = B.BRAND_ID
+        WHERE  1 = 1
+        <if test=" brandId != null and brandId != ''  ">
+            AND    A.BRAND_ID =  #{brandId} 
+        </if>
+        <if test=" region != null and region != ''  ">
+            AND    A.REGION =  #{region} 
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+            AND    A.STORE_ID = #{storeId} 
+        </if>
+        <if test=" storeCd != null and storeCd != ''  ">
+            AND    A.STORE_ID = #{storeCd} 
+        </if>
+        <if test=" storeNm != null and storeNm != ''  ">
+            AND    A.STORE_NM = #{storeNm} 
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+            AND    A.BUSINESS_REGNUM IS NOT NULL
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+            AND    A.BUSINESS_REGNUM IS NULL
+        </if>
+        <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+            AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+            AND    A.CLOSING_DATE IS NULL
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+            AND    A.CLOSING_DATE IS NOT NULL
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+            AND    A.POS_USE_YN = 'Y'
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("N")'>
+            AND    A.POS_CD IS NOT NULL
+        </if>
+        ORDER BY BRAND_ID
+                ,STORE_NM  
+    </select>
+    
+    <!-- 지점별 월평균 매출 -->
+    <select id="storeAvgGrossSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.storeAvgGrossSales  */
+        SELECT A.STORE_ID
+              ,A.STORE_ID
+              ,B.BRAND_ID
+              ,B.POS_COMP_CD
+              ,B.POS_GROUP_ID
+              ,A.STORE_NM
+              ,A.STORE_NM1
+              ,A.STORE_NM2
+              ,A.STORE_NM3
+              ,A.STORE_NM4
+              ,A.STORE_NM5
+              ,A.ADDRESS
+              ,A.STORE_MANAGER_NM
+              ,A.REGION
+              ,A.DEPARTMENT_CHARGE
+              ,A.CONTRACT_DATE
+              ,A.OPENING_DAY
+              ,A.TRANSFER_DAY
+              ,A.CLOSING_DATE
+              ,A.FRANCHISE_STORE
+              ,A.NOTE
+              ,A.TB_ROTATION
+              ,A.TB_ROTATION_GOAL
+              ,A.START_MARKETING
+              ,A.SUPERVISOR
+              ,A.PHONE_MANAGER
+              ,A.PHONE_STORE
+              ,A.ROYALTY
+              ,A.UPDATE_USER
+              ,A.UPDATE_DATE
+              ,A.CREATE_USER
+              ,A.CREATE_DATE
+              ,A.PASSWD
+              ,A.BUSINESS_REGNUM
+              ,A.POS_CD
+              ,A.TAXPAL_USE_YN
+        FROM   TBL_EXP_STORE_MST A
+               JOIN TBL_EXP_BUYER_BRAND B
+                 ON  1 = 1
+                 AND A.BRAND_ID = B.BRAND_ID
+        WHERE  1 = 1
+        <if test=" brandId != null and brandId != ''  ">
+            AND    A.BRAND_ID =  #{brandId} 
+        </if>
+        <if test=" region != null and region != ''  ">
+            AND    A.REGION =  #{region} 
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+            AND    A.STORE_ID = #{storeId} 
+        </if>
+        <if test=" storeCd != null and storeCd != ''  ">
+            AND    A.STORE_ID = #{storeCd} 
+        </if>
+        <if test=" storeNm != null and storeNm != ''  ">
+            AND    A.STORE_NM = #{storeNm} 
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+            AND    A.BUSINESS_REGNUM IS NOT NULL
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+            AND    A.BUSINESS_REGNUM IS NULL
+        </if>
+        <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+            AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+            AND    A.CLOSING_DATE IS NULL
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+            AND    A.CLOSING_DATE IS NOT NULL
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+            AND    A.POS_USE_YN = 'Y'
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("N")'>
+            AND    A.POS_CD IS NOT NULL
+        </if>
+        ORDER BY BRAND_ID
+                ,STORE_NM  
+    </select>
+    
+    <!-- 배치대상 지점정보 조회 -->
+    <select id="getbachTargetStoreManual" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getbachTargetStoreManual  */
+        /* A쿼리  */
+        SELECT A.STORE_ID
+              ,A.BRAND_ID
+              ,A.STORE_NM
+              ,A.STORE_MANAGER_NM
+              ,A.CONTRACT_DATE
+              ,A.OPENING_DAY
+              ,A.TRANSFER_DAY
+              ,A.CLOSING_DATE
+              ,A.PHONE_MANAGER
+              ,A.PHONE_STORE
+              ,A.ROYALTY
+              ,A.PASSWD
+              ,A.BUSINESS_REGNUM
+              ,A.POS_CD
+              ,A.TAXPAL_USE_YN
+              ,B.POS_COMP_CD
+              ,B.POS_GROUP_ID
+        FROM   TBL_EXP_STORE_MST A
+               JOIN TBL_EXP_BUYER_BRAND B
+                 ON  1 = 1
+                 AND A.BRAND_ID = B.BRAND_ID
+                 <if test='posGroupIdNull !=null and  posGroupIdNull.equals("N")'>
+		            AND B.POS_GROUP_ID IS NOT NULL
+		        </if>
+                 <if test='posGroupIdNull !=null and  posGroupIdNull.equals("Y")'>
+                    AND B.POS_GROUP_ID IS NULL
+                </if>
+        WHERE  1 = 1
+        <if test=" brandId != null and brandId != ''  ">
+            AND    A.BRAND_ID =  #{brandId} 
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+            AND    A.STORE_ID = #{storeId} 
+        </if>
+        <if test=" storeCd != null and storeCd != ''  ">
+            AND    A.STORE_CD = #{storeCd} 
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+            AND    A.BUSINESS_REGNUM IS NOT NULL
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+            AND    A.BUSINESS_REGNUM IS NULL
+        </if>
+        <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+            AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+            AND    A.CLOSING_DATE IS NULL
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+            AND    A.CLOSING_DATE IS NOT NULL
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+            AND    A.POS_USE_YN = 'Y'
+        </if>
+        <if test='posCdNull !=null and  posCdNull.equals("N")'>
+            AND    A.POS_CD IS NOT NULL
+        </if>
+    </select>
+    
+    <!-- 배치대상 지점정보 조회 -->
+    <select id="getSalebachTargetStore" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getSalebachTargetStore  */
+        WITH TBL1 AS (
+            /* A쿼리  */
+            SELECT A.STORE_ID
+                  ,A.BRAND_ID
+                  ,A.STORE_NM
+                  ,A.STORE_MANAGER_NM
+                  ,A.CONTRACT_DATE
+                  ,A.OPENING_DAY
+                  ,A.TRANSFER_DAY
+                  ,A.CLOSING_DATE
+                  ,A.PHONE_MANAGER
+                  ,A.PHONE_STORE
+                  ,A.ROYALTY
+                  ,A.PASSWD
+                  ,A.BUSINESS_REGNUM
+                  ,A.POS_CD
+                  ,A.TAXPAL_USE_YN
+                  ,B.POS_COMP_CD
+                  ,B.POS_GROUP_ID
+                  ,C.YYYYMMDD
+            FROM   TBL_EXP_STORE_MST A
+                   JOIN TBL_EXP_BUYER_BRAND B
+                     ON  1 = 1
+                     AND A.BRAND_ID = B.BRAND_ID
+                     <if test='posGroupIdNull !=null and  posGroupIdNull.equals("N")'>
+                        AND B.POS_GROUP_ID IS NOT NULL
+                    </if>
+                     <if test='posGroupIdNull !=null and  posGroupIdNull.equals("Y")'>
+                        AND B.POS_GROUP_ID IS NULL
+                    </if>
+                   JOIN (
+                            SELECT YYYYMMDD
+                            FROM (
+                                SELECT TO_CHAR(SYSDATE - LEVEL + 1, 'YYYYMMDD') AS YYYYMMDD
+                                FROM DUAL
+                                CONNECT BY LEVEL <![CDATA[<=]]> 10
+                            )
+                            WHERE TO_NUMBER(YYYYMMDD) IN (
+                                TO_NUMBER(TO_CHAR(SYSDATE - 1, 'YYYYMMDD')),
+                                TO_NUMBER(TO_CHAR(SYSDATE - 3, 'YYYYMMDD')),
+                                TO_NUMBER(TO_CHAR(SYSDATE - 5, 'YYYYMMDD'))
+                            )
+                        )  C
+                     ON  1 = 1
+            WHERE  1 = 1
+            <if test=" brandId != null and brandId != ''  ">
+                AND    A.BRAND_ID =  #{brandId} 
+            </if>
+            <if test=" storeId != null and storeId != ''  ">
+                AND    A.STORE_ID = #{storeId} 
+            </if>
+            <if test=" storeCd != null and storeCd != ''  ">
+                AND    A.STORE_CD = #{storeCd} 
+            </if>
+            <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+                AND    A.BUSINESS_REGNUM IS NOT NULL
+            </if>
+            <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+                AND    A.BUSINESS_REGNUM IS NULL
+            </if>
+            <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+                AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+            </if>
+            <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+                AND    A.CLOSING_DATE IS NULL
+            </if>
+            <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+                AND    A.CLOSING_DATE IS NOT NULL
+            </if>
+            <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+                AND    A.POS_USE_YN = 'Y'
+            </if>
+            <if test='posCdNull !=null and  posCdNull.equals("N")'>
+                AND    A.POS_CD IS NOT NULL
+            </if>
+
+        ) 
+        SELECT TBL1.STORE_ID
+              ,TBL1.BRAND_ID
+              ,TBL1.STORE_NM
+              ,TBL1.STORE_MANAGER_NM
+              ,TBL1.CONTRACT_DATE
+              ,TBL1.OPENING_DAY
+              ,TBL1.TRANSFER_DAY
+              ,TBL1.CLOSING_DATE
+              ,TBL1.PHONE_MANAGER
+              ,TBL1.PHONE_STORE
+              ,TBL1.ROYALTY
+              ,TBL1.PASSWD
+              ,TBL1.BUSINESS_REGNUM
+              ,TBL1.POS_CD
+              ,TBL1.TAXPAL_USE_YN
+              ,TBL1.POS_COMP_CD
+              ,TBL1.POS_GROUP_ID
+              ,TBL1.YYYYMMDD
+        FROM   TBL1
+        WHERE 1 = 1
+        ORDER BY TBL1.YYYYMMDD
+    </select>
+    
+    <!-- 배치대상 지점정보 조회 -->
+    <select id="getSalebachTargetStoreManual" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getSalebachTargetStoreManual  */
+            SELECT A.STORE_ID
+                  ,A.BRAND_ID
+                  ,A.STORE_NM
+                  ,A.STORE_MANAGER_NM
+                  ,A.CONTRACT_DATE
+                  ,A.OPENING_DAY
+                  ,A.TRANSFER_DAY
+                  ,A.CLOSING_DATE
+                  ,A.PHONE_MANAGER
+                  ,A.PHONE_STORE
+                  ,A.ROYALTY
+                  ,A.PASSWD
+                  ,A.BUSINESS_REGNUM
+                  ,A.POS_CD
+                  ,A.TAXPAL_USE_YN
+                  ,B.POS_COMP_CD
+                  ,B.POS_GROUP_ID
+            FROM   TBL_EXP_STORE_MST A
+                   JOIN TBL_EXP_BUYER_BRAND B
+                     ON  1 = 1
+                     AND A.BRAND_ID = B.BRAND_ID
+            WHERE  1 = 1
+                <if test=" brandId != null and brandId != ''  ">
+                    AND    A.BRAND_ID =  #{brandId} 
+                </if>
+                AND    A.BUSINESS_REGNUM IS NOT NULL
+                AND    A.POS_USE_YN = 'Y'
+                AND    A.POS_CD IS NOT NULL
+                AND    A.CLOSING_DATE IS NULL
+    </select>
+    
+    
+    <!-- 배치대상 지점정보 조회 -->
+    <select id="getbachTargetStore" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getbachTargetStore  */
+        WITH TBL1 AS (
+            /* A쿼리  */
+            SELECT A.STORE_ID
+                  ,A.BRAND_ID
+                  ,A.STORE_NM
+                  ,A.STORE_MANAGER_NM
+                  ,A.CONTRACT_DATE
+                  ,A.OPENING_DAY
+                  ,A.TRANSFER_DAY
+                  ,A.CLOSING_DATE
+                  ,A.PHONE_MANAGER
+                  ,A.PHONE_STORE
+                  ,A.ROYALTY
+                  ,A.PASSWD
+                  ,A.BUSINESS_REGNUM
+                  ,A.POS_CD
+                  ,A.TAXPAL_USE_YN
+                  ,B.POS_COMP_CD
+                  ,B.POS_GROUP_ID
+                  ,C.YYYYMMDD
+            FROM   TBL_EXP_STORE_MST A
+                   JOIN TBL_EXP_BUYER_BRAND B
+                     ON  1 = 1
+                     AND A.BRAND_ID = B.BRAND_ID
+                   JOIN (        
+                        SELECT TO_CHAR(SYSDATE - LEVEL + 1, 'YYYYMMDD') AS YYYYMMDD
+                        FROM DUAL
+                        CONNECT BY LEVEL <![CDATA[<=]]> 10
+                        )  C
+                     ON  1 = 1
+            WHERE  1 = 1
+            <if test=" brandId != null and brandId != ''  ">
+                AND    A.BRAND_ID =  #{brandId} 
+            </if>
+            <if test=" storeId != null and storeId != ''  ">
+                AND    A.STORE_ID = #{storeId} 
+            </if>
+            <if test=" storeCd != null and storeCd != ''  ">
+                AND    A.STORE_CD = #{storeCd} 
+            </if>
+            <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+                AND    A.BUSINESS_REGNUM IS NOT NULL
+            </if>
+            <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+                AND    A.BUSINESS_REGNUM IS NULL
+            </if>
+            <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+                AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+            </if>
+            <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+                AND    A.CLOSING_DATE IS NULL
+            </if>
+            <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+                AND    A.CLOSING_DATE IS NOT NULL
+            </if>
+            <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+                AND    A.POS_USE_YN = 'Y'
+            </if>
+            <if test='posCdNull !=null and  posCdNull.equals("N")'>
+                AND    A.POS_CD IS NOT NULL
+            </if>
+        ) 
+        ,TBL2 AS (
+            /* B쿼리  */
+            SELECT  BRAND_ID
+                   ,STORE_ID
+                   ,YYYYMMDD
+                   ,API_CD
+                   ,SUCCESS_YN
+                   ,API_COMP_CD
+            FROM   TBL_EXP_API_BACH_STATE
+            WHERE  1 = 1
+            <if test=" brandId != null and brandId != ''  ">
+                AND    BRAND_ID =  #{brandId} 
+            </if>
+            <if test=" storeId != null and storeId != ''  ">
+                AND    STORE_ID = #{storeId} 
+            </if>
+            <if test=" apiCd != null and apiCd != ''  ">
+                AND    API_CD = #{apiCd} 
+            </if>
+            <if test=" apiCompCd != null and apiCompCd != ''  ">
+                AND    API_COMP_CD = #{apiCompCd} 
+            </if>
+            AND    SUCCESS_YN = 'Y'
+            AND   TO_DATE(YYYYMMDD, 'YYYYMMDD') BETWEEN TRUNC(SYSDATE) - 10 AND TRUNC(SYSDATE)
+        )
+        SELECT TBL1.STORE_ID
+              ,TBL1.BRAND_ID
+              ,TBL1.STORE_NM
+              ,TBL1.STORE_MANAGER_NM
+              ,TBL1.CONTRACT_DATE
+              ,TBL1.OPENING_DAY
+              ,TBL1.TRANSFER_DAY
+              ,TBL1.CLOSING_DATE
+              ,TBL1.PHONE_MANAGER
+              ,TBL1.PHONE_STORE
+              ,TBL1.ROYALTY
+              ,TBL1.PASSWD
+              ,TBL1.BUSINESS_REGNUM
+              ,TBL1.POS_CD
+              ,TBL1.TAXPAL_USE_YN
+              ,TBL1.POS_COMP_CD
+              ,TBL1.POS_GROUP_ID
+              ,TBL1.YYYYMMDD
+        FROM   TBL1
+               LEFT JOIN TBL2
+                 ON  1 = 1
+                 AND TBL1.STORE_ID    =  TBL2.STORE_ID
+                 AND TBL1.YYYYMMDD    =  TBL2.YYYYMMDD
+                 AND TBL1.POS_COMP_CD =  TBL2.API_COMP_CD
+        WHERE 1 = 1
+        AND   TBL2.STORE_ID IS NULL
+        ORDER BY TBL1.YYYYMMDD
+    </select>
+
+    
+    <!-- API 전송로그 수정 -->
+    <select id="getStoreAddInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getStoreAddInfo  */
+        SELECT STORE_ADD_INFO_ID
+              ,STORE_ID         
+              ,SITE_CD          
+              ,BRAND_ID         
+              ,ID  
+              ,PASSWD           
+              ,SITE_NM
+              ,UPDATE_USER
+              ,UPDATE_DATE
+              ,CREATE_USER      
+              ,CREATE_DATE      
+        FROM   TBL_EXP_STORE_ADD_INFO
+        WHERE  1 = 1
+        <if test=" brandId != null and brandId != ''  ">
+            AND    BRAND_ID =  #{brandId} 
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+            AND    STORE_ID = #{storeId} 
+        </if>
+        <if test=" siteCd != null and siteCd != ''  ">
+            AND    SITE_CD =  #{siteCd} 
+        </if>
+        ORDER BY BRAND_ID
+                ,STORE_ID  
+    </select>
+    
+    <!-- API 전송로그 조회 -->
+    <select id="getStoreAddInfo1" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getStoreAddInfo1  */
+        SELECT A.STORE_NM
+              ,A.STORE_ID
+              ,A.TAXPAL_USE_YN
+              ,B.STORE_ADD_INFO_ID
+              ,B.SITE_CD
+              ,B.SITE_NM
+              ,B.ID
+              ,B.PASSWD
+              ,B.CONFIRM_YN
+        FROM   TBL_EXP_STORE_MST A
+               LEFT OUTER JOIN TBL_EXP_STORE_ADD_INFO  B
+                 ON  1 = 1
+                 AND A.STORE_ID = B.STORE_ID
+        WHERE  1 = 1
+        AND    A.BRAND_ID = 'obong' 
+        <if test=" storeNm != null and storeNm != ''  ">
+          AND A.STORE_NM LIKE '%${storeNm}%'
+        </if>
+        ORDER BY A.STORE_NM 
+    </select>
+    
+    <update id="updateStoreSalesMst" parameterType="map">
+        /* jobScheduler.updateStoreSalesMst  */
+        MERGE
+        INTO
+            ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST tgt
+                USING 
+                (
+                    SELECT   #{CashReceiptAmt} AS CASH_RECEIPT_AMT  --현금영수증금액
+                            ,#{CustNum} AS CUST_AMT                 --고객수
+                            ,#{VoidAmt} AS VOID_AMT                 --반품금액
+                            ,#{SellAllCnt} AS SELL_ALL_CNT          --총건수 (취소 포함)
+                            ,#{CardAmt} AS CARD_AMT                 --카드금액
+                            ,#{CashbagAmt} AS CASHBAG_AMT           --캐쉬백금액
+                            ,#{DcAmt} AS DC_AMT                     --할인금액
+                            ,#{StoreCode} AS STORE_CODE             --가맹점코드
+                            ,#{EdenredAmt} AS EDENRED_AMT           --전자결제금액
+                            ,#{ReceiveAmt} AS RECEIVE_AMT           --결제합계
+                            ,#{CouponAmt} AS COUPON_AMT             --쿠폰금액
+                            ,#{KeepAmt} AS KEEP_AMT                 --보관금금액
+                            ,#{SellCnt} AS SELL_CNT                 --건수
+                            ,#{TickAmt} AS TICK_AMT                 --외상금액
+                            ,#{CancelAmt} AS CANCEL_AMT             --취소금액
+                            ,#{WorkAmt} AS WORK_AMT                 --봉사료
+                            ,#{EndTimeDate} AS END_TIME_DATE        --일자
+                            ,#{yyyymmdd} AS YYYYMMDD                --일자
+                            ,#{CashAmt} AS CASH_AMT                 --현금금액
+                            ,#{PointAmt} AS POINT_AMT               --포인트금액
+                            ,#{EtcAmt} AS ETC_AMT                   --기타금액
+                            ,#{SDCancelAmt} AS SDCANCEL_AMT         --지취금액
+                            ,#{StoreId} AS STORE_ID                 --지점ID
+                            ,#{StoreSalesId} AS STORE_SALES_ID      --일별매출ID
+                      FROM DUAL
+                ) src
+        ON
+            (   tgt.STORE_ID = src.STORE_ID
+            AND tgt.YYYYMMDD = src.YYYYMMDD
+            )
+            WHEN MATCHED
+        THEN
+        UPDATE
+            SET
+                tgt.TAXABLE_AMOUNT = NULL,
+                tgt.SURTAX_SUM = NULL,
+                tgt.NET_SALES = src.RECEIVE_AMT, 
+                tgt.AVERAGE_SALES = NULL,
+                tgt.CUSTOMERS_NUM = src.CUST_AMT,
+                tgt.RECEIPT_CNT = src.SELL_CNT,
+                tgt.RECEIPT_PRICE = NULL,
+                tgt.CARD_SALES = src.CARD_AMT,
+                tgt.CASH_SALES = src.CASH_AMT,
+                tgt.DISCOUNT_PRICE = src.DC_AMT,
+                tgt.ETC_SALES = NULL,
+                tgt.UPDATE_USER = 'SYSTEM',
+                tgt.UPDATE_DATE = SYSDATE,
+                tgt.GROSS_SALES = src.RECEIVE_AMT,
+                tgt.GROSS_SALES_POS = src.RECEIVE_AMT,
+                tgt.VOID_AMT = src.VOID_AMT,
+                tgt.SELL_ALL_CNT = src.SELL_ALL_CNT,
+                tgt.TICK_AMT = src.TICK_AMT,
+                tgt.CANCEL_AMT = src.CANCEL_AMT,
+                tgt.WORK_AMT = src.WORK_AMT,
+                tgt.CASHBAG_AMT = src.CASHBAG_AMT,
+                tgt.EDENRED_AMT = src.EDENRED_AMT,
+                tgt.COUPON_AMT = src.COUPON_AMT,
+                tgt.KEEP_AMT = src.KEEP_AMT,
+                tgt.POINT_AMT = src.POINT_AMT,
+                tgt.ETC_AMT = src.ETC_AMT
+                WHEN NOT MATCHED
+        THEN
+        INSERT
+               (STORE_SALES_ID,
+                STORE_ID,
+                YEAR,
+                MONTH,
+                DAY,
+                YYYYMMDD,
+                TAXABLE_AMOUNT,
+                SURTAX_SUM,
+                NET_SALES,
+                AVERAGE_SALES,
+                CUSTOMERS_NUM,
+                RECEIPT_CNT,
+                RECEIPT_PRICE,
+                CARD_SALES,
+                CASH_SALES,
+                DISCOUNT_PRICE,
+                ETC_SALES,
+                CREATE_USER,
+                CREATE_DATE,
+                GROSS_SALES,
+                GROSS_SALES_POS,
+                VOID_AMT,
+                SELL_ALL_CNT,
+                TICK_AMT,
+                CANCEL_AMT,
+                WORK_AMT,
+                CASHBAG_AMT,
+                EDENRED_AMT,
+                COUPON_AMT,
+                KEEP_AMT,
+                POINT_AMT,
+                ETC_AMT
+                )
+        VALUES (src.STORE_SALES_ID,            
+                src.STORE_ID,                  
+                SUBSTR(src.END_TIME_DATE,0,4), 
+                SUBSTR(src.END_TIME_DATE,5,2), 
+                SUBSTR(src.END_TIME_DATE,7,2),  
+                src.YYYYMMDD, 
+                NULL,                          
+                NULL,                          
+                src.RECEIVE_AMT,               
+                NULL,                          
+                src.CUST_AMT,                  
+                src.SELL_CNT,                  
+                NULL,                          
+                src.CARD_AMT,                  
+                src.CASH_AMT,                  
+                src.DC_AMT,                    
+                NULL,                          
+                'SYSTEM',                      
+                SYSDATE,                       
+                src.RECEIVE_AMT,               
+                src.RECEIVE_AMT,               
+                src.VOID_AMT,                
+                src.SELL_ALL_CNT,            
+                src.TICK_AMT,
+                src.CANCEL_AMT,
+                src.WORK_AMT,
+                src.CASHBAG_AMT,
+                src.EDENRED_AMT,
+                src.COUPON_AMT,
+                src.KEEP_AMT,
+                src.POINT_AMT,
+                src.ETC_AMT
+                )
+    </update>
+    
+    <select id="getTestTargetStore" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTestTargetStore  */
+        SELECT A.STORE_ID
+		FROM   TBL_EXP_STORE_MST A
+		WHERE  1 = 1
+		AND    A.BRAND_ID = #{BRAND_ID} 
+		AND    A.STORE_ID NOT IN (
+		 '666666','777777','999999','F09GOP','Z00001','Z00002'
+		,'Z00003','Z00004','Z00005','Z00006','5725ddad26b34e57'
+		)
+    </select>
+    
+
+    <select id="getTestMenuSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTestMenuSales  */
+        SELECT LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) AS MENU_SALES_ID
+              ,B.STORE_ID
+              ,B.GROUP_1
+              ,B.GROUP_2
+              ,B.MENU_ID
+              ,B.YEAR
+              ,B.MONTH
+              ,B.DAY
+              ,B.SALES
+              ,B.DAY_AVERAGE
+              ,B.SALES_QUANTITY
+              ,B.CASH
+              ,B.CARD
+              ,B.OTHER
+              ,B.DISCOUNT
+              ,B.CREATE_USER
+              ,B.CREATE_DATE
+        FROM   TBL_EXP_STORE_MST A
+               LEFT OUTER JOIN ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST B
+                 ON  1 = 1
+                 AND A.STORE_ID = B.STORE_ID
+        WHERE  1 = 1
+        AND    A.BRAND_ID = 'gopbuni'
+        AND    A.STORE_ID = '5725ddad26b34e57'
+        AND    B.YEAR     = '2024'
+        AND    B.MONTH    = '10'
+        AND    B.DAY      IN ('01','02','03','04','05','06','07','08','09','10'
+                             ,'11','12','13','04','05','06','17','18','19') 
+    </select>
+    
+    <select id="getTestMenuSales1" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTestMenuSales1  */
+        SELECT MENU_SALES_ID
+        FROM   ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST
+        WHERE  1 = 1
+        AND    STORE_ID  = #{STORE_ID}
+        AND    GROUP_1   = #{GROUP_1} 
+        AND    GROUP_2   = #{GROUP_2} 
+        AND    MENU_ID   = #{MENU_ID} 
+        AND    YEAR      = #{YEAR}    
+        AND    MONTH     = #{MONTH}   
+        AND    DAY       = #{DAY}  
+    </select>
+    
+<insert id="insertTestMenuSales" parameterType="java.util.HashMap" flushCache="true">
+    /*  jobScheduler.insertTestMenuSales */
+    INSERT INTO ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST (
+            MENU_SALES_ID 
+           ,STORE_ID      
+           ,GROUP_1       
+           ,GROUP_2       
+           ,MENU_ID       
+           ,YEAR          
+           ,MONTH         
+           ,DAY           
+           ,SALES         
+           ,DAY_AVERAGE   
+           ,SALES_QUANTITY
+           ,CASH          
+           ,CARD          
+           ,OTHER         
+           ,DISCOUNT    
+           ,YYYYMMDD  
+           ,CREATE_USER   
+           ,CREATE_DATE       
+    )
+    VALUES(
+            #{MENU_SALES_ID   }
+           ,#{STORE_ID        }
+           ,#{GROUP_1         }
+           ,#{GROUP_2         }
+           ,#{MENU_ID         }
+           ,#{YEAR            }
+           ,#{MONTH           }
+           ,#{DAY             }
+           ,#{SALES           , jdbcType=NUMERIC}
+           ,#{DAY_AVERAGE     , jdbcType=NUMERIC}
+           ,#{SALES_QUANTITY  , jdbcType=NUMERIC}
+           ,#{CASH            , jdbcType=NUMERIC}
+           ,#{CARD            , jdbcType=NUMERIC}
+           ,#{OTHER           , jdbcType=NUMERIC}
+           ,#{DISCOUNT        , jdbcType=NUMERIC}
+           ,#{YEAR} || '-' || #{MONTH} || '-' || #{DAY}
+           ,#{CREATE_USER     }
+           ,TO_DATE(#{YEAR} || '-' || #{MONTH} || '-' || #{DAY}, 'YYYY-MM-DD') 
+    ) 
+</insert>
+    
+    <!-- 매출 목표 대상 지점 조회 -->
+    <select id="getTargetStoreSalesGoal" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getTargetStoreSalesGoal  */
+        SELECT A.BRAND_ID
+              ,A.STORE_ID
+              ,A.STORE_ID
+              ,NVL(B.MONTH1 ,0 ) AS MONTH1 
+              ,NVL(B.MONTH2 ,0 ) AS MONTH2 
+              ,NVL(B.MONTH3 ,0 ) AS MONTH3 
+              ,NVL(B.MONTH4 ,0 ) AS MONTH4 
+              ,NVL(B.MONTH5 ,0 ) AS MONTH5 
+              ,NVL(B.MONTH6 ,0 ) AS MONTH6 
+              ,NVL(B.MONTH7 ,0 ) AS MONTH7 
+              ,NVL(B.MONTH8 ,0 ) AS MONTH8 
+              ,NVL(B.MONTH9 ,0 ) AS MONTH9 
+              ,NVL(B.MONTH10,0 ) AS MONTH10
+              ,NVL(B.MONTH11,0 ) AS MONTH11
+              ,NVL(B.MONTH12,0 ) AS MONTH12
+        FROM   TBL_EXP_STORE_MST A
+               LEFT OUTER JOIN TBL_EXP_STORE_SALES_GOAL B
+                 ON  1 = 1
+                 AND B.YEAR = #{year}
+                 AND A.BRAND_ID = B.BRAND_ID
+                 AND A.STORE_ID = B.STORE_ID
+        WHERE  1 = 1
+        AND    A.BRAND_ID = #{brandId}
+    </select>
+    
+    <!-- 지점 매출 평균 조회 -->
+    <select id="getStoreSalesMonthAvg" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getStoreSalesMonthAvg  */
+        SELECT ROUND(AVG(GROSS_SALES) * COUNT(1)/COUNT(DISTINCT MONTH))  AS AVG_GROSS_SALES
+		FROM   ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST
+		WHERE  1 = 1
+		AND    STORE_ID = #{storeId}
+		AND    YEAR     = #{preYear}
+		AND    ( GROSS_SALES != 0 AND  GROSS_SALES IS NOT NULL )
+    </select>
+    
+    <!-- 브랜드 매출 평균 조회 -->
+    <select id="getBrandSalesMonthAvg" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* jobScheduler.getBrandSalesMonthAvg  */
+        /* 전지점 월별 평균*/
+        SELECT ROUND(AVG(A.MONTH_AVG_SALES) ) AS MONTH_AVG_SALES
+        FROM   (
+                /* 지점 월별 평균*/
+                SELECT A.STORE_ID
+                      ,A.YEAR
+                      ,A.MONTH
+                      ,ROUND(AVG(A.GROSS_SALES) * COUNT(1)/COUNT(DISTINCT MONTH))  AS MONTH_AVG_SALES
+                FROM   ${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST A
+                       JOIN TBL_EXP_STORE_MST B
+                         ON  1 = 1
+                         AND B.BRAND_ID = #{brandId}
+                         AND A.STORE_ID = B.STORE_ID
+                WHERE  1 = 1
+                AND    A.YEAR     = #{year}
+                AND    ( A.GROSS_SALES != 0 AND  A.GROSS_SALES IS NOT NULL )
+                GROUP BY  A.STORE_ID
+                      ,A.YEAR
+                      ,A.MONTH
+        ) A
+        WHERE  1 =1 
+    </select>
+    
+    <!-- 지점 목표매출 입력 -->
+    <insert id="insertStoreSalesMonthAvg" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.insertStoreSalesMonthAvg */
+        MERGE INTO TBL_EXP_STORE_SALES_GOAL T
+        USING (
+            SELECT #{brandId}    AS BRAND_ID,
+                   #{storeId}    AS STORE_ID,
+                   #{year}       AS YEAR,
+                   #{month1}     AS MONTH1,
+                   #{month2}     AS MONTH2,
+                   #{month3}     AS MONTH3,
+                   #{month4}     AS MONTH4,
+                   #{month5}     AS MONTH5,
+                   #{month6}     AS MONTH6,
+                   #{month7}     AS MONTH7,
+                   #{month8}     AS MONTH8,
+                   #{month9}     AS MONTH9,
+                   #{month10}    AS MONTH10,
+                   #{month11}    AS MONTH11,
+                   #{month12}    AS MONTH12,
+                   #{createUser} AS CREATE_USER
+            FROM DUAL
+        ) S
+        ON (T.BRAND_ID = S.BRAND_ID AND T.STORE_ID = S.STORE_ID AND T.YEAR = S.YEAR)
+        WHEN MATCHED THEN
+            UPDATE SET  T.UPDATE_USER  = S.CREATE_USER
+                       ,T.UPDATE_DATE  = GET_KRDT(SYSDATE)   
+                       ,T.MONTH1       = S.MONTH1   
+                       ,T.MONTH2       = S.MONTH2   
+                       ,T.MONTH3       = S.MONTH3   
+                       ,T.MONTH4       = S.MONTH4   
+                       ,T.MONTH5       = S.MONTH5   
+                       ,T.MONTH6       = S.MONTH6   
+                       ,T.MONTH7       = S.MONTH7   
+                       ,T.MONTH8       = S.MONTH8   
+                       ,T.MONTH9       = S.MONTH9   
+                       ,T.MONTH10      = S.MONTH10  
+                       ,T.MONTH11      = S.MONTH11  
+                       ,T.MONTH12      = S.MONTH12 
+        WHEN NOT MATCHED THEN
+            INSERT (
+                BRAND_ID, STORE_ID, YEAR,
+                MONTH1, MONTH2, MONTH3, MONTH4, MONTH5, MONTH6, 
+                MONTH7, MONTH8, MONTH9, MONTH10, MONTH11, MONTH12, 
+                CREATE_USER, CREATE_DATE
+            ) VALUES (
+                S.BRAND_ID, S.STORE_ID, S.YEAR,
+                S.MONTH1, S.MONTH2, S.MONTH3, S.MONTH4, S.MONTH5, S.MONTH6, 
+                S.MONTH7, S.MONTH8, S.MONTH9, S.MONTH10, S.MONTH11, S.MONTH12, 
+                S.CREATE_USER, GET_KRDT(SYSDATE)
+            )
+    </insert>
+
+    
+</mapper>
+
+
+
+
+

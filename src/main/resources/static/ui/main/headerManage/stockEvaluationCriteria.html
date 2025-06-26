@@ -1,0 +1,45 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 brandId	: G_VAL.session.BRAND_ID
+		,loadComponent : function(parm) {
+
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_STOCK_EVALUATION_CRITERIA"
+					,columnMap 		: {
+						 "CRITERIA_ID"	: { headerText : "평가ID"		, hidden : "Y", ifNewAutoSet : "random"					}
+						,"BRAND_ID"		: { headerText : "Brand ID"		, hidden : "Y", default : G_VAL.session.BRAND_ID	}
+						,"TOP_VAL"		: { headerText : "상위기준(%)"	,dataType : "number"								}
+						,"BOTTOM_VAL"	: { headerText : "하위기준(%)"	,dataType : "number"								}
+						,"EVALUATION"	: { headerText : "평가"			,													}
+						,"COLOR_CODE"	: { headerText : "Text Color"	,													}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["CRITERIA_ID"]
+					,searchColumnList	: ["TOP_VAL", "BOTTOM_VAL", "EVALUATION"]
+					,searchWhereMap		: {BRAND_ID : G_VAL.session.BRAND_ID}
+					,orderColumnList 	: ["TOP_VAL DESC"]
+					
+				 }
+				,editPopupMax : "N"
+			}
+			
+			C_COMP.import("brandMenuManageGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="brandMenuManageGrid"></compnent>    
+    <!-- table area end -->
+</page-component>

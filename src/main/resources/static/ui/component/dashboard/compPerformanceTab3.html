@@ -1,0 +1,672 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@compId> = {
+            selectYear : ''
+           ,selectWeek : ''
+           ,TB_percent : ''
+           ,TB_num     : ''
+           ,TB_arrow   : ''
+           ,SALES_percent : ''
+           ,SALES_num     : ''
+           ,SALES_arrow   : ''
+           ,BRAND_ID : ''
+           ,pageInit : () => {
+               var now = new Date();   // 현재 날짜 및 시간
+               var thisYear = now.getFullYear();   // 연도
+               
+               var startDate = new Date();
+               startDate.setFullYear(startDate.getFullYear() - 5);// 현재년도의 과거 5년
+               
+               var startYear = startDate.getFullYear();   // 연도
+               
+               const yearsArray = Array.from({ length: 6 }, (_, index) => {
+                   const year = thisYear - index;
+            	   return [year.toString(), year + "년"];
+               });
+               
+               var yearsArrayList = { data : yearsArray,targetId : "<@compId>_selectBoxYear"}
+               C_UICOM.makeSelectBox(yearsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_selectBoxYear", thisYear);
+               
+               <@compId>.getSelectWeek(thisYear);
+
+               // 권역
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "STORE_REGION");
+               var selectBoxRegionList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxRegion" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxRegionList, "single");
+               
+
+               // 슈퍼바이저
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "SUPERVISOR");
+               var selectBoxSupervisorList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxSupervisor" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxSupervisorList, "single");
+
+               $("#<@compId>_chart1_no").show();
+               $("#<@compId>_chart1").hide();
+               <@compId>.brandIdSet(<@compId>.BRAND_ID);
+            }
+
+           ,getSelectWeek : (year) => {
+        	   
+               let requestParm = {};
+               requestParm["weekStart"] = year+"01"+"01" ;
+               requestParm["weekEnd"]   = year+"12"+"31" ;
+               
+               var parm1 = {
+                       queryId  : "dashboardCorPerformance.getWeekList"
+                      ,requestParm   : requestParm
+               }
+               
+               C_COM.requestQuery(parm1, function(resultData) {
+                   
+                   const DATA = resultData.data.map( item => [ item.START_END_VAL, item.WEEK_OF_YEAR+"주차 : "+item.START_END ]);
+                   var selectWeek = <@compId>.selectedWeek(DATA);
+                   var selectBoxWeekList = {
+                           data : DATA
+                          ,defaultVal : selectWeek
+                          ,targetId : "<@compId>_selectBoxWeek" 
+                   }
+                   
+                   C_UICOM.makeSelectBox(selectBoxWeekList, "single");
+               });
+               
+           }
+           ,selectedWeek : function(DATA) {
+               const lastItem = DATA.at(-1);
+               return lastItem[0];  
+           }
+           ,onChangeYears : function(selectDom) {
+               
+        	   var year      = C_UICOM.getData("<@compId>_selectBoxYear");
+        	   <@compId>.getSelectWeek(year);
+           }
+
+           ,onChangeRegion : function(selectDom) {
+
+
+               var region  = C_UICOM.getData("<@compId>_selectBoxRegion");
+              
+               
+               let requestParm = {};
+               requestParm["brandId"]  = <@compId>.BRAND_ID ;
+               requestParm["region"]   = region ;
+               
+               
+               var parm1 = {
+                       queryId  : "dashboardCorPerformance.getStore"
+                      ,requestParm   : requestParm
+               }
+               
+               C_COM.requestQuery(parm1, function(resultData) {
+                   
+                   const DATA = resultData.data.map( item => [ item.CODE_ID, item.CODE_NM ]);
+                   
+                   var selectBoxStoreList = {
+                           defaultItem    : ["ALL", "전체"]
+                          ,data : DATA
+                          ,targetId : "<@compId>_selectBoxStore"
+                   }
+                   
+                   C_UICOM.makeSelectBox(selectBoxStoreList, "single");
+               });
+           }
+
+           ,brandIdSet : (brandId) => {
+               <@compId>.BRAND_ID = brandId;
+
+               // 지점
+               let requestParm1 = {};
+               requestParm1["brandId"]  = <@compId>.BRAND_ID ;
+
+               var parm1 = {
+                       queryId  : "dashboardCorPerformance.getStore"
+                      ,requestParm   : requestParm1
+               }
+               
+               C_COM.requestQuery(parm1, function(resultData) {
+                   
+                   const DATA = resultData.data.map( item => [ item.CODE_ID, item.CODE_NM ]);
+                   
+                   var selectBoxStoreList = {
+                           defaultItem    	: ["ALL", "전체"]
+                          ,data 			: DATA
+                          ,defaultVal 		: "ALL"
+                          ,targetId 		: "<@compId>_selectBoxStore" 
+                   }
+                   
+                   C_UICOM.makeSelectBox(selectBoxStoreList, "singleByFilter");
+                   <@compId>.searchBtn();
+               });
+               
+           }
+           ,getAddDay : function(yyyy, mm, dd, value) {
+               
+               let date = new Date(Number(yyyy), Number(mm)-1, Number(dd));
+               date.setDate(date.getDate() + value);// 7일전
+               
+               const year   = date.getFullYear(); // 2023
+               const month  = (date.getMonth() + 1).toString().padStart(2, '0'); // 06
+               const day    = date.getDate().toString().padStart(2, '0'); // 18
+               return year + '-' + month + '-' + day;
+           }
+
+           /* 주차별 순매출액 */
+          ,searchSalesByWeek :function ( requestParm) {
+              
+              
+              let parm = {
+                   queryId        : "dashboardCorPerformance.getSalesByWeek"
+                  ,requestParm    : requestParm
+              }
+              C_COM.requestQuery(parm, function(resultData) {
+                  //챠트
+                  <@compId>.setChartSalesByWeek( resultData );
+                  var rparm = {
+                      targetId       : "<@compId>_tableId1"
+                     ,list           : resultData.data
+                  }
+                  C_COM.renderHtml("<@compId>", rparm);
+                  <@compId>.setTotal1(resultData);
+                  
+                  //이번주차
+                  var rparm1 = {
+                       targetId       : "<@compId>_tableId2"
+                      ,list           : resultData.data
+                  }
+                  C_PAGING.renderHtml("<@compId>", rparm1);
+                  <@compId>.setTotal2(resultData);
+
+                  <@compId>.setTableIncDec();
+                  <@compId>.setSaleIncDec();
+                  
+              });
+
+              
+              
+          }
+
+          ,setTotal1 : function (resultData) {
+              let totalTB   = 0;
+              let totalSale = 0;
+              for (var i=0; i<resultData.data.length; i++){
+                  totalTB += resultData.data[i].RECEIPT_CNT;
+                  totalSale += resultData.data[i].NET_SALES;
+              }
+              $('#<@compId>_totalTB').text(addComma(totalTB));
+              $('#<@compId>_totalSale').text(addComma(totalSale));
+          }
+
+          ,setTotal2 : function (resultData) {
+
+              let totalTB   = 0;
+              let totalSale = 0;
+              for (var i=0; i<resultData.data.length; i++){
+                  totalTB += resultData.data[i].PRE_RECEIPT_CNT;
+                  totalSale += resultData.data[i].PRE_NET_SALES;
+              }
+              $('#<@compId>_totalPreTB').text(addComma(totalTB));
+              $('#<@compId>_totalPreSale').text(addComma(totalSale));
+          }
+          ,setTableIncDec : function () {
+              
+              // 테이블 수 증감률
+              var totalTB    = $('#<@compId>_totalTB').text().replace(/,/g, '');
+              var totalPreTB = $('#<@compId>_totalPreTB').text().replace(/,/g, '');
+              
+              if(!(typeof totalPreTB == "undefined" || totalPreTB == null || totalPreTB == "0")){
+                  var tableRate =  ((Number(totalTB) - Number(totalPreTB)) / Number(totalPreTB)) * 100;
+                  var tableRateRound =  Math.ceil(tableRate * 100) / 100
+                  
+                  //css Class 삭제  
+                  $('#<@compId>_table_percent').removeClass(<@compId>.TB_percent);//숫자변경
+                  $('#<@compId>_table_percent_txt').removeClass(<@compId>.TB_num);//숫자변경
+                                    
+                  
+                  $('#<@compId>_table_totalNum').text(Number(totalTB).toLocaleString('ko-KR'));
+                  $('#<@compId>_table_percent').text(tableRateRound+'%');                       
+                  $('#<@compId>_table_percent_txt').text(Number(totalTB-totalPreTB).toLocaleString('ko-KR'));
+
+                  if( tableRateRound < 0){// 감소
+                      <@compId>.TB_percent = "dn-arrow round-container";
+                      <@compId>.TB_num     = "dn-arrow round-container";
+                  }else if( tableRateRound > 0){//증가
+                      <@compId>.TB_percent = "up-arrow round-container mr5";
+                      <@compId>.TB_num     = "up-arrow round-container mr5";
+                      
+                  }else{//증감없음
+                      <@compId>.TB_percent = "";
+                      <@compId>.TB_num     = "";
+                  }
+                  
+                  $('#<@compId>_table_percent').addClass(<@compId>.TB_percent);//숫자변경
+                  $('#<@compId>_table_percent_txt').addClass(<@compId>.TB_num);//숫자변경
+                  
+                                         
+              }else{
+                  //$('#<@compId>_tableIncDecRate').text("");
+              }
+          }
+
+          ,setSaleIncDec : function () {
+
+              // 순매출액 증감률
+              var totalSale    = $('#<@compId>_totalSale').text().replace(/,/g, '');
+              var totalPreSale = $('#<@compId>_totalPreSale').text().replace(/,/g, '');
+              
+              if(!(typeof totalPreSale == "undefined" || totalPreSale == null || totalPreSale == "0")){
+                  
+                  var saleRate =  ((Number(totalSale) - Number(totalPreSale)) / Number(totalPreSale)) * 100;
+                  var saleRateRound =  Math.ceil(saleRate * 100) / 100
+
+                  //css Class 삭제  
+                  $('#<@compId>_sales_percent').removeClass(<@compId>.SALES_percent);//숫자변경
+                  $('#<@compId>_sales_percent_txt').removeClass(<@compId>.SALES_num);//숫자변경
+                  //
+                  $('#<@compId>_sales_totalNum').text(Number(totalSale).toLocaleString('ko-KR'));
+                  $('#<@compId>_sales_percent').text(saleRateRound+'%');                       
+                  $('#<@compId>_sales_percent_txt').text(Number(totalSale-totalPreSale).toLocaleString('ko-KR'));
+                  
+                  if( saleRateRound < 0){// 감소
+                      <@compId>.SALES_percent = "dn-arrow round-container";
+                      <@compId>.SALES_num     = "dn-arrow round-container";
+                  }else if( saleRateRound > 0){//증가
+                      <@compId>.SALES_percent = "up-arrow round-container mr5";
+                      <@compId>.SALES_num     = "up-arrow round-container mr5";
+                      
+                  }else{//증감없음
+                      <@compId>.SALES_percent = "";
+                      <@compId>.SALES_num     = "";
+                  }
+                  
+                  $('#<@compId>_sales_percent').addClass(<@compId>.SALES_percent);//숫자변경
+                  $('#<@compId>_sales_percent_txt').addClass(<@compId>.SALES_num);//숫자변경
+              }else{
+                  //$('#<@compId>_salesIncDecRate').text("");
+              }
+              
+          }
+          /* 챠트 */
+          ,setChartSalesByWeek :function (resultData) {
+
+              $("#<@compId>_chart1_no").hide();
+              $("#<@compId>_chart1").show();
+              
+              let categoriesList = [];
+              let salesList      = [];
+              let preSalesList   = [];
+              let storeNm   = '';
+              
+              for (var i=0; i< resultData.data.length; i++){
+                  storeNm = resultData.data[i].STORE_NM;
+                  categoriesList[i] = resultData.data[i].STR_DATE;
+                  salesList[i]      = resultData.data[i].NET_SALES;
+                  preSalesList[i]  = resultData.data[i].PRE_NET_SALES;
+              }
+              
+              $("#<@compId>_chart1").highcharts({
+                   credits: {enabled: false},// 하이차트 워터마크 삭제
+                   chart: {
+                          type: 'column'
+                      },
+                      title: {
+                          text: storeNm,
+                          align: 'left'
+                      },
+                      subtitle: {
+                          text: '',
+                          align: 'left'
+                      },
+                      colors: ['#66ff00', '#0099ff'],
+                      xAxis: {
+                          categories: categoriesList,
+                          crosshair: true,
+                          accessibility: {
+                              description: 'Countries'
+                          }
+                      },
+                      yAxis: {
+                          labels: {
+                              formatter: function () {
+                                  // 만단위로 표시
+                                  if (this.value >= 1000000) {
+                                      return (this.value / 1000000) + '백억';
+                                  } else if (this.value >= 1000) {
+                                      return (this.value / 1000) + '천만';
+                                  }
+                                  return this.value;
+                              },
+                              style: {
+                                  color: '#8A8C92',
+                                  fontFamily: 'Noto Sans KR',
+                                  fontSize: '11px'
+                              }
+                          },
+                          min: 0,
+                          title: {
+                              text: ''
+                          }
+                      },
+                      tooltip: {
+                          valueSuffix: '',
+                          formatter: function() {
+                              return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}`;
+                          }
+                      },
+                      plotOptions: {
+                          column: {
+                              pointPadding: 0.2,
+                              borderWidth: 0
+                          }
+                      },
+                      series: [
+                          {
+                              name: '이번주차 순매출액',
+                              data: salesList,
+                              dataLabels: {
+                                  enabled: true,
+                                  formatter: function () {
+                                      return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                                  },
+                                  style: {
+                                      fontSize: '11px',
+                                      color: '#000'
+                                  }
+                              }  
+                          },
+                          {
+                              name: '지난주차 순매출액',
+                              data: preSalesList,
+                              dataLabels: {
+                                  enabled: true,
+                                  formatter: function () {
+                                      return Highcharts.numberFormat(this.y, 0, '.', ','); // 쉼표 포함 포맷
+                                  },
+                                  style: {
+                                      fontSize: '11px',
+                                      color: '#000'
+                                  }
+                              }  
+                          }
+                      ]
+              });
+          }
+           ,searchBtn : function(selectDom) {
+               
+               var brandId     = <@compId>.BRAND_ID;
+
+               let selectBoxWeek        = C_UICOM.getData('<@compId>_selectBoxWeek');
+               let selectBoxStore       = C_UICOM.getData('<@compId>_selectBoxStore');
+               let trimWeekArr = selectBoxWeek.trim().replaceAll(' ', '').split("_");
+               
+               
+               const startDate = trimWeekArr[0];
+               const endDate = trimWeekArr[1];
+               
+               let startY = trimWeekArr[0].substr(0, 4);    
+               let startM = trimWeekArr[0].substr(5, 2);    
+               let startD = trimWeekArr[0].substr(8, 2);
+
+               let endY = trimWeekArr[1].substr(0, 4);    
+               let endM = trimWeekArr[1].substr(5, 2);    
+               let endD = trimWeekArr[1].substr(8, 2);
+               
+               const startDatePre = <@compId>.getAddDay( startY, startM, startD, -7 );
+               
+               const endDatePre = <@compId>.getAddDay( endY, endM, endD, -7  );
+               
+               let region      = C_UICOM.getData('<@compId>_selectBoxRegion');
+               let supervisor  = C_UICOM.getData('<@compId>_selectBoxSupervisor');
+               
+               let requestParm = {};
+               requestParm["brandId"]       = brandId;
+               requestParm["dateStart"]     = startDate;
+               requestParm["dateEnd"]       = endDate;
+               requestParm["startDatePre"]  = startDatePre;
+               requestParm["endDatePre"]    = endDatePre;
+               requestParm["store"]         = selectBoxStore;
+               requestParm["region"]        = region;
+               requestParm["supervisor"]    = supervisor;
+               
+               <@compId>.searchSalesByWeek( requestParm );
+           }
+
+           
+        }
+        // Component Load가 완료된후 실행 된다.
+        C_COMP.onLoadComp("<@compId>", function(parm) {
+    
+
+            <@compId>.BRAND_ID = parm.brandId;
+            
+            if(isEmpty(<@compId>.BRAND_ID)){
+                <@compId>.BRAND_ID = G_VAL.session.BRAND_ID;
+            } 
+            
+            <@compId>.pageInit();
+            
+			// 20250211 
+			// code by 위성열
+			// Main Widget 처리
+			C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+				C_WIDGET.setWidgetState("<@compId>", widgetList);
+			});
+        
+        });
+</script>
+<component>
+
+    <div class="pop_tab_content_box">
+        <!-- title start -->
+        <div class="mt10 mb5 mt30 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+            <div class="biz-subTitle">
+                주차별 매출 데이타 분석
+                <div class="ml20">
+                    <label class="star-wrap">
+	                    <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                        <span class="star"></span>
+                    </label>
+                    <!--  
+                    <button class="msg-edit"></button>
+                    -->
+                </div>
+            </div>
+        </div>
+        <!-- title end -->
+        <!-- search filter box start -->
+        <div class="srch-card mt10">
+            <div class="srch-card-inwrap">
+                <div class="col9 col10-sm srch-card-form">
+                    <div class="col6 col6-md col10-sm display-h-end mb5">
+                        <select class="form-control form-control-sm col3 mr5" id="<@compId>_selectBoxYear" onChange="<@compId>.onChangeYears(this)">
+                        </select>
+                        <select class="form-control form-control-sm col7" id="<@compId>_selectBoxWeek" >
+                        </select>
+                    </div> 
+                    <div class="col4 col4-md col10-sm display-h-end mb5">
+                        <label class="src-title">권역</label>
+                        <select class="form-control form-control-sm col10" id="<@compId>_selectBoxRegion"   onChange="<@compId>.onChangeRegion(this)">
+                        </select>
+                    </div> 
+                    <div class="col6 col6-md col10-sm display-h-end mb5">
+                        <label class="src-title">지점</label>
+                        <component class="col10" id="<@compId>_selectBoxStore" >
+                        </component>
+                    </div>
+                    <div class="col4 col4-md col10-sm mb5 display-h-end">
+                        <label class="src-title">슈바이져</label>
+                        <select class="form-control form-control-sm col10" id="<@compId>_selectBoxSupervisor" >
+                        </select>
+                    </div>
+                </div>
+                <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+                    <button class="srch-btn col10" type="button" onclick="<@compId>.searchBtn()">검 색</button>
+                </div>
+            </div>
+        </div>
+        <!-- search filter box end -->
+        <!-- 매출 비교 그래프 area start -->
+        <div class="mt30 mb5 display-between">
+            <div class="biz-subTitle">
+                매출 비교 그래프(단위: 만원)
+            </div>
+        </div>     
+        <div class="tab-card-outline">
+            <div class="card-cnt-wrap p20">
+                <!-- 매출 비교 그래프 area start 
+                <img src="images/bar-chart02.svg" alt="" width="100%">
+                <div class="nodata"     id="<@compId>_chart1_no" style="height:137px;"></div>
+                <div class="chart04_01" id="<@compId>_chart1"    style="width:100%;height:332px;margin:0 auto"></div>
+                -->
+                <div id="<@compId>_chart1_no" width="100%" height="100%"></div>
+                <div id="<@compId>_chart1"    width="100%" height="100%"></div>
+                
+            </div>
+        </div>
+        <!-- 매출 비교 그래프 area end -->
+        <!-- 지난주차 + 이번주차 + 테이블 수 + 순매출액 area start -->                             
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md">
+            <div class="col33 col10-md col10-sm">
+                <div class="display-between-start col10-md col10-sm tab-card-outline mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">지난주차</div>
+                        </div>
+                        <div class="card-cnt-wrap">
+                            <div class="table-allwrap tb-div-h06">
+                              <!-- table start -->
+                              <table class="table-inwrap">
+                                <colgroup>
+                                  <col width="130px">
+                                  <col width="">                    
+                                  <col width="160px">                    
+                                </colgroup>
+                                <thead class="table-thead">
+                                  <tr>
+                                    <th>기간</th>
+                                    <th>테이블 수</th>
+                                    <th>매출액(단위: 만원)</th>
+                                  </tr>
+                                </thead>
+			                         
+                                <tbody id="<@compId>_tableId1">
+                                </tbody>
+                                <tfoot>
+                                    <tr class="tb-fixed-btm">
+                                        <td class="bg-sum">총 합계</td>
+                                        <td class="txt-red bg-sum" id="<@compId>_totalPreTB"></td>
+                                        <td class="txt-red txt-r bg-sum" id="<@compId>_totalPreSale"></td>
+                                    </tr> 
+                                </tfoot>
+                                <script type="text/x-jsrender" id="<@compId>_tableId1_template"> 
+                                     {{for list}}
+                                     <tr>    
+                                         <td class="tl">{{:PRE_STR_DATE}}</td>    
+                                         <td class="tl">{{numb:PRE_RECEIPT_CNT}}</td> 
+                                         <td class="tr">{{numb:PRE_NET_SALES}}</td>
+                                     </tr>
+                                     {{/for}}
+                                </script>
+                                <script type="text/x-jsrender" id="<@compId>_tableId1_noData_template">  
+                                   <tr>    
+                                       <td colspan=3>자료가 없습니다.</td>    
+                                   </tr>
+                                </script>    
+                              </table>
+                              <!-- table end -->            
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col33 col10-md col10-sm">
+                <div class="display-between-start col10-md col10-sm tab-card-outline mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">이번주차</div>
+                        </div>
+                        <div class="card-cnt-wrap">
+                            <div class="table-allwrap tb-div-h06">
+                              <!-- table start -->
+                              <table class="table-inwrap">
+                                <colgroup>
+                                  <col width="130px">
+                                  <col width="">                    
+                                  <col width="160px">                    
+                                </colgroup>
+                                <thead class="table-thead">
+                                  <tr>
+                                    <th>기간</th>
+                                    <th>테이블 수</th>
+                                    <th>매출액(단위: 만원)</th>
+                                  </tr>
+                                </thead>
+                                <tbody id="<@compId>_tableId2">
+                                </tbody>
+                                <tfoot>
+                                    <tr class="tb-fixed-btm">
+                                        <td class="bg-sum">총 합계</td>
+                                        <td class="txt-red bg-sum"  id="<@compId>_totalTB"></td>
+                                        <td class="txt-red txt-r bg-sum" id="<@compId>_totalSale"></td>
+                                    </tr> 
+                                </tfoot>
+                                <script type="text/x-jsrender" id="<@compId>_tableId2_template">    
+                                     {{for list}}
+                                     <tr>    
+                                         <td class="tl">{{:STR_DATE}}</td>    
+                                         <td class="tl">{{numb:RECEIPT_CNT}}</td> 
+                                         <td class="tr">{{numb:NET_SALES}}</td>
+                                     </tr>
+                                     {{/for}}
+                                </script>
+                                <script type="text/x-jsrender" id="<@compId>_tableId2_noData_template">  
+                                   <tr>    
+                                       <td colspan=3>자료가 없습니다.</td>    
+                                   </tr>
+                                </script>  
+                              </table>
+                              <!-- table end -->            
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col33 col10-md col10-sm display-column">
+                <div class="display-column col10-md col10-sm tab-card-outline mb10">
+                    <div class="card-tit-wrap">
+                        <div class="card-tit">테이블 수 증감률</div>
+                    </div>
+                    <div class="display-column-center p20">
+                        <span class="fs40 fs-ls txt-center pb20" id="<@compId>_table_totalNum"></span>
+                        <div class="display-row col10">
+                            <span class="" id="<@compId>_table_percent"></span>
+                            <span class="" id="<@compId>_table_percent_txt"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="display-column col10-md col10-sm tab-card-outline">
+                    <div class="card-tit-wrap">
+                        <div class="card-tit">순 매출액 증감률</div>
+                    </div>
+                    <div class="display-column-center p20">
+                        <span class="fs40 fs-ls txt-center pb20" id="<@compId>_sales_totalNum"></span>
+                        <div class="display-row col10">
+                            <span class="" id="<@compId>_sales_percent"></span>
+                            <span class="" id="<@compId>_sales_percent_txt"></span>
+                        </div>
+                    </div>
+                </div>                                   
+            </div>
+        </div>
+        <!-- 지난주차 + 이번주차 + 테이블 수 + 순매출액 area end -->
+    </div> 
+
+
+</component>

@@ -1,0 +1,369 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 parm				: {}	
+		,optionMakeFn 		: {}
+		,searchBoxValueMap	: {}
+		,getCompData	: function() {
+			return <@compId>.searchBoxValueMap;
+		 }
+		,search 		: function() {
+			if(typeof <@compId>.parm.callbackSearchButton == "function") {
+				<@compId>.parm.callbackSearchButton(<@compId>.searchBoxValueMap);
+			}
+		 }
+		,addSingleBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "singleboxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			<@compId>.optionMakeFn[component.searchCompId] = function() {
+				if(isValid(component.optionListGrpCode)) {
+					let codeList = C_COM.getCodeList(component.optionListGrpCode);
+					component.optionList = fn_copyArray(codeList);
+				}
+
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+				if(isValid(component.firstItem)) {
+					selectList.unshift(component.firstItem);
+				}
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: component.searchCompId
+	   			 	,defaultVal		: component.defaultVal
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "single");
+			}
+			<@compId>.optionMakeFn[component.searchCompId]();
+    		
+    		if(isValid(component.searchCompId) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = component.defaultVal;
+    		} else {
+        		let selectVal = C_UICOM.getData(component.searchCompId);
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = selectVal;
+    		}
+
+
+			let searchCompId 	= component.searchCompId;
+			let targetColumn 	= component.targetColumn;
+    		
+   			$(`#${component.searchCompId}`).unbind("change");
+   			$(`#${component.searchCompId}`).bind("change", function() {
+   				let selectVal = C_UICOM.getData(component.searchCompId);
+   			
+   	    		if(isValid(component.searchCompId) && isValid(selectVal)) {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = selectVal;
+   	    		} else {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+   	    		}
+
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,addSingleBoxByFilter : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "singleboxByFilterComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			<@compId>.optionMakeFn[component.searchCompId] = function() {
+				if(isValid(component.optionListGrpCode)) {
+					let codeList = C_COM.getCodeList(component.optionListGrpCode);
+					component.optionList = fn_copyArray(codeList);
+				}
+
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+				if(isValid(component.firstItem)) {
+					selectList.unshift(component.firstItem);
+				}
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: component.searchCompId
+	   			 	,defaultVal		: component.defaultVal
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "singleByFilter");
+			}
+			<@compId>.optionMakeFn[component.searchCompId]();
+    		
+    		if(isValid(component.searchCompId) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = component.defaultVal;
+    		} else {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+    		}
+
+    		let selectVal = C_UICOM.getData(component.searchCompId);
+
+			let searchCompId 	= component.searchCompId;
+			let targetColumn 	= component.targetColumn;
+    		
+			C_UICOM.addListnerOnChange(component.searchCompId, function() {
+   				let selectVal = C_UICOM.getData(component.searchCompId);
+   			
+   	    		if(isValid(component.searchCompId) && isValid(selectVal)) {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = selectVal;
+   	    		} else {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+   	    		}
+
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,addMultiBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "multiboxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			<@compId>.optionMakeFn[component.searchCompId] = function() {
+				if(isValid(component.optionListGrpCode)) {
+					component.optionList = C_COM.getCodeList(component.optionListGrpCode);
+				}
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+	    		var multiboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: component.searchCompId
+	   			 	,defaultVal		: component.defaultVal
+	   			 	,defaultValList	: component.defaultValList
+	   			}
+	   			C_UICOM.makeSelectBox(multiboxList, "multi");
+				
+	    		<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+			}
+			<@compId>.optionMakeFn[component.searchCompId]();
+			
+			<@compId>.searchBoxValueMap[component.searchCompRealId] = C_UICOM.getData(component.searchCompId);
+    		
+   			$(`#${component.searchCompId}`).unbind("change");
+   			$(`#${component.searchCompId}`).bind("change", function() {
+   				let selectVal = C_UICOM.getData(component.searchCompId);
+   			
+   	    		if(isValid(component.searchCompId) && isValid(selectVal)) {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = selectVal;
+   	    		} else {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+   	    		}
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,dateSearchBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "dateSearchBoxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+
+    		if(isValid(component.searchCompId) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = component.defaultVal;
+    		} else {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+    		}
+
+    		$(`#${component.searchCompId}`).unbind("change");
+   			$(`#${component.searchCompId}`).bind("change", function() {
+
+   				let searchBoxVal = $(`#${component.searchCompId}`).val();
+   				
+   	    		if(isValid(component.searchCompId) && isValid(searchBoxVal)) {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = searchBoxVal;
+   	    		} else {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+   	    		}
+   			
+   	    		if(typeof component.onChange == "function") component.onChange(searchBoxVal, <@compId>);
+   			});
+		 }
+		,addTermSearchBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "termSearchBoxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+    		if(isValid(component.searchCompId) && isValid(component.defaultVal)) {
+    			
+    			if(isEmpty(component.defaultVal.start) && isEmpty(component.defaultVal.end)) {
+    				C_POP.alert(`defaultVal 변수는 {start : "xxx", end : "yyy" } 형태로 정의 되어야 합니다.`);
+    			} else {
+    				if(isValid(component.defaultVal.start)) {
+    					$(`#<@compId>_searchArea #${component.searchCompId}_start`).val(component.defaultVal.start);	
+    				}
+    				if(isValid(component.defaultVal.end)) {
+    					$(`#<@compId>_searchArea #${component.searchCompId}_end`	).val(component.defaultVal.end);	
+    				}
+    				
+    				component.defaultVal.type = "range";
+        			<@compId>.searchBoxValueMap[component.searchCompRealId] = component.defaultVal;
+    			}
+    		} else {
+    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+    		}
+
+    		const fn = function() {
+   				let startVal 	= $(`#${component.searchCompId}_start`).val();
+   				let endVal 		= $(`#${component.searchCompId}_end`	).val();
+   				let searchBoxVal= undefined;
+   				
+   				let searchCompId 	= component.searchCompId;
+   				
+   	    		if(isValid(component.searchCompId) && ( isValid(startVal) || isValid(endVal) )) {
+   	    			searchBoxVal = { type : "range" }
+   	    			if(isValid(startVal	)) searchBoxVal.start 	= startVal;
+   	    			if(isValid(endVal	)) searchBoxVal.end 	= endVal;
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = searchBoxVal;
+   	    		} else {
+   	    			<@compId>.searchBoxValueMap[component.searchCompRealId] = undefined;
+   	    		}
+   	    		if(typeof component.onChange == "function") component.onChange(searchBoxVal, <@compId>);
+    		}
+    		$(`#${component.searchCompId}_start`	).unbind("change");
+   			$(`#${component.searchCompId}_start`	).bind	("change", fn);
+    		$(`#${component.searchCompId}_end`		).unbind("change");
+   			$(`#${component.searchCompId}_end`		).bind	("change", fn);
+		 }
+		,addTextSearchBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "baseTextComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+		}
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		
+		if(isEmpty(parm)) parm = {}
+		
+		<@compId>.parm = parm;
+		
+		let classStr = "col5 col5-md col10-sm display-h-end mb5";
+
+		if(isValid(parm.optionConfig)) {
+			if(isValid(parm.optionConfig.searchComponentList)) {
+				let searchComponentList = parm.optionConfig.searchComponentList;	
+				let compCnt 			= searchComponentList.length;
+				if( compCnt > 1) {
+					classStr 			= "col25 col5-md col10-sm display-h-end mb5";
+				}
+				$.each(searchComponentList, function(idx) {
+					let component 	= this;
+					component.classStr 	= classStr;
+					if(isEmpty(component.searchCompId)) {
+						component.searchCompRealId	= `component_${idx}`;
+						component.searchCompId 		= `<@compId>_${idx}`;
+					} else	{
+						component.searchCompRealId	= component.searchCompId;
+						component.searchCompId = `<@compId>_${component.searchCompId}`;
+					}
+					if		(component.type == "singleSelectBox"			) <@compId>.addSingleBox		(component);
+					else if	(component.type == "singleSelectBoxByFilter"	) <@compId>.addSingleBoxByFilter(component);
+					else if	(component.type == "multiSelectBox"				) <@compId>.addMultiBox			(component);
+					else if	(component.type == "date"			) {
+						component.classStr = "col25 col5-md col10-sm mb5 display-h-end";
+						<@compId>.dateSearchBox	(component);	
+					}
+					else if	(component.type == "term"			) {
+						component.classStr = "col50 col5-md col10-sm mb5 display-h-end";
+						<@compId>.addTermSearchBox	(component);	
+					}
+					else if	(component.type == "text"			) {
+						component.classStr = "col50 col5-md col10-sm mb5 display-h-end";
+						<@compId>.addTextSearchBox	(component);	
+					}
+				});
+			}
+		}
+	});
+</script>
+<component>
+
+
+	<!-- search filter box start -->
+	<div class="srch-card mt10">
+	    <div class="srch-card-inwrap">
+	        <div class="col9 col10-sm srch-card-form" id="<@compId>_searchArea">
+	        </div>
+		    <!-- singlebox component-wrap start -->
+			<script type="text/x-jsrender" id="singleboxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <select class="form-control form-control-sm col10-sm col10 mr20" id="{{:component.searchCompId}}">
+		            </select>    
+	            </div>
+			</script>    
+		    <!-- singlebox component-wrap end -->
+		    <!-- singleboxByFilter component-wrap start -->
+			<script type="text/x-jsrender" id="singleboxByFilterComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <component id="{{:component.searchCompId}}" class="col10"></component>    
+	            </div>
+			</script>    
+		    <!-- singleboxByFilter component-wrap end -->
+		    <!-- multibox component-wrap start -->
+			<script type="text/x-jsrender" id="multiboxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <component id="{{:component.searchCompId}}" class="col10"></component>    
+	            </div>
+			</script>    
+		    <!-- multibox component-wrap end -->
+
+
+		    <!-- date component-wrap start -->
+			<script type="text/x-jsrender" id="dateSearchBoxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+                    <input id="{{:component.searchCompId}}" type="date" class="form-control form-control-sm col10 calender-form" onEnter="<@compId>.search()">
+	            </div>
+			</script>    
+		    <!-- date component-wrap end -->
+
+		    <!-- date component-wrap start -->
+			<script type="text/x-jsrender" id="termSearchBoxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+                    <input id="{{:component.searchCompId}}_start" 	type="date" class="form-control form-control-sm col5 calender-form" onEnter="<@compId>.search()">
+                  ~ <input id="{{:component.searchCompId}}_end"		type="date" class="form-control form-control-sm col5 calender-form" onEnter="<@compId>.search()">
+	            </div>
+			</script>    
+		    <!-- date component-wrap end -->
+
+		    <!-- basetext component-wrap start -->
+			<script type="text/x-jsrender" id="baseTextComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">검색어</label>
+	                <input type="text" class="form-control form-control-sm col10" id="{{:component.searchCompId}}" value="<@component.defaultVal>" onEnter="<@compId>.search()">
+	            </div> 
+			</script>    
+		    <!-- basetext component-wrap end -->
+
+
+	        <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+	            <button class="srch-btn col10 mr10" type="button" onclick="<@compId>.search()">검 색</button>
+	        </div>
+	    </div>
+	</div>
+
+</component>

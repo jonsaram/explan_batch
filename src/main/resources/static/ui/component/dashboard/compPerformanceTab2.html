@@ -1,0 +1,1043 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    var <@compId> = {
+
+            BRAND_ID : ''
+           ,pageInit : () => {
+
+               var now = new Date();   // 현재 날짜 및 시간
+               var thisYear = now.getFullYear();   // 연도
+               var thisMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+               
+               var startDate = new Date();
+               startDate.setFullYear(startDate.getFullYear() - 5);// 현재년도의 과거 5년
+               var startYear = startDate.getFullYear();   // 연도
+               
+               const yearsArray = Array.from({ length: 6 }, (_, index) => {
+                     const year = startYear + index;
+                     return [year.toString(), year ];
+               });
+               
+               
+               const monthsArray = Array.from({ length: 12 }, (_, index) => {
+                     const months = ("0"+(1 + index) ).slice(-2);
+                     return [months.toString(), months ];
+               });
+
+               // 년 
+               var yearsArrayList = { data : yearsArray,targetId : "<@compId>_selectBoxYear"}
+               C_UICOM.makeSelectBox(yearsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_selectBoxYear", thisYear);
+               
+               // 월
+               var monthsArrayList = { data : monthsArray,targetId : "<@compId>_selectBoxMonth"}
+               C_UICOM.makeSelectBox(monthsArrayList, "single");
+               C_UICOM.setSingleBox("<@compId>_selectBoxMonth", thisMonth);
+               
+               // 권역
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "STORE_REGION");
+               var selectBoxRegionList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxRegion" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxRegionList, "single");
+               
+
+               // 슈퍼바이저
+               var regionList = C_COM.getBrandCodeList(<@compId>.BRAND_ID, "SUPERVISOR");
+               var selectBoxSupervisorList = { 
+                       defaultItem    : ["ALL", "전체"] 
+                      ,data : regionList
+                      ,targetId : "<@compId>_selectBoxSupervisor" 
+                  }
+               C_UICOM.makeSelectBox(selectBoxSupervisorList, "single");
+               
+               <@compId>.brandIdSet(<@compId>.BRAND_ID);
+               
+                
+            }
+
+           ,onChangeRegion : function(selectDom) {
+
+
+               var region  = C_UICOM.getData("<@compId>_selectBoxRegion");
+              
+               
+               let requestParm = {};
+               requestParm["brandId"]  = <@compId>.BRAND_ID ;
+               requestParm["region"]   = region ;
+               
+               
+               var parm1 = {
+                       queryId  : "dashboardCorPerformance.getStore"
+                      ,requestParm   : requestParm
+               }
+               
+               C_COM.requestQuery(parm1, function(resultData) {
+                   
+                   const DATA = resultData.data.map( item => [ item.CODE_ID, item.CODE_NM ]);
+                   
+                   var selectBoxStoreList = {
+                           defaultItem    : ["ALL", "전체"]
+                          ,data : DATA
+                          ,targetId : "<@compId>_selectBoxStore"
+                   }
+                   
+                   C_UICOM.makeSelectBox(selectBoxStoreList, "single");
+               });
+           }
+           
+           ,brandIdSet : (brandId) => {
+               <@compId>.BRAND_ID = brandId;
+
+               // 지점
+               let requestParm1 = {};
+               requestParm1["brandId"]  = <@compId>.BRAND_ID ;
+
+               var parm1 = {
+                       queryId  : "dashboardCorPerformance.getStore"
+                      ,requestParm   : requestParm1
+               }
+               
+               C_COM.requestQuery(parm1, function(resultData) {
+                   
+                   const DATA = resultData.data.map( item => [ item.CODE_ID, item.CODE_NM ]);
+                   
+                   var selectBoxStoreList = {
+                           defaultItem    : ["ALL", "전체"]
+                          ,data : DATA
+                          ,targetId : "<@compId>_selectBoxStore" 
+                   }
+                   
+                   C_UICOM.makeSelectBox(selectBoxStoreList, "single");
+                   <@compId>.searchBtn();
+               });
+               
+           }
+           /*========== 목표대비 달성률    목표대비 달성률 ==========*/
+           ,searchGoals1 : function(requestParm) {    
+               
+               let parm = {
+                    queryId        : "dashboardCorPerformance.getGoalAchieveRatio"
+                   ,requestParm    : requestParm
+               }
+               C_COM.requestQuery(parm, function(resultData) {
+                   for(var i =0; i < resultData.data.length; i++){
+                       if( resultData.data[i] == null){
+                           $('#<@compId>_goals1').text('No Data');
+                       }else{
+                           $('#<@compId>_goals1').text(resultData.data[i].ACHIEVE+'%');
+                       }
+                   }
+               });
+               
+               let parm1 = {
+                       queryId        : "dashboardCorPerformance.getTbRotationRatio"
+                      ,requestParm    : requestParm
+               }
+               C_COM.requestQuery(parm1, function(resultData) {
+                  for(var i =0; i < resultData.data.length; i++){
+                      
+                      if( resultData.data[i] == null){
+                          $('#<@compId>_goals2').text('No Data');
+                      }else{
+                          $('#<@compId>_goals2').text(resultData.data[i].TB_ROTATION_GOAL+'%');
+                      }
+                      
+                  }
+               });
+               
+
+               var year = requestParm["year"];
+               
+               let previousYear = Number(year)-1;
+               
+               requestParm["previousYear"]       = previousYear;
+               
+               let parm2 = {
+                       queryId        : "dashboardCorPerformance.getGrowthRate"
+                      ,requestParm    : requestParm
+               }
+               C_COM.requestQuery(parm2, function(resultData) {
+                  for(var i =0; i < resultData.data.length; i++){
+                      if( resultData.data[i] == null){
+                          $('#<@compId>_goals3').text('No Data');
+                      }else{
+                          if( resultData.data[i].GROWTH_RATE == 0){
+                              $('#<@compId>_goals3').text('No Data');
+                          }else{
+                              $('#<@compId>_goals3').text(resultData.data[i].GROWTH_RATE+'%');
+                          }
+                      }
+                  }
+               });
+               
+           }            
+           /*########## 목표대비 달성률    목표대비 달성률 #########s#*/
+          
+            /* 목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    */
+            ,searchChart11 : ( requestParm ) => {
+                 
+                 let parm = {
+                      queryId        : "dashboardCorPerformance.getGoalAchieveRatioRank"
+                     ,requestParm    : requestParm
+                 }
+                 C_COM.requestQuery(parm, function(resultData) {
+                     
+                     <@compId>.setChart11( resultData );
+                 });
+                
+            }
+
+
+            ,setChart11 : (resultData) =>{
+
+                let storeNmArry = [];
+                let achieveRatioArry = [];
+                
+                for(var i =0; i < resultData.data.length; i++){
+                    if( i < 5){
+                        storeNmArry[i]      = resultData.data[i].STORE_NM;
+                        achieveRatioArry[i] = resultData.data[i].ACHIEVE_RATIO;
+                    }                
+                }
+                
+                
+                $('#<@compId>_chart11').highcharts({
+
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                        type: 'bar'
+                       ,height:340 
+                    },
+
+                    title: {
+                        text: '목표대비 달성률'
+                    },
+                    colors: ['#3399ff', '#66ff00','#ffcc00', '#006600', '#ff0000'],
+
+                    xAxis: {
+                        categories: storeNmArry,
+                    },
+
+                    yAxis: {
+                        title: {
+                            text: ''
+                        }
+                    },
+
+                    tooltip: {
+                        valueSuffix: '%'
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            borderRadius: '50%',
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}%'
+                            },
+                            groupPadding: 0.1
+                        }
+                    },
+
+                    legend: {
+                        enabled: false
+                    },
+
+                    series: [{
+                        name: '',
+                        data: achieveRatioArry
+                    }]
+
+                });
+            }//setChart1
+            /* 목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    목표대비 달성률    */
+            
+            /* 목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    */
+            ,searchChart12 : ( requestParm  ) => {
+
+                 let parm = {
+                      queryId        : "dashboardCorPerformance.getTbRotationRatioRank"
+                     ,requestParm    : requestParm
+                 }
+                 C_COM.requestQuery(parm, function(resultData) {
+                     
+                     <@compId>.setChart12( resultData );
+                 });
+                
+            }
+            ,setChart12 : (resultData) =>{
+
+                let storeNmArry = [];
+                let tbRotationRatioArry = [];
+                
+                for(var i =0; i < resultData.data.length; i++){
+                    if( i < 5){
+                        storeNmArry[i]      = resultData.data[i].STORE_NM;
+                        tbRotationRatioArry[i] = resultData.data[i].TB_ROTATION_RATIO;
+                    }                
+                }
+                
+                $('#<@compId>_chart12').highcharts({
+
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                        type: 'bar'
+                       ,height:340 
+                    },
+
+
+                    title: {
+                        text: '목표대비 테이블 회전률'
+                    },
+                    colors: ['#3399ff', '#66ff00','#ffcc00', '#006600', '#ff0000'],
+
+                    xAxis: {
+                        categories: storeNmArry,
+                    },
+
+                    yAxis: {
+                        title: {
+                            text: ''
+                        }
+                    },
+
+                    tooltip: {
+                        valueSuffix: '%'
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            borderRadius: '50%',
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}%'
+                            },
+                            groupPadding: 0.1
+                        }
+                    },
+
+                    legend: {
+                        enabled: false
+                    },
+
+                    series: [{
+                        name: '',
+                        data: tbRotationRatioArry
+                    }]
+
+                });
+            }
+            /* 목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    목표대비 테이블 회전률    */
+            
+            /* 전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    */
+            ,searchPreMonth : ( requestParm ) => {
+                
+                var month = requestParm["month"] ;
+                var year  = requestParm["year"] ;
+                
+                let prevYear  ;
+                let prevMonth ;
+                
+                if( month == "01"){
+                    prevYear   = Number(year)-1;
+                    prevMonth  = "12";
+                }else{
+                    prevYear = year;
+                    prevMonth = String(Number(month)-1).padStart(2, "0"); 
+                }
+                
+                requestParm["prevYear"]   = prevYear;
+                requestParm["prevMonth"]  = prevMonth;
+
+                /* 달성률*/ 
+                let parm = {
+                     queryId        : "dashboardCorPerformance.getPreMonthAchieveRatio"
+                    ,requestParm    : requestParm
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                    for(var i =0; i < resultData.data.length; i++){
+                        if( resultData.data[i] == null){
+                            $('#<@compId>_preMonthAchieveRatio').text('No Data');
+                        }else{
+                            $('#<@compId>_preMonthAchieveRatio').text(resultData.data[i].PRE_MONTH_ACHIEVE_RATIO+'%');
+                        }
+                    }
+                });
+                
+                /* 테이블 회전률*/ 
+                let parm1 = {
+                     queryId        : "dashboardCorPerformance.getPreMonthTbRotationRatio"
+                    ,requestParm    : requestParm
+                }
+                C_COM.requestQuery(parm1, function(resultData) {
+                    for(var i =0; i < resultData.data.length; i++){
+                        if( resultData.data[i] == null){
+                            $('#<@compId>_preMonthTbRotationRatio').text('No Data');
+                        }else{
+                            $('#<@compId>_preMonthTbRotationRatio').text(resultData.data[i].TB_ROTATION_RATIO+'%');
+                        }
+                    }
+                });
+                
+                
+            }
+            /* 전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    전월대비 달성률,테이블 회전률    */
+            
+            /* 전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    */
+            ,searchChart21 : ( requestParm ) => {
+
+                 var month = requestParm["month"] ;
+                 var year  = requestParm["year"] ;
+                 
+                 let prevYear  ;
+                 let prevMonth ;
+                 
+                 if( month == "01"){
+                     prevYear   = Number(year)-1;
+                     prevMonth  = "12";
+                 }else{
+                     prevYear = year;
+                     prevMonth = String(Number(month)-1).padStart(2, "0"); 
+                 }
+                 
+                 requestParm["prevYear"]   = prevYear;
+                 requestParm["prevMonth"]  = prevMonth;
+                 
+                 let parm = {
+                      queryId        : "dashboardCorPerformance.getPreMonthAchieveRatioRank"
+                     ,requestParm    : requestParm
+                 }
+                 C_COM.requestQuery(parm, function(resultData) {
+                     <@compId>.setChart21( resultData );
+                 });
+                
+            }
+
+
+            ,setChart21 : (resultData) =>{
+
+                let storeNmArry = [];
+                let valueArry   = [];
+                
+                for(var i =0; i < resultData.data.length; i++){
+                    if( i < 5){
+                        storeNmArry[i]   = resultData.data[i].STORE_NM;
+                        valueArry[i]     = resultData.data[i].PRE_MONTH_ACHIEVE_RATIO;
+                    }                
+                }
+             
+                $('#<@compId>_chart21').highcharts({
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                        type: 'bar'
+                       ,height:340 
+                    },
+
+
+                    title: {
+                        text: '전월대비 달성률'
+                    },
+
+                    xAxis: {
+                        categories: storeNmArry,
+                    },
+
+                    yAxis: {
+                        title: {
+                            text: ''
+                        }
+                    },
+
+                    tooltip: {
+                        valueSuffix: '%'
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            borderRadius: '50%',
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}%'
+                            },
+                            groupPadding: 0.1
+                        }
+                    },
+
+                    legend: {
+                        enabled: false
+                    },
+
+                    series: [{
+                        name: '',
+                        data: valueArry
+                    }]
+
+                });
+            }
+            /* 전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    전월대비 달성률 챠트    */
+            
+            /* 전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    */
+            ,searchChart22 : ( requestParm) => {
+                 
+                 let prevYear  ;
+                 let prevMonth ;
+                 
+                 var year  = requestParm["year"];
+                 var month = requestParm["month"]; 
+                 
+                 if( month == "01"){
+                     prevYear   = Number(year)-1;
+                     prevMonth  = "12";
+                 }else{
+                     prevYear = year;
+                     prevMonth = String(Number(month)-1).padStart(2, "0"); 
+                 }
+                 
+                 requestParm["prevYear"]   = prevYear;
+                 requestParm["prevMonth"]  = prevMonth;           
+                 
+
+                 let parm = {
+                      queryId        : "dashboardCorPerformance.getPreMonthTbRotationRatioRank"
+                     ,requestParm    : requestParm
+                 }
+                 C_COM.requestQuery(parm, function(resultData) {
+                     
+                     <@compId>.setChart22( resultData );
+                 });
+                
+            }
+
+
+            ,setChart22 : (resultData) =>{
+
+                let storeNmArry = [];
+                let valueArry   = [];
+                
+                for(var i =0; i < resultData.data.length; i++){
+                    if( i < 5){
+                        storeNmArry[i]         = resultData.data[i].STORE_NM;
+                        valueArry[i] = resultData.data[i].TB_ROTATION_RATIO;
+                    }                
+                }
+                
+                $('#<@compId>_chart22').highcharts({
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                        type: 'bar'
+                       ,height:340 
+                    },
+
+
+                    title: {
+                        text: '전월대비 테이블 회전률'
+                    },
+
+                    xAxis: {
+                        categories: storeNmArry,
+                    },
+
+                    yAxis: {
+                        title: {
+                            text: ''
+                        }
+                    },
+
+                    tooltip: {
+                        valueSuffix: '%'
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            borderRadius: '50%',
+                            dataLabels: {
+                                enabled: true,
+                                format: '{y}%'
+                            },
+                            groupPadding: 0.1
+                        }
+                    },
+
+                    legend: {
+                        enabled: false
+                    },
+
+                    series: [{
+                        name: '',
+                        data: valueArry
+                    }]
+
+                });
+            }
+            /* 전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    전월대비 테이블회전률    */
+            
+            /* 순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    */
+            ,searchChart31 : ( requestParm ) => {
+            
+                var startYear  = requestParm["year"];
+                var startMonth = requestParm["month"]; 
+                                
+                requestParm["startDate"]   = startYear+"-"+startMonth+"-01";
+                
+                let parm = {
+                     queryId        : "dashboardCorPerformance.SalesAndGoalSalesChartList"
+                    ,requestParm    : requestParm
+                }
+                C_COM.requestQuery(parm, function(resultData) {
+                    
+                    <@compId>.setChart31( resultData );
+                });
+                
+            }
+            ,setChart31 : (resultData) =>{
+
+                let categoriesList = [];
+                let salesList      = [];
+                let goalSalesList  = [];
+                
+                for (var i=0; i< resultData.data.length; i++){
+                    categoriesList[i] = resultData.data[i].STORE_NM;
+                    salesList[i]      = resultData.data[i].SALES_MONTH;
+                    goalSalesList[i]  = resultData.data[i].GOAL_MONTH;
+                }
+                
+                $("#<@compId>_chart31").highcharts({
+                     credits: {enabled: false},// 하이차트 워터마크 삭제
+                     chart: {
+                            type: 'column'
+                           ,height:340  
+                        },
+                        title: {
+                            text: '',
+                            align: 'left'
+                        },
+                        subtitle: {
+                            text: '',
+                            align: 'left'
+                        },
+                        colors: ['#66ff00', '#0099ff'],
+                        xAxis: {
+                            categories: categoriesList,
+                            crosshair: true,
+                            accessibility: {
+                                description: 'Countries'
+                            }
+                        },
+                        yAxis: {
+                            labels: {
+                                formatter: function () {
+                                    // 만단위로 표시
+                                    if (this.value >= 1000000) {
+                                        return (this.value / 1000000) + '백억';
+                                    } else if (this.value >= 1000) {
+                                        return (this.value / 1000) + '천만';
+                                    }
+                                    return this.value;
+                                },
+                                style: {
+                                    color: '#8A8C92',
+                                    fontFamily: 'Noto Sans KR',
+                                    fontSize: '11px'
+                                }
+                            },
+                            min: 0,
+                            title: {
+                                text: ''
+                            }
+                        },
+                        tooltip: {
+                            valueSuffix: '',
+                            formatter: function() {
+                                return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}`;
+                            }
+                        },
+                        plotOptions: {
+                            column: {
+                                pointPadding: 0.2,
+                                borderWidth: 0
+                            }
+                        },
+                        series: [
+                            {
+                                name: '순매출액',
+                                data: salesList
+                            },
+                            {
+                                name: '목표금액',
+                                data: goalSalesList
+                            }
+                        ]
+                });
+            }//setChart31
+            /* 순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    순매출액,목표금액    */
+            
+            /* 순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    */
+            ,searchChart32 : ( requestParm ) => {
+
+                //var year  = requestParm["startYear"];
+                //var month = requestParm["startMonth"]; 
+                
+                var year  = requestParm["year"];
+                var month = requestParm["month"]; 
+                
+                
+                
+                let prevYear  ;
+                let prevMonth ;
+                
+                if( month == "01"){
+                    prevYear   = Number(year)-1;
+                    prevMonth  = "12";
+                }else{
+                    prevYear = year;
+                    prevMonth = String(Number(month)-1).padStart(2, "0"); 
+                }
+                        
+                requestParm["year"]       = year;
+                requestParm["month"]      = month; 
+                requestParm["prevYear"]   = prevYear;
+                requestParm["prevMonth"]  = prevMonth;
+                
+                var parm = {
+                        queryId  : "dashboardCorPerformance.SalesAndPreMonthSales"
+                       ,requestParm   : requestParm
+                }
+                
+                C_COM.requestQuery(parm, function(resultData) {
+                    <@compId>.setChart32( resultData );
+
+                });
+            }
+
+            ,setChart32 : (resultData) =>{
+
+                let categoriesList   = [];
+                let netSalesList     = [];
+                let netSalesPreList  = [];
+                
+                for (var i=0; i< resultData.data.length; i++){
+                    categoriesList[i] = resultData.data[i].STORE_NM;
+                    netSalesList[i]      = resultData.data[i].NET_SALES;
+                    netSalesPreList[i]  = resultData.data[i].NET_SALES_PRE;
+                }
+                
+                $("#<@compId>_chart32").highcharts({
+                    credits: {enabled: false},// 하이차트 워터마크 삭제
+                    chart: {
+                           type: 'column'
+                          ,height:340
+                       },
+                       title: {
+                           text: '',
+                           align: 'left'
+                       },
+                       subtitle: {
+                           text: '',
+                           align: 'left'
+                       },
+                       colors: ['#66ff00', '#0099ff'],
+                       xAxis: {
+                           categories: categoriesList,
+                           crosshair: true,
+                           accessibility: {
+                               description: 'Countries'
+                           }
+                       },
+                       yAxis: {
+                           labels: {
+                               formatter: function () {
+                                   // 만단위로 표시
+                                   if (this.value >= 1000000) {
+                                       return (this.value / 1000000) + '백억';
+                                   } else if (this.value >= 1000) {
+                                       return (this.value / 1000) + '천만';
+                                   }
+                                   return this.value;
+                               },
+                               style: {
+                                   color: '#8A8C92',
+                                   fontFamily: 'Noto Sans KR',
+                                   fontSize: '11px'
+                               }
+                           },
+                           min: 0,
+                           title: {
+                               text: ''
+                           }
+                       },
+                       tooltip: {
+                           valueSuffix: '',
+                           formatter: function() {
+                               return `<b>${this.series.name}</b>: ${this.y.toLocaleString('en-US')}`;
+                           }
+                       },
+                       plotOptions: {
+                           column: {
+                               pointPadding: 0.2,
+                               borderWidth: 0
+                           }
+                       },
+                       series: [
+                           {
+                               name: '순매출액',
+                               data: netSalesList
+                           },
+                           {
+                               name: '전월금액',
+                               data: netSalesPreList
+                           }
+                       ]
+                });
+            }//setChart31
+            /* 순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    순매출액,전월금액    */
+            
+            ,searchBtn : function(selectDom) {
+        
+                var brandId     = <@compId>.BRAND_ID;
+    
+                let year        = C_UICOM.getData("<@compId>_selectBoxYear");
+                let month       = C_UICOM.getData('<@compId>_selectBoxMonth');
+                let region      = C_UICOM.getData('<@compId>_selectBoxRegion');
+                let store       = C_UICOM.getData('<@compId>_selectBoxStore');
+                let supervisor  = C_UICOM.getData('<@compId>_selectBoxSupervisor');
+                
+                if(brandId == undefined){
+                    C_POP.alert("브랜드가 없습니다.");
+                    return;
+                }
+                if(brandId == undefined){
+                    C_POP.alert("브랜드가 없습니다.");
+                    return;
+                }
+                
+                let requestParm = {};
+                requestParm["year"]        = year;
+                requestParm["month"]       = month;
+                requestParm["region"]      = region;
+                requestParm["store"]       = store;
+                requestParm["supervisor"]  = supervisor;
+                requestParm["brandId"]     = brandId;
+                
+                <@compId>.searchChart11(requestParm);
+                
+                <@compId>.searchChart12(requestParm);
+                <@compId>.searchChart21(requestParm);
+                <@compId>.searchChart22(requestParm);
+                
+                <@compId>.searchChart31( requestParm );
+                <@compId>.searchChart32( requestParm );
+            }
+
+            ,searchBtn2 : function(selectDom) {
+
+                var brandId     = <@compId>.BRAND_ID;
+
+                let startYear      = C_UICOM.getData("<@compId>_selectStartBoxYear");
+                let startMonth     = C_UICOM.getData('<@compId>_selectStartBoxMonth');
+                
+                if(brandId == undefined){
+                    C_POP.alert("브랜드가 없습니다.");
+                    return;
+                }
+                let requestParm = {};
+                requestParm["startYear"]      = startYear;
+                requestParm["startMonth"]     = startMonth;
+                requestParm["brandId"]        = brandId;
+                
+                <@compId>.searchChart31( requestParm );
+                <@compId>.searchChart32( requestParm );
+            }
+        }// pageInit
+         
+        
+        // Component Load가 완료된후 실행 된다.
+        C_COMP.onLoadComp("<@compId>", function(parm) {
+    
+    
+            <@compId>.BRAND_ID = parm.brandId;
+            
+            if(isEmpty(<@compId>.BRAND_ID)){
+                <@compId>.BRAND_ID = G_VAL.session.BRAND_ID;
+            } 
+            
+            <@compId>.pageInit();
+            //<@compId>.brandIdSet(<@compId>.BRAND_ID);
+            
+    		// 20250211 
+    		// code by 위성열
+    		// Main Widget 처리
+    		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+    			C_WIDGET.setWidgetState("<@compId>", widgetList);
+    		});
+    		
+            
+            
+        });
+</script>
+<component>
+            
+
+    <!-- 기업개요​ area start -->
+    <div class="pop_tab_content_box">
+
+        <!-- title start -->
+        <div class="mt10 mb5 mt30 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+            <div class="biz-subTitle">
+                월별 매출 달성률
+                <div class="ml20">
+                    <label class="star-wrap">
+                        <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                        <span class="star"></span>
+                    </label>
+                     <!-- 
+                    <button class="msg-edit" onClick="<@compId>.generalCompareEdit()"></button>
+                     -->
+                </div>
+            </div>
+        </div>
+        <!-- title end -->
+        <!-- search filter box start -->
+        <div class="srch-card mt10">
+        
+            <div class="srch-card-inwrap">
+                <div class="col9 col10-sm srch-card-form">
+                
+                    <div class="col3 col5-md col10-sm display-h-end mb5">
+                        <select class="form-control form-control-sm col4" id="<@compId>_selectBoxYear" >
+                        </select>&nbsp;&nbsp;
+                        <select class="form-control form-control-sm col3" id="<@compId>_selectBoxMonth" >
+                        </select>
+                        
+                    </div>
+                    <div class="col3 col5-md col10-sm display-h-end mb5">
+                        <label class="src-title">권역</label>
+                        <select class="form-control form-control-sm col4" id="<@compId>_selectBoxRegion"  onChange="<@compId>.onChangeRegion(this)"></select>&nbsp;&nbsp;&nbsp;&nbsp;
+                        <select class="form-control form-control-sm col6" id="<@compId>_selectBoxStore" ></select>
+                    </div> 
+                    <div class="col3 col5-md col10-sm display-h-end mb5">
+                        <label class="src-title">슈퍼바이저</label>
+                        <select class="form-control form-control-sm col4" id="<@compId>_selectBoxSupervisor"> 
+                        </select>
+                    </div>
+                </div>
+                <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+                    <button class="srch-btn col10" type="button" onclick="<@compId>.searchBtn()">검 색</button>
+                </div>
+            </div>
+        </div>
+        <!-- search filter box end -->
+        <div class="tab-cnt-inwrap mt30"> 
+           
+          <!-- card 01 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">목표대비 달성률</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart11" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 01 end -->
+           
+          <!-- card 02 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">목표대비 테이블 회전률</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart12" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 02 end -->
+          
+          <!-- card 03 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">전월대비 달성률</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart21" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 03 end -->
+           
+          <!-- card 04 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">전월대비 테이블 회전률</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart22" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 04 end -->
+          
+        </div>  
+        
+        <div class="tab-cnt-inwrap mt30"> 
+           
+          <!-- card 05 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">매출 분석(단위: 만원)</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart31" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 05 end -->
+           
+          <!-- card 06 start -->
+          <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+            <div class="card-inwrap">
+              <!-- title start -->
+              <div class="card-tit-wrap">
+                <div class="card-tit">매출 분석(단위: 만원)</div>
+              </div>
+              <!-- title end -->
+              <!-- content area start -->
+              <div class="card-cnt-wrap p20">
+                <div id="<@compId>_chart32" width="100%" height="280px"></div>
+              </div>
+              <!-- content area end -->
+            </div>
+          </div>
+          <!-- card 06 end -->
+          
+        </div>  
+    </div>  
+
+</component>

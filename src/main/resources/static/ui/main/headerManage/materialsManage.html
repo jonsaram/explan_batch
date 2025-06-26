@@ -1,0 +1,47 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+		
+		// 상단 메뉴Path처리
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+
+		let tabList = [
+		   {	 title 	: "본사 식자재 관리", compId : "compFoodMaterialsManage"	, compPageId : "component_headerManage_compFoodMaterialsManage"		, parm : {}, callback : function() {} }
+		  ,{	 title 	: "물류 회사 관리"	, compId : "compMaterialCompanyManage"	, compPageId : "component_headerManage_compMaterialCompanyManage"	, parm : {}, callback : function() {} }
+		  ,{	 title 	: "물류 식자재 관리", compId : "compCpFoodMaterialsManage"	, compPageId : "component_storeManage_compCpFoodMaterialsManage"	, parm : {}, callback : function() {} }
+		  ,{	 title 	: "물류 매출 관리"	, compId : "compMaterialsSalesManage"	, compPageId : "component_headerManage_compMaterialsSalesManage"	, parm : {}, callback : function() {} }
+		]
+		C_TAB.makeTab("<@pageId>", "tabComponent", tabList);
+
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+
+    <!-- tab content-wrap start -->
+    <div class="tab-allwrap" id="tabComponent"> 
+    </div>
+    
+	<!-- table end -->
+
+</page-component>

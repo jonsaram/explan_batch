@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="custDashboard">
+
+	<cache />
+
+	<!--
+	기업 대시보드 
+	 --> 
+	<select id="getCustConsultingList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	custDashboard.getCustConsultingList
+			기업자문보고서 리스트  
+		*/
+		SELECT ROWNUM AS RN 
+		, CS.BUYER_CONSULTING_ID
+		, CS.BUYER_ID
+		, CS.BUYER_NM
+		, CS.CONSULTING_ID
+		, CS.CONSULTING_NM 
+		, CS.REPORT_YEAR_MONTH
+		, C.USER_ID
+		, TO_CHAR( TO_DATE( CS.REPORT_YEAR_MONTH , 'YYYY-MM'), 'YYYY')	AS REPORT_YEAR 
+		, TO_CHAR( TO_DATE( CS.REPORT_YEAR_MONTH , 'YYYY-MM'), 'MM') 	AS REPORT_MONTH 
+		, NVL((SELECT DECODE(STATE,'REJECT',GET_CODE_NM('APPROVAL_USER_PROC', 'REJECT'),null) FROM ${dbHdr}STAR.TBL_EXP_APPROVAL WHERE RELATION_ID = CS.BUYER_CONSULTING_ID ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROWS ONLY),'-') AS IS_REJECT
+		, (SELECT GET_USER_NM(USER_ID) FROM ${dbHdr}STAR.TBL_EXP_APPROVAL WHERE APPROVAL_ID = CS.BUYER_CONSULTING_ID FETCH FIRST 1 ROWS ONLY) AS REPORTER_NM
+		, NVL( CS.APPROVAL_STATE , '-' ) AS APPROVAL_STATE
+		, NVL( GET_CODE_NM('APPROVAL_USER_PROC', CS.APPROVAL_STATE),'-') APPROVAL_STATE_NM
+		, CS.DEL_YN
+		, CS.UPDATE_USER
+		, GET_USER_NM(CS.UPDATE_USER) USER_NM
+		, TO_CHAR( CS.UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE
+		, C.CONTRACT_ID 
+		, TO_CHAR( C.CONTRACT_DATE, 'YYYY-MM-DD') AS CONTRACT_DATE
+		, C.TOTAL_COST 
+		, CS.CONTENT
+		,(  
+               SELECT GET_CODE_NM('APPROVAL_USER_PROC', B.STATE) FROM ${dbHdr}STAR.TBL_EXP_APPROVAL B WHERE CS.BUYER_CONSULTING_ID = B.RELATION_ID
+               ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+          ) AS APP_STATE_NM
+		FROM TBL_EXP_BUYER_CONSULTING CS 
+		,TBL_EXP_CONTRACT C
+		WHERE 1=1
+		AND CS.CONTRACT_ID = C.CONTRACT_ID
+		AND C.CONTRACT_TYPE = 'MONTHLY'
+		AND CS.DEL_YN = 'N'
+		<!-- 데이터가 안나와서 임시 주석. 
+		AND (
+					CS.UPDATE_USER = #{sessionVo.userId	}
+				OR  #{sessionVo.userId	} IN (SELECT USER_ID FROM TBL_EXP_CONTRACT_MEMBER WHERE CONTRACT_ID = CS.CONTRACT_ID)
+				OR  CS.BUYER_ID = #{sessionVo.userId	}
+			)
+		 -->	
+		<include refid="common.gridOptionWhere"/>
+		/*결재완료인경우만*/
+		AND  'COMPLETE'	 = (  
+               SELECT B.STATE FROM ${dbHdr}STAR.TBL_EXP_APPROVAL B WHERE CS.BUYER_CONSULTING_ID = B.RELATION_ID
+               ORDER BY APPROVAL_DATE DESC FETCH FIRST 1 ROW ONLY
+          )
+		ORDER BY CS.BUYER_NM, CS.REPORT_YEAR_MONTH, USER_NM	
+	</select>
+	
+	<select id="getConsultingList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	custDashboard.getConsultingList
+			고객 계약 상품 리스트 조회  ( 월자문 )
+		*/
+		SELECT DISTINCT C.CONTRACT_ID , CT.CONSULTING_ID , CT.CONSULTING_NM 
+		,B.BUYER_ID, B.BUYER_NM
+		FROM TBL_EXP_CONTRACT C
+		,TBL_EXP_CONSULTING CT
+		,TBL_EXP_BUYER B
+		WHERE 1=1 
+		AND C.CONSULTING_ID = CT.CONSULTING_ID 
+		AND C.CONTRACT_TYPE ='MONTHLY'
+		AND C.BUYER_ID = #{BUYER_ID}
+		AND C.BUYER_ID = B.BUYER_ID 
+		AND C.USE_YN = 'Y' AND C.DEL_YN = 'N'
+		AND B.USE_YN = 'Y' AND B.DEL_YN = 'N'
+		ORDER BY CONSULTING_NM
+	</select>
+	
+	<select id="canRegistProject" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	custDashboard.canRegistProject
+			기업자문보고서 등록 가능한 실적 여부  ( 월자문 )
+		*/
+		SELECT 
+		COUNT(*) CNT 
+		FROM TBL_EXP_RESULT R , TBL_EXP_CONTRACT C , TBL_EXP_CONSULTING CST
+		WHERE 1=1
+		AND R.CONTRACT_ID = C.CONTRACT_ID AND C.CONTRACT_TYPE = 'MONTHLY'
+		AND C.USE_YN = 'Y' AND C.DEL_YN = 'N'
+		AND R.USE_YN = 'Y' AND R.DEL_YN = 'N'
+		AND TO_CHAR(R.RESULT_DATE,'YYYY-MM') = #{REPORT_YEAR_MONTH}
+		AND CST.CONSULTING_ID = C.CONSULTING_ID 
+		AND CST.CONSULTING_ID = #{CONSULTING_ID}
+		AND C.BUYER_ID = #{BUYER_ID}
+	</select>
+	
+	<update id="registProject">
+		/*	custDashboard.registProject
+			기업자문보고서 등록/수정  
+		*/
+		MERGE INTO TBL_EXP_BUYER_CONSULTING T
+		USING (
+		  SELECT #{BUYER_CONSULTING_ID}							AS BUYER_CONSULTING_ID
+		  FROM DUAL
+		) S
+		ON (
+			T.BUYER_CONSULTING_ID	= S.BUYER_CONSULTING_ID 
+		)
+		WHEN MATCHED THEN
+			UPDATE SET
+				 T.BUYER_ID 				= #{BUYER_ID}
+				,T.BUYER_NM 				= #{BUYER_NM}
+				,T.CONSULTING_ID 			= #{CONSULTING_ID}
+				,T.CONSULTING_NM 			= ( SELECT CONSULTING_NM FROM TBL_EXP_CONSULTING WHERE CONSULTING_ID =#{CONSULTING_ID} )
+				,T.CONTRACT_ID 				= #{CONTRACT_ID}
+				,T.REPORT_YEAR_MONTH 		= #{REPORT_YEAR_MONTH}
+				<if test=" APPROVAL_STATE != null and !APPROVAL_STATE.equals('')">
+				,T.APPROVAL_STATE 			= #{APPROVAL_STATE}
+				</if>
+				,T.UPDATE_USER				= #{sessionVo.userId	}
+				,T.UPDATE_DATE				= GET_KRDT(SYSDATE)
+				,T.CONTENT					= #{CONTENT}
+		WHEN NOT MATCHED THEN 
+			INSERT ( 
+				 BUYER_CONSULTING_ID
+				, BUYER_ID
+				, BUYER_NM
+				, CONSULTING_ID
+				, CONSULTING_NM
+				, REPORT_YEAR_MONTH
+				, CONTRACT_ID
+				, DEL_YN
+				, UPDATE_USER
+				, UPDATE_DATE
+				, CONTENT
+			) VALUES ( 
+				 #{BUYER_CONSULTING_ID	}
+				,#{BUYER_ID				}
+				,#{BUYER_NM				}
+				,#{CONSULTING_ID		}
+				,( SELECT CONSULTING_NM FROM TBL_EXP_CONSULTING WHERE CONSULTING_ID =#{CONSULTING_ID} )
+				,#{REPORT_YEAR_MONTH	}
+				,#{CONTRACT_ID			}
+				,'N' 
+	   			,#{sessionVo.userId		}
+	   			,GET_KRDT(SYSDATE)
+				,#{CONTENT	}
+			)
+	</update>	
+	
+	<update id="deleteBuyerConsulting">
+		/*	custDashboard.deleteBuyerConsulting
+			기업자문보고서 삭제
+		*/
+		UPDATE TBL_EXP_BUYER_CONSULTING
+		SET DEL_YN = 'Y'
+		WHERE	BUYER_CONSULTING_ID = #{BUYER_CONSULTING_ID	}
+	</update>	
+	
+	<update id="updateBuyerConsultingRejectAppState">
+		/*	custDashboard.updateBuyerConsultingRejectAppState
+			기업자문보고서 결재 반려
+		*/
+		DECLARE
+		    v_uuid VARCHAR2(16);
+		BEGIN
+	    /* UUID 생성 및 변수에 할당 */
+	    SELECT SUBSTR(REPLACE(RAWTOHEX(SYS_GUID()), '-', ''), 1, 16) 
+	    INTO v_uuid
+	    FROM DUAL; 
+		
+		UPDATE TBL_EXP_APPROVAL
+		SET APPROVAL_ID =v_uuid
+		WHERE APPROVAL_ID = #{BUYER_CONSULTING_ID	}
+		;
+		
+		UPDATE TBL_EXP_APPROVAL_USER
+		SET APPROVAL_ID =v_uuid
+		WHERE APPROVAL_ID = #{BUYER_CONSULTING_ID	}
+		;
+		 
+		UPDATE TBL_EXP_BUYER_CONSULTING
+		SET APPROVAL_STATE = #{APPROVAL_STATE}
+		WHERE	BUYER_CONSULTING_ID = #{BUYER_CONSULTING_ID	}
+		;
+		END ;		
+	</update>
+	
+	<update id="updateBuyerConsultingAppState">
+		/*	custDashboard.updateBuyerConsultingAppState
+			기업자문보고서 계약 상태 변경 결재 후처리 임.
+		*/
+		DECLARE
+        	v_result_id TBL_EXP_PAYMENT.RESULT_ID%TYPE;
+		BEGIN 
+	
+			UPDATE TBL_EXP_BUYER_CONSULTING
+			SET APPROVAL_STATE = #{APPROVAL_STATE}
+			WHERE	BUYER_CONSULTING_ID = #{BUYER_CONSULTING_ID	} 
+			;
+			
+			/* 보고 년월일이 08월이면, 실적테이블에서 08월 입력분에 대해서, 실적테이블에 Y로 친다. */ 
+		    BEGIN
+		        SELECT DISTINCT RESULT_ID
+		        INTO v_result_id
+		        FROM (
+		            SELECT 
+		            R.* 
+		            FROM TBL_EXP_BUYER_CONSULTING CS, TBL_EXP_RESULT R , TBL_EXP_CONTRACT C
+		            WHERE BUYER_CONSULTING_ID = #{BUYER_CONSULTING_ID	}
+		            AND CS.CONTRACT_ID = R.CONTRACT_ID
+		            AND CS.CONTRACT_ID = C.CONTRACT_ID AND C.CONTRACT_TYPE = 'MONTHLY'
+		            AND R.USE_YN = 'Y' AND R.DEL_YN = 'N'
+		            AND TO_CHAR(R.RESULT_DATE, 'YYYY-MM') = CS.REPORT_YEAR_MONTH
+		        );
+		    EXCEPTION
+		        WHEN NO_DATA_FOUND THEN
+		            /* 예외 처리를 통해 오류 발생 시 메시지를 남김 */
+		            DBMS_OUTPUT.PUT_LINE('RESULT ID 가 없습니다. ');
+		        WHEN TOO_MANY_ROWS THEN
+		            DBMS_OUTPUT.PUT_LINE('RESULT_ID 가 여러개 발견되었습니다.');
+		        WHEN OTHERS THEN
+		            DBMS_OUTPUT.PUT_LINE('Unexpected error: ' || SQLERRM);
+		    END;
+
+			
+		    /* 결과 ID가 존재할 경우에만 업데이트 */
+		    IF v_result_id IS NOT NULL THEN
+		        BEGIN
+		            UPDATE TBL_EXP_RESULT
+		            SET IS_PAYABLE = 'Y'
+		            WHERE RESULT_ID = v_result_id;
+		        EXCEPTION
+		            WHEN OTHERS THEN
+		                DBMS_OUTPUT.PUT_LINE('Unexpected error while updating TBL_EXP_RESULT: ' || SQLERRM);
+		        END;
+		    ELSE
+		        DBMS_OUTPUT.PUT_LINE(' v_result_id 가 NULL입니다.');
+		    END IF;
+		
+		END ;	
+		
+	</update>
+	
+	<update id="updateProject">
+		/*	custDashboard.updateProject
+			기업자문보고서 상태값 Update
+		*/
+		
+		UPDATE TBL_EXP_BUYER_CONSULTING
+			SET APPROVAL_STATE = #{PROCESS_STATE}
+		WHERE	BUYER_CONSULTING_ID = #{BUYER_CONSULTING_ID	}
+	</update>
+	
+</mapper>

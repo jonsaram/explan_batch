@@ -1,0 +1,53 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 brandId	: G_VAL.session.BRAND_ID
+		,loadComponent : function(parm) {
+			
+			let tparm = {
+				 tableName 		: "TBL_EXP_ROLE"
+				,valueColumn	: "ROLE_ID"
+				,nameColumn		: "ROLE_NM"
+				,orderColumnList: ["SORT_ORDER"]
+				,filterMap		: {}
+			} 
+			let roleList 		= C_COM.makeCodeListFromTable(tparm);
+			let usetTypeList 	= [["HEADER","본사"], ["STORE","가맹점"], ["ADMIN","운영자"]];
+			
+			let sendParm = {
+				gridParm : {
+					 requestQuery : {
+						 queryId : "system.getAuthList"
+						,requestParm : {}
+					 }
+					,tableName		: "TBL_EXP_AUTH"
+					,columnMap 		: {
+						 "USER_ID" 		: { headerText : "사용자ID"		}
+						,"ROLE_ID" 		: { headerText : "Role ID"		, columnType : "selectbox", selectBoxCodeList : roleList }
+						,"USER_TYPE" 	: { headerText : "사용자Type"	, columnType : "selectbox", selectBoxCodeList : usetTypeList }
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["USER_ID", "ROLE_ID"]
+					,searchColumnList	: ["A.USER_ID", "A.ROLE_ID", "ROLE_NM", "USER_TYPE"]		
+					,orderColumnList 	: ["A.USER_ID", "A.ROLE_ID"]		
+				 }
+				//,noEdit : "Y"
+			}
+			C_COMP.import("brandMenuManageGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="brandMenuManageGrid"></compnent>    
+    <!-- table area end -->
+</page-component>

@@ -1,0 +1,210 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 parm					: {}	
+		,selectBoxWhereColumn 	: ""
+		,selectBoxValue			: ""
+		,openEdit 				: function() {
+			
+			if(typeof <@compId>.parm.callbackEditButton == "function") {
+				<@compId>.parm.callbackEditButton();
+			} else {
+				
+				let gridParm = <@compId>.parm.gridParm;
+				
+				gridParm.readOnly = "N";
+			
+				let parm = {
+					 gridParm 	: <@compId>.parm.gridParm	
+					,popupTitle : `${<@compId>.menuInfo.MENU_NM} 편집`
+					,size 		: "MAX"
+				}
+				C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				//C_POP.open("popup_common_multiTableEditPopup", parm, function(retData){
+					if(isValid(retData)) {
+						if(retData.refresh == "Y") {
+							<@compId>.reload();
+						}
+					}
+				});
+			}
+		 }
+		,reload : function(updateParm) {
+			
+			if(isEmpty(updateParm)) updateParm= {};
+			
+			updateParm["searchValue"] = $("#<@compId> #searchValue").val();
+			
+			if(isValid(<@compId>.selectBoxWhereColumn)) {
+				let selectValue = $("#<@compId>_selectBox").find("option:selected").attr("value");
+				
+				if(isEmpty(<@compId>.parm.gridParm.searchWhereMap)) <@compId>.parm.gridParm.searchWhereMap = {};
+				
+				updateParm.searchWhereMap = <@compId>.parm.gridParm.searchWhereMap;
+				
+				updateParm.searchWhereMap[<@compId>.selectBoxWhereColumn] = selectValue; 
+			}
+			// System 특성상 Component내의 Component정의는 상위 객체(Page 또는 Popup)의 하위 객체로 등록되기 때문에
+			// Component호출시 <@parentId>를 사용한다.
+			<@parentId>["<@compId>_editor"].reload(updateParm);
+			
+		 }
+		,getGridInstance : function() {
+			return <@parentId>["<@compId>_editor"].getGridInstance();
+		 }
+		,makeSelectBoxForSearch : function(config) {
+
+			if(isValid(config.title)) {
+				$("#<@compId>_selectBoxTitle").html(config.title);
+			}
+			if(isValid(config.optionList)) {
+	    		var singleboxList = { 
+	   				 data 			: config.optionList
+	   			 	,targetId 		: "<@compId>_selectBox"
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "single");
+	    		
+	    		if(isValid(config.selectVal)) {
+	    			C_UICOM.setSingleBox("<@compId>_selectBox", config.selectVal);
+	    		}
+			}
+		 }
+		,changeSelectBox : function(selectDom) {
+			
+			var selectBoxValue = C_UICOM.getData("<@compId>_selectBox");
+			
+			<@compId>.selectBoxValue = selectBoxValue;
+			
+			let whereColumn 	= <@compId>.parm.optionConfig.selectBoxForSearchConfig.whereColumn;
+			let targetColumn 	= <@compId>.parm.optionConfig.selectBoxForSearchConfig.targetColumn;
+			let columnMap		= <@compId>.parm.gridParm.columnMap;
+			let columnMapBackup	= <@compId>.parmBackup.gridParm.columnMap;
+			
+			if(isEmpty(targetColumn)) {
+				let tarry = whereColumn.split(".");
+				if(tarry.length > 1) targetColumn = tarry[1];
+			}
+			if(isValid(selectBoxValue)) {
+				if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+			} else {
+				if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+			}
+
+			if( typeof <@compId>.parm.optionConfig.selectBoxForSearchConfig.onChange == "function" ) {
+				<@compId>.parm.optionConfig.selectBoxForSearchConfig.onChange(selectBoxValue);
+			}
+			if(typeof <@compId>.parm.optionConfig.onChange == "function") <@compId>.parm.optionConfig.onChange(selectBoxValue); 
+			
+			<@compId>.reload();
+		 }
+		,excelDown : function() {
+			<@parentId>.<@compId>_editor.excelDownload();
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+
+		<@compId>.parm = parm;
+		
+		<@compId>.parmBackup = fn_copyFullObject(parm);
+		
+		parm.gridParm.rowCntId = "<@compId>_rowCnt";
+		
+		parm.gridParm.readOnly = "Y";
+		
+		if(isValid(parm.optionConfig) && isValid(parm.optionConfig.selectBoxForSearchConfig)) {
+			$("#<@compId>_selectBoxTitle"	).show();	
+			$("#<@compId>_selectBox"		).show();	
+			<@compId>.selectBoxWhereColumn = parm.optionConfig.selectBoxForSearchConfig.whereColumn;
+			<@compId>.makeSelectBoxForSearch(parm.optionConfig.selectBoxForSearchConfig);
+			
+			const optionList 	= parm.optionConfig.selectBoxForSearchConfig.optionList
+			const whereColumn	= parm.optionConfig.selectBoxForSearchConfig.whereColumn
+			
+			if(isEmpty(parm.gridParm.searchWhereMap)) parm.gridParm.searchWhereMap = {};
+			
+			if(isValid(parm.optionConfig.selectBoxForSearchConfig.selectVal)) {
+				parm.gridParm.searchWhereMap[whereColumn] = parm.optionConfig.selectBoxForSearchConfig.selectVal;
+			} else {
+				parm.gridParm.searchWhereMap[whereColumn] = optionList[0][0];
+			}
+			
+		} else {
+			$("#<@compId>_selectBoxDiv"	).hide();	
+		}
+
+		// 상단 Title 영역
+		C_COMP.import("<@compId>_titleArea", "component_compTitleArea",{} , function() {});
+
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@compId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+		// Grid Component Import
+		C_COMP.import("<@compId>_editor", "component_compGrid",{gridParm : parm.gridParm} , function() {});		
+		
+		if(isValid(parm.editButtonTitle)) {
+			$("#<@compId>_editBtn"	).html(parm.editButtonTitle);
+		}
+		
+		// 에디터를 사용하지 않는 경우
+		if(parm.noEdit == "Y"		) $("#<@compId>_editBtn"	).hide();
+		
+		// 상단 Breadcrumb을 사용하지 않는 경우
+		if(parm.noBreadcrumb == "Y"	) $("#<@compId>_breadcrumb").hide();
+		
+		// 상단 Title을 사용하지 않는 경우
+		if(parm.noTitle == "Y"		) $("#<@compId>_titleArea"	).hide();
+		
+	});
+</script>
+<component>
+    <!-- breadcrumb start -->
+	<compnent id="<@compId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@compId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+    
+	<!-- search filter box start -->
+	<div class="srch-card mt10">
+	    <div class="srch-card-inwrap">
+	        <div class="col8 col10-sm srch-card-form">
+	            <div class="col4 col5-md col10-sm display-h-end mb5" id="<@compId>_selectBoxDiv">
+	                <label class="src-title01" id="<@compId>_selectBoxTitle"></label>
+		            <select class="form-control form-control-sm w300px col6-sm mr20" id="<@compId>_selectBox" onChange="<@compId>.changeSelectBox(this)">
+		            </select>    
+	            </div>
+	            <div class="col3 col5-md col10-sm display-h-end mb5">
+	                <label class="src-title01">검색어</label>
+	                <input type="text" class="form-control form-control-sm col10" id="searchValue" onEnter="<@compId>.reload()">
+	            </div> 
+	        </div>
+	        <div class="col2 col10-sm display-h-end pl-lg-15 mb5">
+	            <button class="srch-btn col10 mr10" type="button" onclick="<@compId>.reload()">검 색</button>
+	        </div>
+	    </div>
+	</div>
+    <div class="display-between display-sm-between mt10">
+        <div class="col4-md col10-sm display-h-end mb5">
+        </div>
+        <div class="display-w-end col4 col4-md col10-sm mb5">
+          <span class="col2-sm w150px txt-r mr10">Total : <span class="txt-red" id="<@compId>_rowCnt"></span></span>
+          <button class="flat-btn col2-sm" type="button" id="<@compId>_editBtn" onclick="<@compId>.openEdit()">편 집</button>
+        </div>
+    </div>
+	<!-- search filter box end -->
+
+    <!-- table area start -->
+	<div class="tb-card-allwrap col10">
+		<div class="card-inwrap">
+			<div class="card-cnt-wrap">
+				<div class="table-allwrap">
+					<compnent id="<@compId>_editor"></compnent>
+				</div>
+			</div>
+		</div>
+	</div>    
+    <!-- table area end -->
+ 
+</component>

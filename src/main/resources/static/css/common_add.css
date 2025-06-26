@@ -1,0 +1,51 @@
+@charset "utf-8";
+.mb3 { margin-bottom: 3px; }
+.w120px {width: 120px !important}
+.w150px {width: 150px !important}
+.h100p	{height: 100% !important}
+.col5-gap20 {width: calc(50% - 20px)}
+.popup-card-allwrap {
+  background-color: #fff;
+  min-height: 417px;
+  max-height: 100%;
+  border: 1px solid #bec6cf;
+  border-radius: 5px;
+  box-shadow: 0.1rem 0.3rem 0.4rem rgb(26 29 41 / 9%);
+}
+
+/* 
+	main todo list 관련
+	code by 유태원
+	20250212
+*/
+.explan_todoList_wrap{margin-top:10px;max-height:352px;overflow-y:auto;}
+.explan_todoList_wrap li{padding:0 0 8px}
+.explan_todoList_wrap label{display:inline-block;position:relative;width:calc(100% - 100px)!important;margin-left:-19px;padding:0 0 0 24px;cursor:pointer;font-size:12px;line-height:18px;vertical-align:middle;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.explan_todoList_wrap .check_undo[type="checkbox"]{opacity:0;width:14px;height:14px}
+.explan_todoList_wrap .check_undo[type="checkbox"]:checked + label{text-decoration:line-through;color:#afafaf}
+.explan_todoList_wrap .check_undo[type="checkbox"] + label:before{content: "";position:absolute;top:calc(50% - 7px);left:5px;width:12px;height:12px;display:inline-block;border:1px solid #a5a5a5;border-radius:3px}
+.explan_todoList_wrap .check_undo[type="checkbox"]:checked + label:before{content: "";position:absolute;top:calc(50% - 5px);left:6px;z-index:1;width:10px;height:5px;display:inline-block;border:2px solid #c6c6c6;border-top:0;border-right:0;transform:rotate(-45deg);}
+.explan_todoList_wrap .check_undo[type="checkbox"]:checked + label:after{content: "";position:absolute;top:calc(50% - 7px);left:5px;width:12px;height:12px;display:inline-block;background:#ececec;border:1px solid #dadada;border-radius:3px}
+.explan_msg-edit {
+  background: url(../images/edit-icon.svg) center center no-repeat;
+  width: 15px;
+  height:15px;
+  border: 0px;
+  background-size: 15px auto;
+  opacity: 0.4 !important;
+  transition: 0.2s;
+  margin-right:3px;
+}
+.explan_msg-del {
+  background: url(../images/del-icon.svg) center center no-repeat;
+  width: 15px;
+  height: 15px;
+  border: 0px;
+  background-size: 13px auto;
+  opacity: 0.4 !important;
+  transition: 0.2s;
+  margin-right:3px;
+}
+.explan_fr{float:right!important;margin-right:10px;}
+
+.decoline {border-bottom: 1px dashed #aebac8;}

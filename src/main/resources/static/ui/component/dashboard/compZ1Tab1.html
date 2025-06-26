@@ -1,0 +1,607 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,createChart 		: (container, categories, series)=>_lineRateChart(container, categories, series)
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,selectQueryGroup : function(pmt) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getBuyerDetail"
+						,requestParm		: pmt
+					}
+					,
+					{
+						 queryId 			: "financialanalysis.getBasis01"
+						,requestParm		: pmt
+					}
+					,
+					{
+						 queryId 			: "financialanalysis.getBasis02"
+						,requestParm	: pmt
+					}
+					,
+					{
+						 queryId 			: "financialanalysis.getFinAnalStdYear"
+						,requestParm	: pmt
+					}
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+	
+				const returnData = Object.entries(resultData.data) ;
+				const maskedData = <@compId>.setCoverMask( returnData );
+				resultData.data  = Object.fromEntries(maskedData);
+	
+				<@compId>.showObject(resultData.data['financialanalysis.getBuyerDetail'][0],'');
+				<@compId>.showObject(resultData.data['financialanalysis.getBasis01'][0],'');
+				<@compId>.showList("<@compId>_getBasis02", resultData.data['financialanalysis.getBasis02']);				
+				<@compId>.showObject(resultData.data['financialanalysis.getFinAnalStdYear'][0],'');
+			});
+		 }
+		,goPage : (pageId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( pageId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+			//chat room row click
+	        $("#chatRoomList").on('click', 'tr', function () {
+	            let requestParm = {}
+	            const rowId = $(this)[0].id;
+	            if (rowId) {
+	            	$($("#chatRoomList>#"+rowId+" td")).each( (idx,td) => {
+	    				const name 	= td.getAttribute("id");
+	    				const value = td.getAttribute("value");
+	    				requestParm[name] = value;
+						$("[name='"+name+"']").val(value);
+	            	})
+	            }
+				<@compId>.enterChatRoomPopup(requestParm);
+	
+	        })
+	
+				$('#<@compId>_search').on('click', function (e) {
+					<@compId>.searchList();
+				})
+					
+				$('button[name="<@compId>_insert"]').on('click', function (e) {
+					const loc = $(this).siblings(".item-box").attr("id");
+					const grp = loc.indexOf("grp") > -1 ? "GRP_" : "" ;
+						
+					<@compId>.itemReset(loc,true,grp);
+				})
+					
+				$('button[name="<@compId>_save"]').on('click', function (e) {
+	
+					const loc =$(this).parents(".item-box").attr("id"); 
+					const queryId = loc.indexOf("grp") > -1 ? "system.updateGrpCode" :  "system.updateCode" ;
+					<@compId>.updateCode(loc, queryId);
+				})
+					
+				$('button[name="<@compId>_delete"]').on('click', function (e) {
+					
+					const loc = $(this).siblings(".item-box").attr("id");
+						
+					if(<@compId>.validation(loc,"deleteCode")  == false)return;
+						
+					const queryId	= loc.indexOf("grp") > -1 ? "system.deleteGrpCode" : "system.deleteCode" ;
+					let		keyObj 	= loc.indexOf("grp") > -1 ? {"GRP_CODE_ID":""} : {"GRP_CODE_ID":"","CODE_ID":""} ;
+				const gubun 	= loc.indexOf("grp") > -1 ? "grpCodeList" : "normalCodeList" ;
+			 		<@compId>.selectedCheck[gubun].forEach( item =>{
+	
+			 			let grpCodeId 	= "";
+						let codeId 		= "";	
+		 			if( loc.indexOf("grp") == -1 ){
+			 					
+		 				grpCodeId	= item.split("||")[0];
+			 				codeId 		= item.split("||")[1];
+	   					keyObj["GRP_CODE_ID"] = grpCodeId;
+	   					keyObj["CODE_ID"] = codeId;
+	   		 				
+			 			}else{
+			 					
+	   					keyObj["GRP_CODE_ID"] = item;
+			 			}
+							<@compId>.deleteCode(queryId, keyObj);
+			 		});
+				}) 
+					
+				$('button[name="<@compId>_reset"]').on('click', function(e){
+	
+					const loc =$(this).parents(".item-box").attr("id");
+					const grp = loc.indexOf("grp") > -1 ? "GRP_" : "" ;
+					<@compId>.itemReset(loc,true,grp);
+				})
+					
+				$("button[name='<@compId>_close']").on('click', function(e){
+	
+					const loc =$(this).parents(".item-box").attr("id");
+					<@compId>.itemReset(loc,false);
+				}) 
+					
+		}
+		
+		,setEachColumnValue : (loc, arr ,grp) => {
+	
+			const name 	= arr[0];
+			const value = arr[1];
+	
+			if( name == "USE_YN" ){
+				
+				<@compId>.fnRadioCheckValue(loc, grp+'USE_YN',value);
+			
+			}else if( name == "DEL_YN" ){
+				
+				<@compId>.fnRadioCheckValue(loc,  grp+'DEL_YN',value);
+			
+			}else{
+			
+				$("#"+loc+" input:not([type='checkbox'])").each((idx,obj)=>{
+	
+					if(obj.name == grp+name && obj.name != 'ckbox'){
+						obj.value = value;
+					}
+				})
+			}
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+	
+				const radioButtons = $("#"+loc+" input[name='"+name+"']");
+				if( pValue ){
+				 
+					const theRadioBtn = radioButtons.filter("[value='"+pValue+"']");
+					 theRadioBtn.prop('checked',true);
+				}else{
+				
+					const selectedValue = radioButtons.filter(":checked").val();
+					return selectedValue;
+				 }
+		}
+		, createBoardPopup : function() {
+			const requestParm = {};
+			requestParm['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			<@compId>.getSearchItems(requestParm);
+	
+			C_POP.open('popup_board_createBoardPopup', requestParm, function(retData) {
+				if(retData.refresh == 'Y'){
+					<@compId>.searchList();
+				}
+			});
+		 }
+		
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,generalCompareEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_BUYER_DETAIL"
+					,columnMap 		: {
+						 "BUYER_ID" 				: { headerText : "BUYER_ID", hidden : "Y", default : G_VAL.session.BUYER_ID}
+						,"COMPANY_NM" 				: { headerText : "회사명"}
+						,"ESTABLISHMENT_DATE" 		: { headerText : "설립일자"}
+						,"OWNER_NM" 				: { headerText : "대표자명"}
+						,"OWNER_BIRTHDAY"			: { headerText : "대표이사 생년월일(나이)"}
+						,"COMPANY_TYPE"				: { headerText : "기업형태"}
+						,"SETTLEMENT_MONTH"			: { headerText : "결산월"}
+						,"EMPLOYEE_CNT"				: { headerText : "상시근로자수", dataType : "number"}
+						,"BUSINESS_TYPE"			: { headerText : "업종"}
+						,"ADDRESS"					: { headerText : "주소(도로명)"}
+						,"COMPANY_CERT_STATUS"		: { headerText : "기업인증현황"}
+						,"INDUSTRY_ESTATE_STATUS"	: { headerText : "산업재산권현황"}
+						,"BASE_DATE"				: { headerText : "기준일", dataType   : "date", saveType : "text", dateFormat : "YYYY-MM-DD" }
+					 }
+					,primaryKeyList		: ["BUYER_ID"]
+					,orderColumnList 	: ["BUYER_ID"]
+					,searchWhereMap		: {BUYER_ID : G_VAL.session.BUYER_ID }
+					,searchColumnList	: ["BUYER_ID", "COMPANY_NM"]		// Table 지정인경우 적용
+					,gridWidth			: "2600px"
+				 }
+				,gridHeaderTitle 	: "기업일반 편집"
+				,popupTitle 		: "기업일반 편집"
+				,mode				: "M"				// 수정 가능
+			}
+			
+			let rowData = C_COM.makeDataSetFromTable(parm.gridParm);
+			parm.targetRowData		= rowData.list[0];
+
+			C_POP.open("popup_common_oneEditGridPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+			
+			/*
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+			*/
+		 }
+		,generalCapitalStockEdit : () => {
+			let parm = {
+					 gridParm 	: {
+						 tableName		: "TBL_EXP_FIN_ANAL_BASIS01"
+						,columnMap 		: {
+							 "BUYER_ID"						 : { headerText : "기업ID", hidden : "Y", default : G_VAL.session.BUYER_ID}
+							,"CAPITAL"						 : { headerText : "자본금", dataType : "number"}
+							,"STOCK"						 : { headerText : "발행주식합계", dataType : "number"}
+							,"ORDINARY"						 : { headerText : "보통주", dataType : "number"}
+							,"PREFERRED_STOCK"				 : { headerText : "우선주", dataType : "number"}
+							,"SANGWHAN_CONV_PRE_STOCK"		 : { headerText : "상환전환우선주", dataType : "number"}
+							,"ONE_STOCK_PRICE"				 : { headerText : "1주의 금액", dataType : "number"}
+							,"SALE_AMOUNT_GROWTH_RATE_INIT"	 : { headerText : "매출액증가율(성장기)"}
+							,"SALE_AMOUNT_GROWTH_RATE"		 : { headerText : "매출액증가율(10년후)"}
+							,"PROFIT_GROWTH_RATE_INIT"		 : { headerText : "순이익율 가정(성장기)"}
+							,"PROFIT_GROWTH_RATE"			 : { headerText : "순이익율 가정(10년후)"}
+							,"REP_RETIREMENT_YEAR"			 : { headerText : "대표이사 퇴직예상년"}
+							,"REP_RETIREMENT_AMOUNT"		 : { headerText : "대표이사 퇴직금", dataType : "number"}
+							,"ANNUAL_DIVIDEND_TENYEAR_BEFORE": { headerText : "임원 연간 배당금(10년 이전)", dataType : "number"}
+							,"ANNUAL_DIVIDEND_TENYEAR_AFTER" : { headerText : "임원 연간 배당금(10년 이후)	", dataType : "number"}
+							,"MARKET_VALUE_RATE" 			 : { headerText : "시장기업가치 평가비율", dataType : "number", fix:"2"}
+						 }
+						 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+						,columnConfig 	: {
+						 }
+						 /*
+						,rowConfig		: {
+							onClickRow : function(rowObj) {
+								dalert(rowObj);
+							}
+						 }
+						,gridConfig : {
+							width : ""	
+						 }
+						 */
+						,primaryKeyList		: ["BUYER_ID"]
+						,searchColumnList	: ["BUYER_ID"]					// Table 지정인경우 적용
+						,orderColumnList 	: ["BUYER_ID ASC"]				// Table 지정인경우 적용 
+						,gridWidth			: "2600px"
+						,filterWhere		: `BUYER_ID = '${G_VAL.session.BUYER_ID}'`
+					 }
+					,popupTitle : `자본금 및 주식 발행사항 편집`
+					,size 		: "MAX"
+				}
+				C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+					if(isValid(retData)) {
+						if(retData.refresh == "Y") {
+							<@compId>.reload();
+						}
+					}
+				});
+			 }
+		,generalBusinessGoalEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_FIN_ANAL_BASIS02"
+					,columnMap 		: {
+						 "BUYER_ID" 		: { headerText : "BUYER_ID"	, hidden : "Y", default : G_VAL.session.BUYER_ID}
+						,"SEQ"				: { headerText : "연번"	}
+						,"BUSINESS_PURPOSE"	: { headerText : "사업목적" }
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }
+					 /*
+					,rowConfig		: {
+						onClickRow : function(rowObj) {
+							dalert(rowObj);
+						}
+					 }
+					,gridConfig : {
+						width : ""	
+					 }
+					 */
+					,primaryKeyList		: ["BUYER_ID","SEQ"]
+					,searchColumnList	: ["BUYER_ID"]								// Table 지정인경우 적용
+					,orderColumnList 	: ["BUYER_ID ASC", "SEQ ASC"]				// Table 지정인경우 적용
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					//,readOnly			: "Y"
+					//,gridWidth		: "2000px"
+					,filterWhere		: `BUYER_ID = '${G_VAL.session.BUYER_ID}'`
+				 }
+				,popupTitle : `주요사업목적 편집`
+				,size 		: "MAX"
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		//debugger;
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		<@compId>.selectQueryGroup(data);
+		
+		// 20250211 
+		// code by 위성열
+		// Main Widget 처리
+		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+			C_WIDGET.setWidgetState("<@compId>", widgetList);
+		});
+	});
+</script>
+<component>
+            
+	<!-- 기업개요 area start -->
+	<div class="pop_tab_content_box fx-col2 fx-col2-md">
+	
+        <div class="col8 col10-md col10-sm" wgtframe="<@compTemplateId>">
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+                <div class="biz-subTitle">
+                    기업일반 
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.generalCompareEdit()"></button>
+                    </div>
+                </div>
+                <div class="biz-date">
+                    기준일 : <span id="<@compId>_BASE_DATE"></span>
+                </div>
+            </div>       
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">
+                <!-- table start -->
+                <table class="card-view-tb01">
+                    <colgroup>
+                        <col width="18%">
+                        <col width="*">
+                        <col width="18%">
+                        <col width="*">                                                                               
+                    </colgroup>
+                    <tbody>
+                    <tr>
+                        <th>기업명</th>
+                        <td id="<@compId>_COMPANY_NM"></td>
+                        <th>설립일자</th>
+                        <td id="<@compId>_ESTABLISHMENT_DATE"></td>
+                    </tr> 
+                    <tr>
+                        <th>대표자명</th>
+                        <td class="<@compId>_OWNER_NM"></td>
+                        <th>대표이사 생년월일 (나이)</th>
+                        <td><span id="<@compId>_OWNER_BIRTHDAY"></span>(만<span class="<@compId>_AGE"></span>세)</td>
+                    </tr> 
+                    <tr>
+                        <th>기업형태</th>
+						<td id="<@compId>_COMPANY_TYPE"></td>
+						<th scope="col">결산월</th>
+						<td id="<@compId>_SETTLEMENT_MONTH"></td>
+                    </tr> 
+                    <tr>
+                        <th>상시 근로자 수</th>
+                        <td colspan="3" id="<@compId>_EMPLOYEE_CNT"></td>                        
+                    </tr> 
+                    <tr>
+                        <th>업종</th>
+                        <td colspan="3" id="<@compId>_BUSINESS_TYPE"></td>                                                                            
+                    </tr> 
+                    <tr>
+                        <th>주소 (도로명)</th>
+                        <td colspan="3" id="<@compId>_ADDRESS"></td>                                                                            
+                    </tr> 
+                    <tr>
+                        <th>기업인증현황</th>
+                        <td colspan="3" id="<@compId>_COMPANY_CERT_STATUS"></td>
+                    </tr> 
+                    <tr>
+                        <th>산업재산권 현황</th>
+                        <td colspan="3" id="<@compId>_INDUSTRY_ESTATE_STATUS"></td>                                                                            
+                    </tr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+                    </tbody>
+                    </table>
+                    <!-- table end -->                            
+            </div>
+            <div class="caption" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">데이터 출처 : 법인등기부등본, 근로복지공단</div>
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2" id="<@compTemplateId>_grp2_title">
+                <div class="biz-subTitle">
+                    자본금 및 주식 발행사항  
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp2_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp2')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.generalCapitalStockEdit()"></button>
+                    </div>
+                </div>
+            </div>     
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">
+                <div class="table-allwrap tb-div-h01">
+                    <!-- table start -->
+                    <table class="table-inwrap">
+                    <colgroup>
+                        <col width="">
+                        <col width="">
+                        <col width="">
+                        <col width="">                  
+                        <col width="">                  
+                        <col width="">                  
+                    </colgroup>
+                    <thead class="table-thead">
+                        <tr>
+                        <th>자본금</th>
+                        <th>발행주식 합계</th>
+                        <th>보통주</th>
+                        <th>우선주</th>
+                        <th>상환전환우선주</th>
+                        <th>1주의 금액</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+	                        <td id="<@compId>_CAPITAL"></td>
+	                        <td id="<@compId>_STOCK"></td>
+	                        <td id="<@compId>_ORDINARY"></td>
+	                        <td id="<@compId>_PREFERRED_STOCK"></td>
+	                        <td id="<@compId>_SANGWHAN_CONV_PRE_STOCK"></td>
+	                        <td id="<@compId>_ONE_STOCK_PRICE"></td>
+                        </tr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                    </tbody>
+                    </table>
+                    <!-- table end -->            
+                </div>
+            </div>
+            <div class="caption" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">데이터 출처 : 법인등기부등본, 근로복지공단</div>
+            <div class="mt10 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3" id="<@compTemplateId>_grp3_title">
+                <div class="biz-subTitle">
+                    주요 사업목적 
+                    <div class="ml20">
+                        <label class="star-wrap">
+                            <input type="checkbox" id="<@compTemplateId>_grp3_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp3')"/>
+                            <span class="star"></span>
+                        </label>
+                        <button class="msg-edit" onClick="<@compId>.generalBusinessGoalEdit()"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-card-outline" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3">
+                    <!-- table start -->
+                    <table class="card-view-tb01">
+                    <colgroup>
+                        <col width="18%">
+                        <col width="*">                     
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <th>사업 목적</th>
+							<td>
+								<p id="<@compId>_getBasis02"></p>
+							</td>
+                        </tr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+					</tbody>
+						<script type="text/x-jsrender" id="<@compId>_getBasis02_template">
+							{{for list}}
+								<p>{{:BUSINESS_PURPOSE}}</p>
+							{{/for}}
+						</script>
+				   		<script type="text/x-jsrender" id="<@compId>_getBasis02_noData_template">
+							<p>자료가 없습니다.</p>
+						</script>
+					</tbody>
+                    </table>
+                    <!-- table end -->
+            </div>
+            <div class="caption mb20" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp3">데이터 출처 : 법인등기부등본, 근로복지공단</div>
+        </div>
+        <div class="col2 col10-md col10-sm tab-card-outline mb47" wgtgrp="<@compTemplateId>">
+            <div class="add-file-wrap">
+                <div class="biz-subTitle">Check Point</div>
+            </div>
+            <div class="checkpoint-wrap">
+                <h4 class="checkpoint-subTitle">주요 경비율 체크사항</h4>
+                <p>주요 경비는 매출원가, 인건비, 임차료로 구성됩니다.</p>
+                <p>최근 결산 기준 매출액 대비 주요경비율은 72.2% 수준입니다.</p>
+                <p>매출원가는 작년대비 5.1억원 증가하였고, 인건비는 0.0억원 증가하였습니다.</p>
+                <p>사업이 성장함에 따라 주요 경비의 증감을 항상 예의 주시 하여야 합니다.</p>
+            </div>
+        </div>
+        
+	</div>
+	<!-- 기업개요 area end -->
+</component>

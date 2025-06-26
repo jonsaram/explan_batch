@@ -1,0 +1,53 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+		
+		// 상단 메뉴Path처리
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+
+		// Simulation 단독
+		C_COMP.import("<@pageId>_simulation", "main_simulation_component_compSalesSimulation",{} , function() {});
+
+		
+		/*
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function() {
+			let tabList = [
+			   {	 title 	: "식자재 가격 대비 마진"	, compId : "tabCompId1"	, compPageId : "main_simulation_component_compSalesSimulation"	, parm : {}, callback : function() {} }
+			  ,{	 title 	: "준비중"					, compId : "tabCompId2"	, compPageId : "component_template_compTemplate"				, parm : {}, callback : function() {} }
+			]
+			C_TAB.makeTab("<@pageId>", "tabComponent", tabList);
+		});
+		*/
+
+		// Simulation 단독
+		C_COMP.import("<@pageId>_simulation", "main_simulation_component_compSalesSimulation",{} , function() {});
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+
+    <!-- tab content-wrap start -- >
+    <div class="tab-allwrap" id="tabComponent"></div>
+	<!-- table end -->
+	<compnent id="<@pageId>_simulation"></compnent>    
+
+</page-component>

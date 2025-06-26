@@ -1,0 +1,1398 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 orgParm			: {}
+		,columnParm			: {}
+		,scrollHeight		: 0
+		,gridWindowHeight	: 0
+		,nowLoadIdx			: 1
+		,totalLoadIdx		: 1
+		,pagingCheck		: false
+		,onLoad				: undefined
+		,tableInitRow		: undefined
+		,lastPageInfo		: {}
+		,templateItem		: {}
+		,clearGrid			: {
+		
+		 }
+		,orderStateList		: []
+		,orderStateMap		: {}
+		,orgOrderColumnList	: []
+		,init : function(parm) {
+			// Column 기본 설정값이 있는경우 먼저 처리한다.
+			let defaultSetColumnMap	= parm.defaultSetColumnMap;
+			if(isValid(defaultSetColumnMap)) {
+				$.each(defaultSetColumnMap, function(key, val) {
+					parm.columnMap[key] = {
+						 headerText : "N/A"
+						,hidden		: "Y"
+						,default	: val
+					}
+				});
+			}
+			
+			if(isEmpty(parm.searchColumnList	)) parm.searchColumnList 	= [];
+			if(isEmpty(parm.orderColumnList		)) parm.orderColumnList 	= [];
+			
+			// grid type이 hidden이면 Grid 숨김처리
+			if(parm.gridType == "hidden") $("#<@compId>").hide();
+
+			//check box하나만 선택인경우 전체 Check box는 Hide함. 
+			if(parm.checkboxType == "single") parm.allCheckHide = "Y";			
+			
+			<@compId>.orgParm = fn_copyObject(parm);
+			
+			let headerList			= [];
+			let hiddenColumnList	= [];
+			let columnList			= [];
+			let searchColumnList	= [];
+			let orderColumnList		= [];
+			let makeListFn			= parm.makeListFn;
+			let readOnly			= parm.readOnly;
+			let tableName			= parm.tableName;
+			let columnConfig		= parm.columnConfig;
+			if(isEmpty(columnConfig)) columnConfig = {};
+			let columnMap			= parm.columnMap;
+			let addColumnMap		= parm.addColumnMap;	// columnMap에 설정하기 복잡한 내용을 따로 처리하여 columnMap에 포함 하기위해 설정
+			let rowConfig			= parm.rowConfig;
+			let filterWhere			= parm.filterWhere;
+			let searchWhereMap		= parm.searchWhereMap;
+			let useRuntimeLoad		= parm.useRuntimeLoad;
+			let tableDataList		= undefined;
+			
+			
+			
+			if(isValid(addColumnMap)) {
+				$.each(addColumnMap, function( key, cblock ) {
+					$.each(cblock, function(column, val) {
+						columnMap[column][key] = val;
+					});
+				});
+			}
+			
+			// column이 readOnly일 경우, columnType이 button인 경우 무조건 Save대상에서 제외
+			$.each(columnMap, function(column, obj) {
+				if(obj.columnType == "button") columnMap[column]["noSave"] = "Y" 
+			});
+			
+			// Data직접 Setting경우 무조건 ReadOnly 설정.
+			if(Object.prototype.toString.call(parm.tableDataList)  == '[object Array]') {
+				tableDataList = fn_copyArray(parm.tableDataList);
+				
+				if(parm.updateOnly != "Y") {
+					readOnly = "Y";
+					<@compId>.orgParm.readOnly = "Y";
+				}
+				
+				// filter 별도 처리
+				if(isValid(parm.searchValue)) {
+					let resultList	= [];
+					let sval 		= parm.searchValue;
+					if(isValid(searchColumnList)) searchColumnList = parm.searchColumnList;
+					$.each(tableDataList, function() {
+						let sItem = this;
+						$.each(parm.searchColumnList, function() {
+							if(isValid(sItem[this])) {
+								if(sItem[this].indexOf(sval) > -1) {
+									resultList.push(sItem);
+									return false;
+								}
+							}
+						});
+					});
+					tableDataList = resultList;
+				}
+				tableDataList = sortDataList(tableDataList, parm.orderColumnList);
+			}
+			
+			<@compId>.onLoad		= parm.onLoad;
+			
+			// readOnly가 아닌 경우 Merge는 실행하지 않는다.
+			if(readOnly != "Y")  parm.cellMergeList = undefined;
+			let cellMergeList		= parm.cellMergeList
+			
+			$.each(columnMap, function(key, obj) {
+				
+				if		(isValid(obj.initSetData	)) obj.default 		= obj.initSetData	;
+				else if	(isValid(obj.default		)) obj.initSetData 	= obj.default		;
+				
+				let item = fn_copyObject(obj);
+				item["COLUMN_ID"	] = key;
+				item["COLUMN_NM"	] = item.headerText;
+				item["COLUMN_TYPE"	] = item.columnType;
+				
+				if(isEmpty(item["width"]	)) item["width"] 	= "*";
+				if(isEmpty(item["thClass"]	)) item["thClass"] 	= "";
+				if(isEmpty(item["tdClass"]	)) item["tdClass"] 	= "";
+
+				// readOnly이고 인경우 보여주는 리스트(readOnlyShowColumnList) 를 Setting한경우 처리
+				if(isValid(parm.readOnlyShowColumnList) && readOnly == "Y") {
+					if(!in_array(item.COLUMN_ID, parm.readOnlyShowColumnList)) item.hidden = "Y";
+				}
+				// readOnly이고 인경우 숨겨지는 리스트(readOnlyHideColumnList) 를 Setting한경우 처리
+				if(isValid(parm.readOnlyHideColumnList) && readOnly == "Y") {
+					if(in_array(item.COLUMN_ID, parm.readOnlyHideColumnList)) item.hidden = "Y";
+				}
+				
+				//
+				// class 관련 처리
+				//
+				
+				// 모바일에서 숨겨지는 항목 처리
+				if(item.smallSizeHideColumn == "Y") {
+					item["thClass"] += " hide-area"; 
+					item["tdClass"] += " hide-area"; 
+				}
+				// 문자 정렬 처리
+				if			(item.align == "left"	) item["tdClass"] += " txt-l";
+				else if		(item.align == "right"	) item["tdClass"] += " txt-r";
+				
+				// 정렬 색깔 처리
+				if(item.noSort != "Y") item["thClass"] += " explan-dot-underline";
+
+				// 도움말 처리
+				if(isValid(columnConfig.columnToolTip) && isValid(columnConfig.columnToolTip[key])) {
+					item.columnToolTip = columnConfig.columnToolTip[key];
+				} else {
+					const viewId 	= C_COM.getCurrentViewId();
+					const helpKey 	= viewId + key;
+					let helfContent = C_HELP.getHelpColumnContent(helpKey);
+					if(isValid(helfContent)) item.columnToolTip = helfContent;
+				}
+				
+				if(item.hidden == "Y") {
+					hiddenColumnList.push(item);
+				} else {
+					headerList.push(item);
+				}
+				columnList.push(item);
+			});
+			
+			
+			
+			var rparm = {}
+			
+			let searchWhereList = [];
+			if(isValid(searchWhereMap)) {
+				$.each(searchWhereMap, function(key, obj) {
+					let val = obj;
+					if(typeof obj == "function") {
+						val = obj();
+					}
+					if(isValid(val)) {
+						let map = {}
+						if(Object.prototype.toString.call(val) == '[object Array]') {
+							let vals = "(";
+							$.each(val, function(idx) {
+								if(idx == 0) 	vals = `${vals}  '${this}'`;
+								else			vals = `${vals}, '${this}'`;
+							});
+							vals = `${vals} )`;
+							map = { column : key, value : vals, oper : "IN" }
+							searchWhereList.push(map);
+						} else if(Object.prototype.toString.call(val) == '[object Object]') {
+							if(val.type == "range") {
+								
+								const dataType = columnMap[key].dataType;
+								
+								if(dataType == "date") {
+									let dateFormat = val.dateFormat;
+									if(isEmpty(dateFormat)) dateFormat = "YYYY-MM-DD";
+									
+									if(isValid(val.start)) {
+										map = { column : key, value : `TO_DATE('${val.start}'	, '${dateFormat}')` 	, oper : ">=" }
+										searchWhereList.push(map);
+									}
+									if(isValid(val.end)) {
+										map = { column : key, value : `TO_DATE('${val.end}'		, '${dateFormat}')` 	, oper : "<=" }
+										searchWhereList.push(map);
+									}
+								} else {
+									if(isValid(val.start)) {
+										map = { column : key, value : `'${val.start}'` 	, oper : ">=" }
+										searchWhereList.push(map);
+									}
+									if(isValid(val.end)) {
+										map = { column : key, value : `'${val.end}'` 	, oper : "<=" }
+										searchWhereList.push(map);
+									}
+								}
+							} else {
+								map = { column : key, value : `'${val.value}'` 	, oper : val.oper }
+								searchWhereList.push(map);
+							}
+						} else {
+							map = { column : key, value : `'${val}'` , oper : "=" }
+							searchWhereList.push(map);
+						}
+					}
+				});
+			}
+			// Grid Data를 직접 입력한경우
+			if(Object.prototype.toString.call(tableDataList)  == '[object Array]') {
+				let pageInfo = {
+					 totalCnt : tableDataList.length
+					,pageList : tableDataList
+				}
+				<@compId>.columnParm = {
+					 headerList			: headerList
+					,hiddenColumnList	: hiddenColumnList
+				}
+				<@compId>.makeGridList(pageInfo);
+				
+				if(typeof <@compId>.onLoad == "function") <@compId>.onLoad(tableDataList)
+				
+				C_GRID.selectFirstRow("<@compId>_targetTable");
+				
+			} else {
+				// requestQuery 와 tableName 둘다 있는 경우 requestQuery로 Read / TableName으로 Write함.
+				if(isValid(parm.requestQuery)) {
+					rparm = parm.requestQuery;
+					if(isValid(parm.searchColumnList	)) rparm.requestParm.searchColumnList 	= parm.searchColumnList	;
+					if(isValid(parm.orderColumnList		)) rparm.requestParm.orderColumnList 	= parm.orderColumnList	;
+					if(isValid(parm.filterWhere			)) rparm.requestParm.filterWhere 		= parm.filterWhere		;
+					rparm.requestParm.searchValue 		= parm.searchValue		;
+					rparm.requestParm.searchWhereList 	= searchWhereList	;
+				} else if(isValid(parm.tableName)) {
+					if(isValid(parm.searchColumnList)) searchColumnList = parm.searchColumnList;
+					let searchValue			= parm.searchValue
+					if(isEmpty(searchValue)) searchColumnList = [];
+					
+					if(isValid(parm.orderColumnList)) orderColumnList = parm.orderColumnList;
+					
+					// query를 사용하지 않는 경우 noSave는 Column에서 제외해야함.
+					let newList = []
+					$.each(columnList, function() {
+						if(this.noSave == "Y") return true;
+						newList.push(this);
+					});					
+					rparm = {
+						 queryId 		: "common.getTableData"
+						,requestParm	: {
+							 tableName 			: tableName
+							,columnList 		: newList
+							,searchColumnList	: searchColumnList
+							,searchValue		: searchValue
+							,orderColumnList	: orderColumnList
+							,filterWhere		: filterWhere
+							,searchWhereList	: searchWhereList
+						}
+					}
+				} else {
+					C_POP.alert('tableNmae 또는 requestQuery 또는 tableDataList중 하나는 전달 Parameter에 포함 되어야 합니다.');
+					return;
+				} 
+
+				let tparm = fn_copyObject(rparm.requestParm);
+				
+				delete tparm.parm;
+				
+				rparm.requestParm.parm = tparm;
+				
+				<@compId>.lastRequestQueryParm = rparm;
+
+				if(isValid(useRuntimeLoad)) {
+					// 페이징 처리 초기화
+					C_PAGING.create({
+			 			 pageId				: "<@compId>"
+			 			,listDomId			: "targetTable"
+			 			//,pagingDomId		: ""
+			 			//,totalCntDomId		: "totalCnt"
+			 			,queryId			: rparm.queryId
+						,listRange			: useRuntimeLoad
+						,pageRange			: 100
+						// <@compId>.setSearchParm function에서 반환하는 json object값을 Query Parameter로 사용한다.
+			 			,parmFn				: function() {
+			 				return 	rparm.requestParm;
+			 			 }
+						,makeListFn			: function(dataList) {
+							if(isEmpty(makeListFn))	return dataList;
+							else 					return makeListFn(dataList);
+						 }
+						,callback			: function(pageInfo) {
+							<@compId>.totalLoadIdx = pageInfo.totalPage;
+							<@compId>.columnParm = {
+								 headerList			: headerList
+								,hiddenColumnList	: hiddenColumnList
+							}
+							<@compId>.makeGridList(pageInfo);
+
+							const popupId = C_POP.getCurrentPopupId();
+							
+							// Paging처리일때 스크롤 Event등록
+							let $scrollWrap = {}
+							if(isValid(popupId)) {
+								$scrollWrap = $('#<@compId>').closest('div.table-inwrap-scroll');
+							} else {
+								$scrollWrap = $('#<@compId>').closest('div.table-allwrap');
+							}
+							<@compId>.gridWindowHeight = $scrollWrap.height();
+							
+							<@compId>.nowLoadIdx = 1;
+							
+							$scrollWrap.off('scroll');
+							$scrollWrap.on('scroll', function() {
+								if(<@compId>.nowLoadIdx >= <@compId>.totalLoadIdx) return;
+								let scrollTop =  $scrollWrap.scrollTop();
+								<@compId>.onScroll(scrollTop);
+					        });
+							
+							if(typeof <@compId>.onLoad == "function") <@compId>.onLoad(pageInfo.pageList); 
+							
+							C_GRID.selectFirstRow("<@compId>_targetTable");
+						 }
+			 		});
+					
+				} else {
+					C_COM.requestQuery(rparm, function(resultData) {
+						if(resultData.state == "S") {
+							let dataList = resultData.data;
+							if(isValid(makeListFn))	dataList = makeListFn(dataList);
+							
+							let pageInfo = {
+								 totalCnt : dataList.length
+								,pageList : dataList
+							}
+							<@compId>.columnParm = {
+								 headerList			: headerList
+								,hiddenColumnList	: hiddenColumnList
+							}
+							<@compId>.makeGridList(pageInfo);
+							
+							if(typeof <@compId>.onLoad == "function") <@compId>.onLoad(dataList);
+							
+							C_GRID.selectFirstRow("<@compId>_targetTable");
+							
+						} else if(resultData.state == "E") {
+							dalert(resultData);
+						}					
+					});
+				}
+				
+			}
+		 }
+		,onScroll : function(scrollTop) {
+			if(isEmpty(<@compId>.scrollHeight) || <@compId>.scrollHeight == 0) <@compId>.scrollHeight = $("#<@compId> #<@compId>_targetTable").prop('scrollHeight');
+			
+			let topPos = scrollTop + <@compId>.gridWindowHeight;
+			if(topPos > (<@compId>.scrollHeight - 100)) {
+				if(<@compId>.pagingCheck) return;
+				<@compId>.pagingCheck = true;
+				<@compId>.nowLoadIdx++;
+				C_PAGING.getGridPageList("<@compId>", "targetTable", <@compId>.nowLoadIdx, function(pageInfo) {
+					<@compId>.makeGridList(pageInfo, "Y");
+					<@compId>.pagingCheck = false;
+				});
+			}
+		 }
+		,setGridHeight : function() {
+			
+			if(isEmpty(<@compId>.scrollHeight) || <@compId>.scrollHeight == 0) <@compId>.scrollHeight = $("#<@compId> #<@compId>_targetTable").prop('scrollHeight');
+
+			if(isValid(<@compId>.gridWindowHeight) && <@compId>.gridWindowHeight > 0) return;  
+			
+			const popupId = C_POP.getCurrentPopupId();
+			
+			// Paging처리일때 스크롤 Event등록
+			let $scrollWrap = {}
+			if(isValid(popupId)) {
+				$scrollWrap = $('#<@compId>').closest('div.table-inwrap-scroll');
+			} else {
+				$scrollWrap = $('#<@compId>').closest('div.table-allwrap');
+			}
+			<@compId>.gridWindowHeight = $scrollWrap.height();
+		 }
+		,filter : function(filterMap) {
+			let pageInfo = <@compId>.lastPageInfo;
+			
+			let pageList = pageInfo.pageList;
+			let newList = [];
+			$.each(pageList, function() {
+				const item = this;
+				$.each(filterMap, function(column, word) {
+					if(isEmpty(item[column])) return true;
+					if(item[column].indexOf(word) > -1) {
+						newList.push(item);
+						return false;
+					}
+				});
+			});
+			pageInfo.pageFilterList = newList;
+
+			<@compId>.makeGridList(pageInfo);
+		 }
+		,hideRow : function(hideRowList) {
+			$.each(hideRowList, function() {
+				const item = this;
+				$(`#<@compId>_tbody td[columnId='${item.COLUMN_ID}']`).each(function() {
+					const value = $(this).html();	
+					if(value == item.VALUE) {
+						$(this).parent().hide();
+					};
+				});
+			});
+		 }
+		,makeGridList : function(pageInfo, append) {
+
+			let parm	 			= <@compId>.orgParm;
+			<@compId>.lastPageInfo	= pageInfo;
+			// readOnly가 아닌 경우 Merge는 실행하지 않는다.
+			if(parm.readOnly != "Y")  parm.cellMergeList = undefined;
+			
+			let headerList 			= <@compId>.columnParm.headerList;
+			let hiddenColumnList 	= <@compId>.columnParm.hiddenColumnList;
+			let primaryKeyList 		= <@compId>.parm.primaryKeyList;
+			let readOnly			= parm.readOnly;
+			let updateOnly			= parm.updateOnly;
+			let tableName			= parm.tableName;
+			let columnConfig		= parm.columnConfig;
+			let columnMap			= parm.columnMap;
+			let cellConfig			= parm.cellConfig;
+			let headerTextGroup		= parm.headerTextGroup;
+			let rowConfig			= parm.rowConfig;
+			let filterWhere			= parm.filterWhere;
+			let onlyGetTableList	= parm.onlyGetTableList;
+			let checkboxType		= parm.checkboxType;
+			
+			let tableList 			= []
+			
+			if(isValid(pageInfo.pageFilterList))	tableList = pageInfo.pageFilterList;
+			else									tableList = pageInfo.pageList;			
+
+			let fullTableMap	= {};
+			let fullHiddenMap	= {};
+			let newData			= pageInfo.newData;
+			if(isEmpty(newData)) newData = "N";
+			
+			let emptyData		= "N"
+			
+			let headerTextGroupMap = {}
+			
+			// 기본값 설정
+			if(isEmpty(parm.checkbox)) parm.checkbox = "hide";
+			if(isEmpty(parm.ordernum)) parm.ordernum = "show";
+			
+			if(isValid(headerTextGroup)) {
+				$.each(headerTextGroup, function(key, list) {
+					$.each(list, function() {
+						headerTextGroupMap[this] = key;					
+					});
+				});
+			}
+			
+			// Grid를 그리지 않고, Table List만 가져가는경우 Grid를 그리지 않고 끝낸다.
+			if( onlyGetTableList == "Y" ) {
+				
+				C_COMP.callback("<@compId>", tableList);
+				
+				return;
+				
+			}
+			if(tableList.length == 0) {
+				let item = {}
+				$.each(headerList, function() {
+					let val = "";
+					let defaultObj = columnMap[this.COLUMN_ID].default;
+					if(isValid(defaultObj)) {
+						if(typeof defaultObj == "function") 	val = defaultObj(this.COLUMN_ID, {});
+						else									val = defaultObj;
+					}
+					item[this.COLUMN_ID] = val;
+				});					
+				$.each(hiddenColumnList, function() {
+					if(isValid(this.ifNewAutoSet)) {
+						if(this.ifNewAutoSet == "random") {
+							item[this.COLUMN_ID] = C_COM.getUniqueId();
+						} else if( typeof this.ifNewAutoSet == "function" ) {
+							item[this.COLUMN_ID] = this.ifNewAutoSet();
+						}
+					} else {
+						let val = "";
+						let defaultObj = columnMap[this.COLUMN_ID].default;
+						if(isValid(defaultObj)) {
+							if(typeof defaultObj == "function") 	val = defaultObj(this.COLUMN_ID, {});
+							else									val = defaultObj;
+						}
+						item[this.COLUMN_ID] = val;	
+					}
+				});					
+				
+				tableList.push(item);
+				
+				emptyData = "Y";
+			}
+			
+			$.each(tableList, function(idx) {
+				let rowItem = this;
+				// initSetData 컬럼 처리
+				$.each(headerList, function() {
+					if(isValid(this.initSetData)) {
+						if(typeof this.initSetData == "function" ) {
+							rowItem[this.COLUMN_ID] = this.initSetData(rowItem[this.COLUMN_ID], rowItem);
+						} else {
+							rowItem[this.COLUMN_ID] = this.initSetData;
+						} 
+					} 
+				});
+				$.each(hiddenColumnList, function() {
+					if(isValid(this.initSetData)) {
+						if(typeof this.initSetData == "function" ) {
+							rowItem[this.COLUMN_ID] = this.initSetData(rowItem[this.COLUMN_ID], rowItem);
+						} else {
+							rowItem[this.COLUMN_ID] = this.initSetData;
+						} 
+					} 
+				});
+				tableList[idx] = rowItem;
+			});
+			
+			$.each(tableList, function(idx) {
+				let rowItem = this;
+				$.each(headerList, function() {
+					key = this.COLUMN_ID + "" + idx;
+					fullTableMap[key] = rowItem[this.COLUMN_ID];
+				});
+				$.each(hiddenColumnList, function() {
+					key = this.COLUMN_ID + "" + idx;
+					fullHiddenMap[key] = rowItem[this.COLUMN_ID];
+				});
+			});
+			
+			let topHeaderList = [];
+			if(isValid(headerTextGroupMap)) {
+				$.each(headerList, function() {
+					if(isValid(headerTextGroupMap[this.COLUMN_ID])) 	topHeaderList.push({ COLUMN_NM : headerTextGroupMap[this.COLUMN_ID] });
+					else												topHeaderList.push(this);
+				});
+			}
+			let colnum = headerList.length;
+			if(parm.checkbox == "show") colnum++;
+			if(parm.ordernum == "show") colnum++;
+			
+			// tr template를 저장한다.
+			<@compId>.templateItem = fn_copyObject(tableList[0]);
+			$.each(headerList, function(idx) {
+				<@compId>.templateItem[this.COLUMN_ID] = "";
+			});
+			
+			if(append == "Y") {
+				
+				var rparm = {
+					 targetId 			: "<@compId>_tbody"
+					,headerList			: headerList
+					,hiddenColumnList	: hiddenColumnList
+	                ,list       		: tableList
+	                ,fullTableMap		: fullTableMap
+	                ,fullHiddenMap		: fullHiddenMap
+	                ,append				: append
+	                ,colnum				: colnum
+				}
+				C_COM.renderHtml("<@compId>", rparm);
+
+				<@compId>.scrollHeight = $("#<@compId> #<@compId>_targetTable").prop('scrollHeight');
+				
+				if(parm.checkbox == "show") {
+					$("#<@compId>_targetTable [rowgroup='checkbox']").show();
+				} else {
+					$("#<@compId>_targetTable [rowgroup='checkbox']").hide();
+				}
+				if(parm.ordernum == "show") {
+					$("#<@compId>_targetTable [rowgroup='ordernum']").show();
+				} else {
+					$("#<@compId>_targetTable [rowgroup='ordernum']").hide();
+				} 
+				
+				let gridInstance = <@compId>.getGridInstance()
+				gridInstance.init({callType : "scroll"});
+			} else {
+				let pageList = tableList;
+				if(emptyData == "Y" && newData == "N") {
+					<@compId>.tableInitRow = pageList[0];
+					// 최초 행 삽입시 grid에서 Insert할때 처리 되는 부분 따로 처리
+					$.each(<@compId>.tableInitRow, function(key, val) {
+						const cfg = columnMap[key];
+						let nval;
+						if(cfg.hidden == "Y" && isValid(cfg.ifNewAutoSet)) {
+							if(cfg.ifNewAutoSet == "random") {
+								nval = C_COM.getUniqueId();
+							} else if( typeof cfg.ifNewAutoSet == "function" ) {
+								nval = cfg.ifNewAutoSet();
+							}
+							<@compId>.tableInitRow[key] = nval;
+						} else if(isValid(cfg.default)) {
+							let defaultObj = cfg["default"];
+							if(typeof defaultObj == "function") 	val = defaultObj(key, {}); 
+							else 									val = defaultObj;
+						}
+						
+					});
+					pageList = [];
+				} else {
+					delete <@compId>.tableInitRow; 
+				}
+				var rparm = {
+					 targetId 			: "<@compId>_targetTable"
+					,topHeaderList		: topHeaderList
+					,headerList			: headerList
+					,hiddenColumnList	: hiddenColumnList
+	                ,list       		: pageList
+	                ,fullTableMap		: fullTableMap
+	                ,fullHiddenMap		: fullHiddenMap
+	                ,append				: append
+	                ,colnum				: colnum
+				}
+				C_COM.renderHtml("<@compId>", rparm);
+				
+				// 하단 통계 Row Setting
+				if(isValid(<@compId>.orgParm.addBottomRow))<@compId>.setAddBottomRow(rparm)
+				
+				<@compId>.scrollHeight = $("#<@compId> #<@compId>_targetTable").prop('scrollHeight');
+				
+				if(isValid(headerTextGroupMap)) {
+					for(num = headerList.length + 3; num > 0;num--) {
+						mergeTableTD("<@compId>_targetTable", {startIdx : num, endIdx : num, startRowIdx : 1});
+					}
+					mergeTableColumn("<@compId>_grdHd");
+					
+					//class 설정
+					$(`#<@compId>_grdHd`).addClass("table-thead-2th");
+					$(`#<@compId>_grdHd th`).each(function() {
+						let rowspan = $(this).attr("rowspan");
+						if(isEmpty(rowspan)) rowspan = 0;
+						let colspan = $(this).attr("colspan");
+						if(isEmpty(colspan)) colspan = 0;
+						if(rowspan > 1) {
+							$(this).addClass("thead-1th-bg");
+						} else if(colspan > 1) {
+							$(this).addClass("thead-1th");
+						} else {
+							$(this).addClass("thead-1th-bg01");
+						}
+					});
+				}
+				
+				// Header 숨김 처리
+				if		(parm.headerHide == "Y") $("#<@compId>_grdHd").hide();
+				else if	(isValid(parm.headerTitle)) {
+					$("#<@compId>_grdHd").html(`<th scope="col" colspan="${colnum}">${parm.headerTitle}</th>`);
+				}
+				
+				// Grid 개수 표시
+				if(isValid(parm.rowCntId)) {
+					$(`#${parm.rowCntId}`).html(addComma(pageInfo.totalCnt));
+				}
+				
+				// 기본값 설정
+				if(isEmpty(parm.checkbox)) parm.checkbox = "hide";
+				if(isEmpty(parm.ordernum)) parm.ordernum = "show";
+				
+				if(parm.checkbox == "show") {
+					$("#<@compId>_targetTable [rowgroup='checkbox']").show();
+				} else {
+					$("#<@compId>_targetTable [rowgroup='checkbox']").hide();
+				}
+				if(parm.ordernum == "show") {
+					$("#<@compId>_targetTable [rowgroup='ordernum']").show();
+				} else {
+					$("#<@compId>_targetTable [rowgroup='ordernum']").hide();
+				} 
+				
+				let gridParm = {
+					 numberColIdx 		: 2
+					,primaryKeyList		: primaryKeyList
+					,hiddenColumnList 	: hiddenColumnList
+					,columnConfig		: columnConfig
+					,columnMap			: columnMap
+					,cellConfig			: cellConfig
+					,rowConfig			: rowConfig
+					,newData			: newData
+					,readOnly			: readOnly
+					,updateOnly			: updateOnly
+					,onInit				: <@compId>.onInit
+					,tableInitRow		: <@compId>.tableInitRow
+					,checkboxType		: checkboxType
+					,noDataFirstAddFn	: function() {
+						<@compId>.tableInitRow = undefined;
+						let pageInfo = <@compId>.lastPageInfo;
+						pageInfo.pageList = [];
+						pageInfo.newData = "Y";
+						<@compId>.makeGridList(pageInfo);
+					 }
+				}
+
+				C_GRID.makeGrid("<@compId>_targetTable", gridParm);
+
+				C_COMP.callback("<@compId>", pageList);
+			}
+
+			// Order 관련 Icon 표시
+			<@compId>.showOrderArrow();
+
+			if(parm.allCheckHide == "Y") {
+				$("#<@compId>_allcb").hide();	
+			}
+			
+			// Merge 설정이 있을경우 실행
+			if(isValid(parm.cellMergeList)) {
+				
+				let newCellMergeList = parm.cellMergeList.slice().reverse();
+				
+				$.each(newCellMergeList, function() {
+					
+					let startIdx = 0;
+					let endIdx = 0;
+					let startColumn = this[0];
+					let endColumn	= this[1];
+					let startRowIdx	= this[2];
+					let columnIdx	= 3;
+
+					$.each(columnMap, function(key, obj) {
+						if(obj.hidden == "Y") return true;
+						if(startColumn 	== key) startIdx 	= columnIdx;
+						if(endColumn 	== key) endIdx 		= columnIdx;
+						columnIdx++;
+					});
+					mergeTableTD("<@compId>_targetTable tbody", {startIdx : startIdx, endIdx : endIdx, startRowIdx : startRowIdx});
+				});						
+			}
+			
+			
+		 }
+		,onInit		 : function() {
+			// 그리드가 초기화 되면 스크롤 영역 높이를 재조정 한다.
+			<@compId>.scrollHeight = $("#<@compId> #<@compId>_targetTable").prop('scrollHeight');
+			const popupId = C_POP.getCurrentPopupId();
+			// Paging처리일때 스크롤 Event등록
+			let $scrollWrap = {}
+			if(isValid(popupId)) {
+				$scrollWrap = $('#<@compId>').closest('div.table-inwrap-scroll');
+			} else {
+				$scrollWrap = $('#<@compId>').closest('div.table-allwrap');
+			}
+			$scrollWrap.scrollTop(0);
+		 }
+		 // type : "all" 	=> 삭제된것 포함 전체 Data( Default )
+		 // type : "view"	=> 현재 보이는 Data만 (삭제된것 만 제외)
+		 // type : "change"	=> 변경된 것만 (default 제외)
+		 // type : "checked"=> Checked된 것만
+		,getGridData : function(type) {
+			if(isEmpty(type)) type = "all";
+			let dataList = C_GRID.getGridData("<@compId>_targetTable");
+
+			let returnList = [];
+			if(type == "all") {
+				return dataList;
+			} else if(type == "view") {
+				$.each(dataList, function() {
+					if(this.__state != "delete") returnList.push(this);
+				});
+				return returnList;
+			} else if(type == "change") {
+				$.each(dataList, function() {
+					if(this.__state != "default" ) returnList.push(this);
+				});
+				return returnList;
+			} else if(type == "checked") {
+				$.each(dataList, function() {
+					if(this.checkbox) returnList.push(this);
+				});
+				return returnList;
+			}
+		 }
+		,save : function(callback, updateType) {
+
+			let data = C_GRID.getGridData("<@compId>_targetTable");
+			
+			let primaryKeyList 	= <@compId>.parm.primaryKeyList;
+			let uniqueKeyList 	= <@compId>.parm.uniqueKeyList;
+			let columnMap 		= <@compId>.parm.columnMap;
+			let tableName 		= <@compId>.parm.tableName;
+			let gridInstance	= <@compId>.getGridInstance();
+			
+			let dupleCheck 	= false;
+			let errorCheck 	= false;
+			
+			let dupleMap	= {};
+			
+			let gridIsEmpty = gridInstance.isEmpty();
+			
+			if(!gridIsEmpty) {
+				
+				$.each(data, function(idx) {
+
+					let item = this;
+					// Data 사전 처리
+					$.each(columnMap, function(column, info) {
+						// 테이블 컬럼이 아닌경우 저장 대상에서 제외
+						if(info.tableColumn == "N") info.noSave = "Y";
+					});
+					
+					if(item.__state != "delete")
+					{
+						let uid = ""
+						$.each(primaryKeyList, function() {
+							let val = item[this];
+							if(isEmpty(val)) {
+								
+								C_POP.alert(`${idx + 1} 번째줄의 Primary Key Column이 빈값입니다.`);
+								errorCheck = true;
+								return false;
+							}
+							uid += val;
+						});
+						
+						if(errorCheck) return false;
+
+						$.each(columnMap, function(column, info) {
+							if(info.notnull == "Y" || info.notNull == "Y") {
+								let val = item[column];
+								if(isEmpty(val)) {
+									C_POP.alert(`${info.headerText} Column은 필수 값으로 설정 되어 있습니다.\n\n${idx + 1} 번째줄의 ${info.headerText} Column이 빈값입니다.`);
+									errorCheck = true;
+									return false;
+								}
+							}
+						});
+						if(errorCheck) return false;
+						
+						if(isValid(dupleMap[uid])) {
+							C_POP.alert(`${dupleMap[uid]} 번째와 ${idx + 1}번째의 Data가 Primary Key의 값이 중복 입니다.`);
+							dupleCheck = true;
+							return false;
+						} else {
+							dupleMap[uid] = (idx + 1);
+						}
+						
+						// unique 중복 처리
+						if(isValid(uniqueKeyList)) {
+							uid = ""
+							$.each(uniqueKeyList, function() {
+								uid += item[this];
+							});						
+							if(isValid(dupleMap[uid])) {
+								C_POP.alert(`${dupleMap[uid]} 번째와 ${idx + 1}번째의 Data가 Unique Key의 값이 중복 입니다.`);
+								dupleCheck = true;
+								return false;
+							} else {
+								dupleMap[uid] = (idx + 1);
+							}
+						}
+					}
+				});
+				if(errorCheck || dupleCheck) return { state : "F" , errorCheck : errorCheck, dupleCheck : dupleCheck};
+			}
+			
+			
+			let deleteList = []
+			let updateList = []
+			let insertList = []
+				
+			$.each(data, function() {
+				if		(this.__state == "delete") deleteList.push(this);
+				else if	(this.__state == "update") updateList.push(this);
+				else if	(this.__state == "insert") insertList.push(this);
+			});
+
+			let queryGroup = [];
+			
+			let requestParmDeleteList	= []
+			$.each(deleteList, function() {
+				let deleteObj 		= this;
+				let requestParm		= {tableName : tableName}
+				let deleteWhereList = []; 
+				$.each(primaryKeyList, function(idx) {
+					deleteWhereList.push({
+						 COLUMN_ID 	: this
+						,COLUMN_VAL	: deleteObj[this]
+					});
+				});
+				requestParm.deleteWhereList = deleteWhereList;
+				requestParmDeleteList.push(requestParm);
+			});
+
+			if(requestParmDeleteList.length > 0) {
+				var parm = {
+					 queryId 			: "common.deleteTableData"
+					,requestParmList	: requestParmDeleteList
+				}
+				queryGroup.push(parm);
+			}
+
+			let requestParmUpdateList	= []
+
+			$.each(updateList, function() {
+				let updateObj 		= this;
+				let requestParm		= updateObj; 
+				let updateWhereList = []; 
+				$.each(primaryKeyList, function(idx) {
+					updateWhereList.push({
+						 COLUMN_ID 	: this
+						,COLUMN_VAL	: updateObj["_BASE_ROW_DATA"][this]
+					});
+				});
+				requestParm.updateWhereList = updateWhereList;
+
+				let updateColumnList 	= []; 
+				let targetColumnList 	= []; 
+
+				$.each(columnMap, function(key, obj) {
+					if(obj.nosave != "Y" && obj.noSave != "Y") {
+						updateColumnList.push({
+							 COLUMN_ID	: key
+							,COLUMN_VAL	: updateObj[key]
+							,dataType	: obj.dataType
+							,saveType	: obj.saveType
+							,dateFormat	: obj.dateFormat
+						});
+						// update type이 merge인 경우 조건식은 Update Column에서 제외
+						if(updateType == "merge") {
+							let flag = true;
+							$.each(updateWhereList, function() {
+								if(key == this.COLUMN_ID) flag = false;
+							});
+							if(flag) {
+								targetColumnList.push({
+									 COLUMN_ID	: key
+									,COLUMN_VAL	: updateObj[key]
+									,dataType	: obj.dataType
+									,saveType	: obj.saveType
+									,dateFormat	: obj.dateFormat
+								});
+							}
+						}
+					}
+				});	
+				requestParm.updateColumnList = updateColumnList;
+
+				requestParm.targetColumnList = targetColumnList;
+
+				requestParm.tableName = tableName;
+
+				requestParmUpdateList.push(requestParm);
+			});
+			
+			
+			if(requestParmUpdateList.length > 0) {
+
+				var parm = {
+					 queryId 			: "common.updateTableData"
+					,requestParmList	: requestParmUpdateList
+				}
+
+				if(updateType == "merge") {
+					parm.queryId = "common.mergeTableData"
+				}
+				
+				queryGroup.push(parm);
+			}
+			
+			let requestParmInsertList	= []
+			$.each(insertList, function() {
+				let insertObj 		= this;
+				let requestParm		= insertObj; 
+
+				let insertColumnList = []; 
+				
+				$.each(columnMap, function(key, obj) {
+					if(obj.nosave != "Y" && obj.noSave != "Y") {
+						insertColumnList.push({
+							 COLUMN_ID	: key
+							,COLUMN_VAL	: insertObj[key]
+							,dataType	: obj.dataType
+							,saveType	: obj.saveType
+							,dateFormat	: obj.dateFormat
+						});
+					}
+				});	
+				requestParm.insertColumnList = insertColumnList;
+
+				requestParm.tableName = tableName;
+
+				requestParmInsertList.push(requestParm);
+			});
+			if(requestParmInsertList.length > 0) {
+				var parm = {
+					 queryId 			: "common.insertTableData"
+					,requestParmList	: requestParmInsertList
+				}
+				queryGroup.push(parm);
+			}
+			
+			if(queryGroup.length > 0) {
+				var parm = {
+					queryGroup 			: queryGroup
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					
+					if(typeof callback == "function") callback(resultData);
+					
+					C_GRID.clearState("<@compId>_targetTable");
+
+				});
+			} else {
+				C_POP.alert('변경 내용이 없습니다.');
+			}
+		 }
+		// updateParm에 변경 설정을 Setting하여 호출
+		,reload : function(updateParm) {
+			if(isEmpty(updateParm)) updateParm= {};
+			
+			if(isEmpty(updateParm.orderColumnList)) {
+				updateParm.orderColumnList 	= <@compId>.orgOrderColumnList;
+				<@compId>.orderStateList	= []
+				<@compId>.orderStateMap		= {}
+				<@compId>.showOrderArrow();
+			}
+			
+			let parm = <@compId>.orgParm;
+			$.each(updateParm, function(key, val) {
+				parm[key] = val;				
+			});
+			<@compId>.columnParm		= {}	;
+			<@compId>.scrollHeight		= 0     ;
+			<@compId>.gridWindowHeight	= 0     ;
+			<@compId>.nowLoadIdx		= 1     ;
+			<@compId>.pagingCheck		= false ;
+			$scrollWrap = $('#<@compId>').closest('div.table-allwrap');
+			$scrollWrap.scrollTop(0);
+			setTimeout(function() {
+				<@compId>.init(parm);	
+			}, 200)
+		 }
+		,excelDownload : function(updateParm) {
+			let parm = <@compId>.lastRequestQueryParm;
+			const title = $("#bodyBlock page-component:visible .sub-tit").text();
+			const columns = Object.entries(<@compId>.parm.columnMap).map( col => [col[0],col[1].headerText]);
+			const excelColumnIds = columns.map( c=> c[0]);
+			const excelColumnNames = columns.map( c=> c[1]);
+			let  excelHidden = [];
+			excelColumnNames.forEach( (obj,idx) =>{
+				if( !isEmpty(parm.requestParm?.parm?.columnList) ){
+					excelHidden[idx] = parm.requestParm?.parm?.columnList.hidden;
+				}else{
+					excelHidden[idx] = 'N';
+				}
+			})
+			C_COM.showLoadingBar();
+			_excelDownload(<@compId>.parm.columnMap, excelColumnNames ,excelColumnIds, parm ,title,G_VAL.session.BRAND_NM,excelHidden)
+		 }
+		,setValueToCell : function(tdDom, value) {
+			C_GRID.setValueToGridCell("<@compId>_targetTable", tdDom, value);
+		 }
+		,getGridInstance : function() {
+			return C_GRID.getGridInstance("<@compId>_targetTable");
+		 }
+		,clickAllCb		: function(cbDom) {
+			let checked = $(cbDom).prop("checked");
+			$("#<@compId>_tbody input[type='checkbox']").prop("checked", checked)
+			if(typeof <@compId>.orgParm.rowConfig.onChangeAllCheckBoxState == "function") <@compId>.orgParm.rowConfig.onChangeAllCheckBoxState(checked);
+			else {
+				$("#<@compId>_tbody input[type='checkbox']").trigger("change");
+			}
+		 }
+		,refreshTotalCnt : function() {
+			let gridInstance = <@compId>.getGridInstance();
+			let cnt = gridInstance.getTotalRow();
+			$(`#${<@compId>.orgParm.rowCntId}`).html(cnt);
+		 }
+		,getSelectedRowData : function() {
+			let gridInstance = <@compId>.getGridInstance();
+			return gridInstance.getSelectedRowData();
+		 }
+		,defaultSelectCell : function() {
+			$("#<@compId>_tbody tr td").each(function() {
+				let rowgroup =$(this).attr("rowgroup");
+				if(rowgroup == "checkbox" || rowgroup == "ordernum") return true;
+				$(this).click();
+				return false;
+			});
+		 }
+		,sortColumn : function(columnId) {
+			
+			let gridInstance = <@compId>.getGridInstance();
+			
+			// Order 제외 컬럼 확인
+			let check = false;
+			$.each(gridInstance.columnMap, function(key, obj) {
+				if(key == columnId && obj.noSort == "Y") {
+					check = true;
+					return false;
+				}
+			});
+			// Order 제외 컬럼인경우
+			if(check) return;
+			
+			const execFn = function() {
+				let osm = <@compId>.orderStateMap[columnId];
+				if(isEmpty(osm)) {
+					osm = { columnId : columnId, direct : "ASC" }
+				} else {
+					if		(osm.direct == "ASC"	) osm.direct = "DESC"   ;
+					else if	(osm.direct == "DESC"	) osm.direct = "NA"     ;
+					else if	(osm.direct == "NA"		) osm.direct = "ASC"	;
+				}
+				
+				if(osm.direct == "NA") 	{
+					delete <@compId>.orderStateMap[columnId];
+					<@compId>.orderStateList = removeItemAtArray(<@compId>.orderStateList, columnId);
+				} else {
+					<@compId>.orderStateMap[columnId] 	= osm;	
+					<@compId>.orderStateList 			= addStringToArray(<@compId>.orderStateList, columnId);
+				}
+				
+				let orderColumnList = fn_copyArray(<@compId>.orgOrderColumnList);
+
+				$.each(<@compId>.orderStateList, function() {
+					const orderObj = <@compId>.orderStateMap[this];
+					const orderStr = `${orderObj.columnId} ${orderObj.direct}`
+					orderColumnList.unshift(orderStr);
+				});
+				let updateParm = {orderColumnList : orderColumnList}
+
+				<@compId>.reload(updateParm)
+			}
+			
+			if(gridInstance.isChanged()) {
+				C_POP.confirm('Data 수정내용이 있습니다.\n\n정렬을 실행 하면 변경내용이 초기화 됩니다.\n\n정렬을 진행 하시겠습니까?', function() {
+					execFn();
+				});
+			} else execFn();
+			
+		 }
+		,showOrderArrow : function() {
+			let totalCnt = <@compId>.orderStateList.length;
+			$.each(<@compId>.orderStateList, function(idx) {
+				const orderObj = <@compId>.orderStateMap[this];
+				const sortChar = { "ASC" : "↑", "DESC" : "↓"}
+				let orderStr = `${sortChar[orderObj.direct]}${totalCnt - idx}`;
+				$(`#<@compId> #sortText_${orderObj.columnId}`).html(orderStr);
+			});
+		 }
+		
+		// 하단 합계 항목 Reload
+		,setAddBottomRow : function(rparm) {
+			
+			if(isEmpty(rparm.list) || rparm.list.length < 1) return;
+			
+			<@compId>.orgParm.rparm = rparm;
+			
+			const addBottomRow = <@compId>.orgParm.addBottomRow;
+			if(isEmpty(addBottomRow.userDefineFn)) addBottomRow.userDefineFn = {}
+			
+			const uid = "<@compId>_bottomId";
+				
+			let btmParm = {
+				 title 		: addBottomRow.title
+				,divId 		: uid
+				,titleId	: `${uid}_titleId`
+			}
+			;
+			const fstItem = addBottomRow.targetColumn[0];
+			
+			let addBottomRowMap = {}
+			$.each(addBottomRow.targetColumn, function() { addBottomRowMap[this] = "Y" });
+			
+			let colspan 	= 0;
+			let mergespan	= 0;
+			let trList 	= []
+			$.each(rparm.headerList, function(idx) {
+				const columnId = this.COLUMN_ID;
+				if(fstItem == columnId	) colspan = idx;
+				if(colspan == 0) return true;
+				let item = {result : ""}
+				if(addBottomRowMap[columnId] == "Y") {
+					if( typeof addBottomRow.userDefineFn[columnId] == "function" ) {
+						const result = addBottomRow.userDefineFn[columnId](rparm.list, <@compId>, btmParm);
+						item = { result : result }
+					} else {
+						let result = "";
+						const statistic = <@compId>.getStatisticData(columnId, rparm.list);
+						if			(addBottomRow.baseType == "SUM") 	result = addComma(toNumber(statistic.sum, 2));
+						else if		(addBottomRow.baseType == "AVG") 	result = addComma(toNumber(statistic.avg, 2));
+						else											result = addComma(toNumber(statistic.sum, 2));
+						item = { result : `<span class="txt-red">${result}</span>` }
+					}
+					if(isValid(addBottomRow.mergeColumnCnt)) item.resultSpan = `colspan=${addBottomRow.mergeColumnCnt}`;
+				}
+				item.columnId = columnId;
+				if(mergespan > 0) 	mergespan--;
+				else 				trList.push(item);
+				if(addBottomRowMap[columnId] == "Y" && isValid(addBottomRow.mergeColumnCnt)) mergespan = addBottomRow.mergeColumnCnt;
+			});
+			btmParm.colspan = colspan + rparm.colnum - rparm.headerList.length;
+			
+			btmParm.list = trList
+			
+			const html = $("#<@compId>_targetTable_addBottom_template").render(btmParm);
+			
+			$(`#${rparm.targetId} #${uid}`).remove();
+			
+			$(`#${rparm.targetId}`).append(html);
+		 }
+		,refreshBottomRow : function() {
+			let rparm 			= <@compId>.orgParm.rparm;
+			
+			const gridObj = <@compId>.getGridInstance();
+			
+			rparm.list = gridObj.getGridData();
+			
+			<@compId>.setAddBottomRow(rparm);
+			
+		 }
+		,getStatisticData : function(columnId, tableList) {
+			let result 	= 0;
+			let sum	= 0;
+			let cnt		= tableList.length;
+			$.each(tableList, function() {
+				sum += toNumber(this[columnId]);
+			});
+			let avg = toNumber(sum / cnt , 1);
+			return {sum : sum, avg : avg}
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+		<@compId>.parm = data.gridParm;
+		
+		<@compId>.orgOrderColumnList = data.gridParm.orderColumnList;
+		if(isEmpty(<@compId>.orgOrderColumnList)) <@compId>.orgOrderColumnList = []; 
+		
+		<@compId>.init(<@compId>.parm);
+		
+		if( C_WIN.windowSizeType =="B" ) {
+			if(isValid(data.gridParm.gridWidth)) {
+				$("#<@compId>_targetTable").width(data.gridParm.gridWidth);
+			}
+		}
+		C_WIN.addListenerWindowChangeSizeType("compGrid", function(windowSizeType) {
+			// grid Size조정 처리
+			if(windowSizeType == "B") {
+				$("#<@compId>_targetTable").width(data.gridParm.gridWidth);
+			} else {
+				$("#<@compId>_targetTable").width("100%");
+			}
+		});
+	});
+	
+</script>
+
+<component>
+    
+	<!-- table start -->
+	<table class="table-inwrap col10" id="<@compId>_targetTable">
+	</table>
+
+	<script type="text/x-jsrender" id="<@compId>_targetTable_template">	
+		<colgroup>
+			<col column="checkbox" 	columnType="readOnly" style="width:30px;" rowgroup="checkbox"/>
+			<col column="num" 		columnType="readOnly" style="width:60px;" rowgroup="ordernum"/>
+		{{for headerList}}
+			<col  column="{{:COLUMN_ID}}" width="{{:width}}" class="{{:thClass}}"
+			{{if COLUMN_TYPE != undefined }}
+			columnType="{{:COLUMN_TYPE}}"
+			{{/if}}
+			>
+		{{/for}}
+		</colgroup>
+		<thead class="table-thead" id="<@compId>_grdHd">
+			{{if topHeaderList.length > 0 }}
+            <tr class="th-1th">
+				<th scope="col" rowgroup="checkbox"><input type="checkbox" id="<@compId>_allcb" onClick="<@compId>.clickAllCb(this)"/></th>
+				<th scope="col" rowgroup="ordernum">Num</th>
+			{{for topHeaderList}}
+				<th scope="col" class="{{:thClass}} explan-noTextSelect" onDblClick="<@compId>.sortColumn('{{:COLUMN_ID}}')">{{:COLUMN_NM}}<span id="sortText_{{:COLUMN_ID}}"></span><span name="hiddenColumnId" class="explan-hd"><br/> {{:COLUMN_ID}}</span></th>
+			{{/for}}
+            </tr>
+			{{/if}}
+            <tr>
+				<th scope="col" rowgroup="checkbox"><input type="checkbox" id="<@compId>_allcb" onClick="<@compId>.clickAllCb(this)"/></th>
+				<th scope="col" rowgroup="ordernum">Num</th>
+			{{for headerList}}
+				<th scope="col" class="{{:thClass}} explan-noTextSelect" onDblClick="<@compId>.sortColumn('{{:COLUMN_ID}}')" title="{{:columnToolTip}}">{{:COLUMN_NM}}<span id="sortText_{{:COLUMN_ID}}"></span><span name="hiddenColumnId" class="explan-hd"><br/> {{:COLUMN_ID}}</span></th>
+			{{/for}}
+            </tr>
+		</thead>
+        <tbody id="<@compId>_tbody">
+        {{for list ~headerList=headerList ~fullTableMap=fullTableMap ~hiddenColumnList=hiddenColumnList ~fullHiddenMap=fullHiddenMap}}
+			<tr
+			{{for ~hiddenColumnList ~fullHiddenMap=~fullHiddenMap ~pidx=#index}}
+				{{:COLUMN_ID}}="{{:~fullHiddenMap[COLUMN_ID + ~pidx]}}"
+			{{/for}}
+			>
+				<td rowgroup="checkbox"><input type="checkbox"></td>
+				<td rowgroup="ordernum">{{:#index + 1}}</td>
+			{{for ~headerList ~fullTableMap=~fullTableMap ~pidx=#index}}
+				<td columnId="{{:COLUMN_ID}}" value="{{:~fullTableMap[COLUMN_ID + ~pidx]}}" title="{{:~fullTableMap[COLUMN_ID + ~pidx]}}" class="{{:tdClass}}" style="{{:tdStyle}}">{{:~fullTableMap[COLUMN_ID + ~pidx]}}</td>
+			{{/for}}
+			</tr>
+		{{/for}}
+
+		</tbody>
+	</script>
+	
+	
+	<!-- 하단 통계 Row 설정 -->
+	<script type="text/x-jsrender" id="<@compId>_targetTable_addBottom_template">
+          <tr class="tb-fixed-btm" id="{{:divId}}">
+             <td colspan="{{:colspan}}" class="bg-sum" id="{{:titleId}}">{{:title}}</td>
+			 {{for list}}	
+             <td class="bg-sum" {{:resultSpan}} id="{{:columnId}}">{{:result}}</td>
+             {{/for}}
+          </tr>
+	</script>	
+	
+	<script type="text/x-jsrender" id="<@compId>_targetTable_noData_template">	
+		<colgroup>
+			<col column="checkbox" 	columnType="readOnly" style="width:30px;" rowgroup="checkbox"/>
+			<col column="num" 		columnType="readOnly" style="width:60px;" rowgroup="ordernum"/>
+		{{for headerList}}
+			<col  column="{{:COLUMN_ID}}" width="{{:width}}" class="{{:thClass}}"
+			{{if COLUMN_TYPE != undefined }}
+			columnType="{{:COLUMN_TYPE}}"
+			{{/if}}
+			>
+		{{/for}}
+		</colgroup>
+		<thead class="table-thead" id="<@compId>_grdHd">
+			{{if topHeaderList.length > 0 }}
+            <tr class="th-1th">
+				<th scope="col" rowgroup="checkbox"><input type="checkbox" id="<@compId>_allcb" onClick="<@compId>.clickAllCb(this)"/></th>
+				<th scope="col" rowgroup="ordernum">Num</th>
+			{{for topHeaderList}}
+				<th scope="col" class="{{:thClass}}">{{:COLUMN_NM}}</th>
+			{{/for}}
+            </tr>
+			{{/if}}
+            <tr>
+				<th scope="col" rowgroup="checkbox"><input type="checkbox" id="<@compId>_allcb" onClick="<@compId>.clickAllCb(this)"/></th>
+				<th scope="col" rowgroup="ordernum">Num</th>
+			{{for headerList}}
+				<th scope="col" class="{{:thClass}}">{{:COLUMN_NM}}</th>
+			{{/for}}
+            </tr>
+		</thead>
+		<tbody>
+			<tr type="nodata">
+				<td style="" colspan="{{:colnum}}">자료가 없습니다.</td>
+			</tr>
+		</tbody>
+	</script>
+	
+	<script type="text/x-jsrender" id="<@compId>_tbody_template">	
+        {{for list ~headerList=headerList ~fullTableMap=fullTableMap ~hiddenColumnList=hiddenColumnList ~fullHiddenMap=fullHiddenMap}}
+			<tr
+			{{for ~hiddenColumnList ~fullHiddenMap=~fullHiddenMap ~pidx=#index}}
+				{{:COLUMN_ID}}="{{:~fullHiddenMap[COLUMN_ID + ~pidx]}}"
+			{{/for}}
+			>
+				<td rowgroup="checkbox"><input type="checkbox"></td>
+				<td rowgroup="ordernum">{{:#index + 1}}</td>
+			{{for ~headerList ~fullTableMap=~fullTableMap ~pidx=#index}}
+				<td columnId="{{:COLUMN_ID}}" value="{{:~fullTableMap[COLUMN_ID + ~pidx]}}" title="{{:~fullTableMap[COLUMN_ID + ~pidx]}}" class="{{:tdClass}}" style="{{:tdStyle}}">{{:~fullTableMap[COLUMN_ID + ~pidx]}}</td>
+			{{/for}}
+			</tr>
+		{{/for}}
+	</script>	
+	                  
+<component>

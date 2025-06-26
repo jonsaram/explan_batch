@@ -1,0 +1,834 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 baseFolderId 		: "BASE"
+		,topFolderId		: "BASE"
+		,upFolderId			: ""
+		,onClickCheck		: false
+		,BUYER_ID			: "<@BUYER_ID>"
+		,leftFolderList		: []
+		,subFolderList		: []
+		,selectFolderId		: ""
+		,shareMsgList		: []
+        ,deleteFolderId     : ""
+        ,treeState			: {}
+		,findTextInFolder   : false
+		,init : function() {
+		}
+		,buildFolderTree : function(folders,parentId){
+            return folders
+                .filter(folder => folder.UP_FOLDER_ID === parentId) 
+                .map(folder => {
+                    const subFolders =<@compId>.buildFolderTree(folders, folder.FOLDER_ID);
+                    return {
+                        id: folder.FOLDER_ID,			// jsTree에서 고유한 ID로 사용
+                        text: folder.FOLDER_NM,			// jsTree에서 표시할 텍스트
+                        children: subFolders			// 하위 폴더를 포함
+                    };
+                });			
+		}
+		
+		,makeJsTree : function(){
+			
+			let BUYER_ID = G_VAL.session.BUYER_ID;
+	        let parm = {
+	            queryId        : "faDashboard.getBuyerFolderRecursive"
+	           ,requestParm    : {BUYER_ID 	: BUYER_ID} 
+	        }
+	        C_COM.requestQuery(parm, function(retData) {
+
+	        	if(retData.state == "S") {
+	        		
+	        		const folderData = retData.data;
+	                const folderTree = <@compId>.buildFolderTree(folderData, "BASE"); // 최상위 폴더의 UP_FOLDER_ID는 'BASE'
+        			<@compId>.setJsTree( folderTree);
+	        	}
+	        });			
+			
+		}
+		
+		,setJsTree: function(jsTreeData){
+			
+			if ($.jstree.reference('#left_jstree')) { 
+			    $('#left_jstree').jstree('destroy').empty(); 
+			}
+
+			$('#left_jstree')
+			.jstree({
+				'core' : {
+					'data' : jsTreeData,
+					'force_text' : true,
+					'check_callback' : true,
+					'themes' : {
+						'responsive' : false
+					}
+				},
+				'plugins' 	:['state','dnd','contextmenu','wholerow'],
+				"types"		:{
+						        "default": {
+						            "icon": "jstree-folder" // 모든 노드에 폴더 아이콘 적용
+						        },
+						        "leaf": {
+						            "icon": "jstree-folder" // leaf 노드에 폴더 아이콘 적용
+						        }
+							 },
+				 'contextmenu': {
+				        'items': function(node) {
+				            var menuItems = {
+				                "create": {"label": "추가","action": function() {<@compId>.addFolder()}},
+				                "rename": {"label": "수정","action": function() {<@compId>.modFolder()}},
+				                "delete": {"label": "삭제","action": function() {<@compId>.delFolder()}}
+				            };
+				            return menuItems;
+				        }	
+				 	}
+				})
+				.on('ready.jstree', function() {
+				    var tree = $('#left_jstree').jstree(true);
+				    tree.get_json('#', { flat: true }).forEach(function(node) {
+				        tree.set_icon(node.id, "jstree-folder"); // 모든 노드를 폴더 아이콘으로 변경
+				    });
+				    
+				    // 트리 로드 완료 후 첫 번째 노드를 선택해서 이벤트 강제 실행
+				    var firstNodeId = tree.get_node('#').children[0]; // 루트의 첫 자식
+				    tree.select_node(firstNodeId);				    
+				    
+				})
+				.on('open_node.jstree', function(e, data) {
+				    setTimeout(function() { 
+				        $('#left_jstree').find(".jstree-leaf").removeClass("jstree-leaf").addClass("jstree-open");
+				    }, 10);
+				})
+				.on('loaded.jstree', function() {
+				    // 트리가 로드된 후에 상태 복원
+				    $('#left_jstree').jstree(true).set_state(<@compId>.treeState);
+				})				
+				.on('rename_node.jstree', function (e, data) {
+					// 이름 변경
+			        const folderId = data.node.id; 
+			        let folderNm = data.text;
+			        const parentNodeId = data.node.parent; 
+			        const parentNode = data.instance.get_node(parentNodeId);
+			        const tree = $('#left_jstree').jstree(true);
+			        
+					if( <@compId>.isDuplicateNode(tree, parentNode,folderId, folderNm ) ){
+						alert("이미 등록된 폴더 이름으로 수정할 수 없습니다.\n다른이름으로 수정하여 주세요.");
+						folderNm += "_"+Math.random().toString(36).substring(2, 9);
+					}
+					<@compId>.modifyFolder(parentNodeId,folderId, folderNm);					
+				})
+				.on('select_node.jstree', function (e, data) {
+				    // 현재 선택된 노드의 ID
+				    $("#<@compId>_searchData").val("");
+				    $("#<@compId>_srchFile").css("color","#212529").text("첨부파일");
+				    $("#<@compId>_srchMsg").css("color","#212529").text("공유 메시지");
+				    
+				    const selectedNodeId = data.node.id;
+				    let parentId = '';
+				    const pathData = [];
+				    
+					for( var i=0 ; i< 10 ; i++){
+						
+						if( parentId == ''){
+							parentId = selectedNodeId;
+						}
+											
+					    if (parentId === "#") {
+					        break;
+					    } else {
+					        // 부모 노드의 텍스트 가져오기
+							let parentNode = data.instance.get_node(parentId);
+					        const parentText = parentNode.text;
+					        pathData.push({nodeId : parentId , text : parentText})
+					        parentId = parentNode.parent;
+					    }			    
+						
+					}
+					
+					// 컴포넌트 밖에 있는 path 접근
+					$("#<@parentId>_path").empty();
+					$("#<@parentId>_path").append($(`<a href="javascript:<@compId>.selectFirstNode('#')">`).text(G_VAL.session.BUYER_NM))
+					
+					if( pathData.length > 0 ){
+						for( var i=pathData.length-1 ; i >= 0 ; i--){
+							$("#<@parentId>_path").append($(`<a href="javascript:<@compId>.selectFirstNode('${pathData[i].nodeId}')">`).text(pathData[i].text))
+						}
+					}
+
+					const selectedNode = data.node;
+
+				  	//선택된 node를 가지고 sub폴더 리스트를 가지고 온다.
+				    <@compId>.selectLeftFolder(selectedNode?.id);
+				    
+					// 원래 sub폴더 리스트를 가지고 온 다음에 파일리스트를 가지고 오지만, 찾기 옵션인 경우는 
+					// 한꺼번에 가지고 올수 있도록 조치.
+					if( <@compId>.findTextInFolder ){
+						<@compId>.initFolderFileMng(<@compId>.selectFolderId);
+						<@compId>.loadShareMsgList();
+						
+						<@compId>.findTextInFolder = false;
+					}
+
+			}).on('changed.jstree', function(e, data) {
+			    data.instance.get_container().find(".jstree-leaf").removeClass("jstree-leaf").addClass("jstree-open");
+			});
+		}
+		
+		,loadLeftFolderList	: function(defaultIdx) {
+
+			let baseFolderId = <@compId>.baseFolderId;
+			
+			var parm = {
+				queryGroup : [
+					 {
+						 queryId 		: "faDashboard.getSubFolderList"
+						,requestParm	: {
+							 FOLDER_ID 		: baseFolderId
+							,BUYER_ID		: <@compId>.BUYER_ID
+						}
+					 }
+					,{
+						 queryId 		: "faDashboard.getFolderInfo"
+						,requestParm	: {
+							 FOLDER_ID 		: baseFolderId
+						}
+					 }
+				]
+			}
+
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				if(baseFolderId != <@compId>.topFolderId) {
+					<@compId>.upFolderId = resultData.data["faDashboard.getFolderInfo"][0].UP_FOLDER_ID;
+				}
+				<@compId>.leftFolderList = resultData.data["faDashboard.getSubFolderList"];
+				
+			});  
+		 }
+		
+		,loadSubFolderList : function(selectFolderId) {
+
+			if(isEmpty(selectFolderId)) selectFolderId = <@compId>.selectFolderId;
+			
+			var parm = {
+				 queryId 		: "faDashboard.getSubFolderList"
+				,requestParm	: {
+					 FOLDER_ID 		: selectFolderId
+					,BUYER_ID		: <@compId>.BUYER_ID
+				}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+
+				<@compId>.subFolderList 	= resultData.data;
+				<@compId>.selectFolderId	= selectFolderId
+				const tree = $('#left_jstree').jstree(true);
+			    tree.open_node(selectFolderId);
+				
+				<@compId>.initFolderFileMng(selectFolderId);
+				<@compId>.loadShareMsgList();
+			});  
+		 }
+		
+		,initFolderFileMng : function(folderId) {
+				
+			<@compId>.folderFileMng.init("MN_FOLDER_MNG", folderId);
+		 }
+		
+		,selectLeftFolder	: function(folderId) {
+
+			<@compId>.onClickCheck = true;
+			setTimeout(function() {
+				if(<@compId>.onClickCheck) <@compId>.loadSubFolderList(folderId);
+				<@compId>.onClickCheck = false;
+			}, 250);
+		 }
+		
+		,saveFolder : function(folderInfo, callback) {
+
+			var parm = {
+				 queryId 		: "faDashboard.saveFolder"
+				,requestParm	: folderInfo
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					
+					<@compId>.makeJsTree();
+					
+					if(typeof callback == "function") callback();
+				} else if(resultData.state == "E") {
+					C_POP.alert('폴더저장에 실패하였습니다.');
+				}					
+			});  
+		 }
+		
+		,modifyFolder : function(parentNode,folderId, folderNm) {
+			// 폴더 수정
+			if(isEmpty(parentNode) || parentNode.length == 0) {
+				C_POP.alert('상위 폴더를 선택해 주세요.')
+				return;
+			}
+			let folderInfo = {
+					 FOLDER_ID 		: folderId
+					,FOLDER_NM 		: folderNm
+					,BUYER_ID		: <@compId>.BUYER_ID
+					,UP_FOLDER_ID	: parentNode
+				}
+			<@compId>.saveFolder(folderInfo, <@compId>.loadLeftFolderList);
+		 }
+		
+		,addSubFolder : function(parentNode,folderNm, newNode) {
+			// 폴더 추가
+			if(isEmpty(parentNode) || parentNode.length == 0) {
+				C_POP.alert('상위 폴더를 선택해 주세요.')
+				return;
+			}
+				
+			let folderInfo = {
+				 FOLDER_ID 		: newNode
+				,FOLDER_NM 		: folderNm
+				,BUYER_ID		: <@compId>.BUYER_ID
+				,UP_FOLDER_ID	: parentNode
+			}
+				
+			<@compId>.saveFolder(folderInfo, function() {
+				<@compId>.loadSubFolderList(<@compId>.baseFolderId);	
+			});
+		 }
+		
+		,loadShareMsgList : function() {
+			//FA 대시보드 기업폴더관리 폴더 대화 내용 가져오기
+			var parm = {
+				 queryId 		: "faDashboard.getShareMsgList"
+				,requestParm	: { FOLDER_ID : <@compId>.selectFolderId }
+				,noLoadingBar	: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				var rparm = {
+					 targetId 		: "shareMsg"
+					,list			: resultData.data
+				}
+				
+				C_COM.renderHtml("<@compId>", rparm);
+				
+				$('#<@compId> #shareMsg').scrollTop($('#<@compId> #shareMsg')[0].scrollHeight);
+
+				<@compId>.shareMsgList = resultData.data;
+
+			});  
+			
+		 }
+		
+		,addShareMsg : function() {
+
+			let folderMsg = $("#<@compId> #folderMsg").val();
+			
+			if(isEmpty(folderMsg)) {
+				C_POP.alert("메시지를 입력하세요.");
+				return;
+			}
+			// 엔터(\n)를 <br>로 변환
+            var convertedValue = folderMsg.replace(/(?:\r\n|\r|\n)/g, '<br>');
+            
+			let selectFolderInfo = "";
+			$("#<@compId> #leftFolder li[class=active]").each(function() {
+				let idx = $(this).attr("idx");
+				selectFolderInfo = <@compId>.leftFolderList[idx];
+			});
+			
+			var parm = {
+				 queryId 		: "faDashboard.saveShareMsg"
+				,requestParm	: { 
+					 FOLDER_MSG_ID 	: C_COM.makeUniqueId()
+					,FOLDER_ID 		: <@compId>.selectFolderId
+					,CONTENT		: convertedValue
+				}
+				,noLoadingBar		: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					<@compId>.loadShareMsgList();
+					$("#<@compId> #folderMsg").val("").focus();
+				} else if(resultData.state == "E") {
+					C_POP.alert('메시지 저장에 실패하였습니다.');
+				}					
+			});  
+		 }
+		
+		,modifyMsgBtn : function(index){
+			$("#<@compId>_editBtn_"+index).show();
+		}
+		
+		,modifyMsg : function(index) {
+			
+			let shareMsg = <@compId>.shareMsgList[index];
+				const newMsg = $("#<@compId>_editBtn_"+index+" textarea").val();
+				var parm = {
+					 queryId 		: "faDashboard.saveShareMsg"
+					,requestParm	: { 
+						  FOLDER_MSG_ID		: shareMsg.FOLDER_MSG_ID
+						 ,CONTENT			: newMsg
+					}
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					if(resultData.state == "S") {
+						<@compId>.loadShareMsgList();
+					} else if(resultData.state == "E") {
+						C_POP.alert('메시지 수정 실패하였습니다.');
+					}
+				});
+		 }
+		
+		,delShareMsg : function(index) {
+			
+			let shareMsg = <@compId>.shareMsgList[index];
+			C_POP.confirm(`'${shareMsg.CONTENT}' 메시지를 삭제 하시겠습니까?`, function() {
+				var parm = {
+					 queryId 		: "faDashboard.delShareMsg"
+					,requestParm	: shareMsg
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					if(resultData.state == "S") {
+						<@compId>.loadShareMsgList();
+						$("#<@compId> #folderMsg").focus();
+					} else if(resultData.state == "E") {
+						C_POP.alert('메시지 삭제에 실패하였습니다.');
+					}					
+				});  
+			});
+		 }
+		
+		,deleteFolder : function(parentNodeId, folderId, folderNm) {
+			// 폴더 삭제
+			if(isEmpty(<@compId>.selectFolderId)) {
+				C_POP.alert('폴더를 선택해 주세요');
+				return;
+			}	
+			if( parentNodeId == "#"){
+				C_POP.alert("최상위 폴더는 삭제할 수 없습니다.");
+				return;
+			}	
+			C_POP.confirm('선택된 폴더를 삭제하시겠습니까?\n\n폴더가 삭제되면 그 하위 폴더 및\n첨부파일/공유메시지도 모두 삭제됩니다.', function() {
+				var parm = {
+					 queryId 		: "faDashboard.deleteFolder"
+					,requestParm	: { 
+						 FOLDER_ID 		: folderId
+					}
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					if(resultData.state == "S") {
+						<@compId>.makeJsTree();
+					} else if(resultData.state == "E") {
+						C_POP.alert('폴더 삭제 실패하였습니다.');
+					}					
+				});  
+			});
+		 }
+		
+		,addFile : function() {
+			// 첨부 파일 등록
+			<@compId>.folderFileMng.selectFile();
+		 }
+		
+		,renderFileList : function(fileList) {
+			
+			let rparm = {
+			     targetId   : "fileList"
+			    ,list       : fileList
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+		 }
+		
+		, isDuplicateNode(tree, parentNodeId,nodeId, nodeName) {
+		    // 중복이름 확인 
+		    const children = tree.get_node(parentNodeId).children;
+		    
+		    for (let i = 0; i < children.length; i++) {
+		        const childNode = tree.get_node(children[i]);
+		        if (childNode.id != nodeId && childNode.text === nodeName) {
+		            return true;
+		        }
+		    }
+		    return false;
+		}
+		
+		,getTreeNode : function(nodeId){
+			var $tree = $('#left_jstree');
+			var node = $tree.jstree(true).get_node(nodeId);
+			return node;
+		}
+		
+		,expandNodeById : function (nodeId) {
+
+			var $tree = $('#left_jstree');
+
+			if ($tree.jstree(true)) {
+				
+				var node = getTreeNode(nodeId);
+			    if (node) {
+			      	// 부모 노드를 먼저 연 후 대상 노드를 열기
+					$tree.jstree(true).open_node(node.parents, function () {
+			    	  
+						$tree.jstree(true).open_node(nodeId, function (node) {
+			          		console.log('Node expanded:', node);
+			        	});
+			      	});
+			      
+			      	// node를 연다음에 선택.
+			      	$tree.jstree("select_node", nodeId);
+			      
+			    } else {
+			      	console.error('Node ID not found:', nodeId);
+			    }
+			    
+			} else {
+			  console.error('Tree instance not found for ID:', treeId);
+			}
+		}
+		
+		,getAllNodeIds : function (treeId) {
+		
+			var $tree = $('#left_jstree');
+			var treeInstance = $tree.jstree(true);
+			var nodeIds = [];
+			
+			if (treeInstance) {
+			  // 트리의 JSON 구조 가져오기
+			  var treeData = treeInstance.get_json('#', { flat: true });
+			
+			  // 노드에서 ID 수집
+			  treeData.forEach(function (node) {
+			    nodeIds.push({nodeId : node.id, nodeText:node.text});
+			  });
+			} else {
+			  console.error('Tree instance not found for ID:', treeId);
+			}
+			
+			return nodeIds;
+		}
+		
+	   ,addFolder : function(){
+		   
+			const tree = $('#left_jstree').jstree(true);
+			const selectedNode = tree.get_selected();	
+			const parentNode = selectedNode.length ? selectedNode[0] : '#';
+			let newFolderNm = "새폴더";
+			
+			if( <@compId>.isDuplicateNode(tree, parentNode, selectedNode.id, newFolderNm ) ){
+				newFolderNm += Math.random().toString(36).substring(2, 9);
+			}
+			
+			const newNode = tree.create_node(parentNode, {
+			    text: newFolderNm,
+			    id: C_COM.makeUniqueId()
+			});
+			
+			if (selectedNode && selectedNode.length > 0 && newNode) {
+				
+			    tree.edit(newNode);
+			    
+			    <@compId>.addSubFolder(parentNode, newFolderNm, newNode);
+			}
+	   }
+	   ,modFolder : function(){
+		   
+		    const tree = $('#left_jstree').jstree(true);
+		    const selectedNode = tree.get_selected();
+
+		    if (selectedNode.length) {
+		        tree.edit(selectedNode[0]);
+		    } else {
+		        alert("수정할 노드를 선택하세요!");
+		    }		   
+	   }
+	   ,delFolder : function(){
+		   
+		    const tree = $('#left_jstree').jstree(true);
+		    const selectedNode = tree.get_selected();
+
+		    if (selectedNode.length) {
+			    var node = tree.get_node(selectedNode[0]);
+			    const folderId = node.id;
+			    const parentNodeId = node.parent;
+			    const folderNm = node.text;
+			    <@compId>.deleteFolder(parentNodeId, folderId, folderNm);
+
+		    } else {
+		        alert("삭제할 노드를 선택하세요!");
+		    }		   
+	   }
+	   
+	   , selectFirstNode : function(nodeId) {
+		   
+		    const tree = $('#left_jstree').jstree(true);
+		    if (tree) {
+		        tree.deselect_all();
+				tree.select_node(nodeId);
+		    }
+		}
+	   
+	   ,findNodeById: function (nodeId) {
+		    var $tree = $('#left_jstree');
+		    var node = $tree.jstree(true).get_node(nodeId);
+		    
+		    if (node) {
+		        return node; // 노드를 찾으면 반환
+		    } else {
+		        console.error('Node not found for ID:', nodeId);
+		        return null;
+		    }
+		}
+	   
+	   ,searchText : function(obj){
+		   <@compId>.findTextInFolder = true;
+		   <@compId>.searchFolder(obj);
+		   <@compId>.searchMsg(obj);
+	   }
+	   
+	   ,searchFolder : function(obj){
+		   
+			if(isEmpty($(obj).val())){
+				<@compId>.loadSubFolderList();
+				return;
+			}	
+			
+			const node =  <@compId>.getAllNodeIds();
+			let ownerCdList = [];
+			var parm = {
+					 queryId 		: "Filemng.searchFileList"
+					,requestParm	: { 
+						 GRP_FILE_ID : 'MN_FOLDER_MNG'
+						 ,FOLDER_ID :<@compId>.selectFolderId
+						 ,BUYER_ID :G_VAL.session.BUYER_ID
+						 ,SEARCH_ITEM:$(obj).val()
+					}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+
+					ownerCdList = resultData.data;
+					if( !isEmpty(ownerCdList) ){
+						ownerCdList = _.uniqBy(ownerCdList.map( o => o.OWNER_CD))
+					}
+					
+					setTimeout(()=>{
+						<@compId>.renderFileList(resultData.data);
+						$("#<@compId>_srchFile").css("color","#00C4CD").text("SEARCHED 첨부파일");
+					},500)
+					
+				}					
+			}); 
+	   }
+	   
+	   ,searchMsg : function(obj){
+		   
+			if(isEmpty($(obj).val())){
+				<@compId>.loadSubFolderList();
+				return;
+			}
+			
+			let ownerCdList = [];
+			var parm = {
+					 queryId 		: "faDashboard.searchMsgList"
+					,requestParm	: { 
+						  FOLDER_ID : <@compId>.selectFolderId
+						 ,BUYER_ID:G_VAL.session.BUYER_ID
+						 ,SEARCH_ITEM:$(obj).val()
+					}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					var rparm = {
+							 targetId 		: "shareMsg"
+							,list			: resultData.data
+					}
+					C_COM.renderHtml("<@compId>", rparm);
+					
+					$('#<@compId> #shareMsg').scrollTop($('#<@compId> #shareMsg')[0].scrollHeight);
+
+					<@compId>.shareMsgList = resultData.data;
+					$("#<@compId>_srchMsg").css("color","#00C4CD").text("SEARCHED 공유 메시지");
+				}					
+			}); 
+		}
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+		<@compId>.makeJsTree();
+
+		if(isValid(data.BASE_FOLDER_ID)) {
+			<@compId>.baseFolderId 	= data.BASE_FOLDER_ID;
+		}
+		if(isValid(data.TOP_FOLDER_ID)) {
+			<@compId>.topFolderId 	= data.TOP_FOLDER_ID;
+		}
+		if(isEmpty(data.BUYER_ID)) {
+			C_POP.alert('관리 고객이 없습니다.');
+			return;
+		} else {
+			<@compId>.loadLeftFolderList();
+		}
+		var parm = {
+			 GRP_FILE_ID 	: "MN_FOLDER_MNG"
+			,OWNER_CD 		: "NA"
+			,mode			: "M"
+			,title			: "NA"
+			,hideComponent	: "Y"		// 화면에 보여주지 않고 기능만 활용함.
+			,templateId		: "<@compId>"
+		}
+		
+		C_COMP.import("folderFileMng", "component_compMultiFilemng", parm , function(fileList) {
+			<@compId>.renderFileList(fileList);
+		});
+
+	});
+	
+	function debounce(func, wait) {
+	    let timeout;
+	    return function() {
+	        clearTimeout(timeout);
+	        timeout = setTimeout(func, wait);
+	    };
+	}
+
+	window.addEventListener("resize", debounce(() => {
+	    
+	    if( Number(window.innerWidth) < 450){
+	    	$("#folderMng .search-wrap+.card-btn button").css("font-size","10px");
+	    }else{
+	    	$("#folderMng .search-wrap+.card-btn button").css("font-size","12px");
+	    }
+	}, 100));
+	
+	$("#folderMng .search-wrap+.card-btn button").css("font-size","10px");
+</script>
+<component>
+	<!-- content area start -->
+	<div class="mem-allwrap mt20">
+
+		<!-- tree area start -->
+		<div class="col2 col3-md col3-sm col10-xs" style='width:450px;'>
+			<!-- tree menu start -->
+			<div class="tree-allwrap tb-card-allwrap">
+				<div class="tree-btn-wrap" style="justify-content: space-between;">
+					<div class="search-wrap" style='width:160px;'>
+						<input id="<@compId>_searchData"
+					      type="text" 
+					      class="search-input" 
+					      placeholder="폴더 찾기"
+					      onkeydown="if(event.key === 'Enter') <@compId>.searchText(this)"
+					      style="width:150px;margin-right:62px"
+					    />
+					</div>              
+					<div class="card-btn">
+						<button class="" type="button" onclick="<@compId>.addFolder()">추가</button>
+						<button class="" type="button" onclick="<@compId>.modFolder()">수정</button>
+						<button class="" type="button" onclick="<@compId>.delFolder()">삭제</button>
+					</div>
+				</div>
+				<div class="tree-menu-wrap">
+					<!-- tree start -->
+					<div>
+						<div id="left_jstree">
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- tree menu end -->
+		</div>
+		<!-- tree area end -->
+	
+		<!-- add file area start -->
+		<div class="col8 col7-md col7-sm col10-xs mem-inwrap">
+			<!-- add file start -->
+			<div class="add-file-allwrap tb-card-allwrap col5 col10-md col10-sm col10-xs">
+				<div class="add-file-wrap">
+					<div class="card-tit" id="<@compId>_srchFile">첨부파일</div>
+					<div class="card-btn">
+						<button class="" type="button" onclick="<@compId>.addFile()">등록</button>
+						<component id="folderFileMng">
+						</component>                    
+					</div>
+				</div>
+				<div class="add-file-inwrap">
+					<div class="add-file-list" id="fileList">
+					</div>
+					<script type="text/x-jsrender" id="fileList_template">
+				{{for list}}
+						<li>
+							<span class="col8 add-file-txt"><a href="javascript:void(0)" onclick="<@compId>.folderFileMng.download('{{:FILE_ID}}')">{{:ORG_FILE_NM}}</a>
+				            {{if PRE_VIEW_YN == "Y" || CONVERT_YN == "Y" }} 
+							<button type="button" onclick="<@compId>.folderFileMng.preview('{{:FILE_ID}}','{{:CONVERT_YN}}')" id="<@compId>_buttonPreview" class="btn explan-custom-btn btn-sm ml-2">미리보기</button>
+				            {{/if}}
+							</span>
+							<span class="col2 add-file-data">{{toKb:FILE_SIZE}}</span>
+							<span class="col"><button type="button" class="add-file-cls" onclick="<@compId>.folderFileMng.deleteFile('{{:FILE_ID}}')"></button></span>
+						</li> 
+				{{/for}}
+				</script>
+					<script type="text/x-jsrender" id="fileList_noData_template">	
+					<li class="tc"><span class="txt"><span>첨부파일이 없습니다.</span></li>
+				</script>
+				</div>
+			</div>
+			<!-- add file end -->
+	
+			<!-- message start -->
+			<div class="msg-allwrap tb-card-allwrap col5 col10-md col10-sm col10-xs">
+				<div class="msg-wrap">
+					<div class="card-tit" id="<@compId>_srchMsg">공유 메시지</div>
+				</div>
+				<div class="msg-inwrap01">
+					<div class="add-file-list " id="shareMsg" ></div>
+						<script type="text/x-jsrender" id="shareMsg_template">	
+					{{for list}}
+	                    <div class="msg-box">
+    	                  <div class="msg-info">
+        	                <div>
+            	              <span class="msg-date">{{:UPDATE_DATE}}</span>
+                	          <span class="msg-name">{{:UPDATE_USER_NM}}</span>
+                    	    </div>
+	                        <div>
+    	                      <button class="msg-del"  onclick="<@compId>.delShareMsg({{:#index}})"></button>
+        	                  <button class="msg-edit" onclick="<@compId>.modifyMsgBtn({{:#index}})"></button>
+            	            </div>
+                	      </div>
+						<li>
+							<div class="col10 msg-cnt vh-scr">{{:CONTENT}}</div>
+						</li>
+						<li id="<@compId>_editBtn_{{:#index}}" style='display:none'>
+							<div class="msg-cnt-text-modify mb10">
+								<textarea id="" name="" rows="2" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder="edit 버튼 클릭시 수정 할 수 있는 textedit 바뀜"></textarea>
+								<div class="msg-text-modify-btn">
+									<button class="" type="button mr5"  onclick="<@compId>.modifyMsg({{:#index}})">수정</button>
+								</div>
+							</div>
+						</li>
+	                    </div>
+					{{/for}}
+					</script>
+					
+						<script type="text/x-jsrender" id="shareMsg_noData_template">	
+						<li class="tc">
+							<span class="txt">등록된 내용이 없습니다.</span>
+						</li>
+					</script>
+				</div>
+				<div class="msg-wrap">
+					<div class="card-tit">메시지 입력</div>
+					<div class="card-btn">
+						<input type="submit" value="등록" class="btn" onclick="<@compId>.addShareMsg()">
+					</div>                  
+				</div>
+				<div class="msg-inwrap02">
+					<textarea id="folderMsg" name="folderMsg" rows="6" cols="" class="msg-textarea"></textarea> 
+				</div>
+			</div>
+			<!-- message end -->
+	
+		</div>
+		<!-- add file area end -->   
+	</div>
+	<!-- content area end -->
+</component>

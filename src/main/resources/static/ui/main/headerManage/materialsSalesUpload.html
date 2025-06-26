@@ -1,0 +1,399 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+    
+    // Page Load가 완료된후 실행 된다.
+    C_PM.onLoadPage("<@pageId>", function(parm) {
+        
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+
+        // 상단 메뉴 Path Import
+        C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+        /* 상단 기본 세팅 끝   */
+
+        // Grid Load        
+        <@pageId>.loadComponent(parm);
+        
+        /*============================================ 물류회사 selectBox ============================================*/ 
+        let requestParm = {};
+        requestParm["BRAND_ID"]  = <@pageId>.BRAND_ID ;
+        var parm1 = {
+                queryId  : "common.getMaterialsCompanyList"
+               ,requestParm   : requestParm
+        }
+
+        C_COM.requestQuery(parm1, function(resultData) {
+            
+            <@pageId>.COMPANY_LIST = resultData.data.map( item => [ item.COMPANY_CD, item.COMPANY_NM ]);
+            var selectBoxCompanyList = {
+                    data : <@pageId>.COMPANY_LIST
+                   ,targetId : "<@pageId>_selectBoxCompany"
+            }
+            
+            C_UICOM.makeSelectBox(selectBoxCompanyList, "single");
+            
+        });
+
+        /*############################################ 물류회사 selectBox ############################################*/ 
+        
+        /*============================================ 조회일 =========================================*/
+        
+        var now = new Date();   // 현재 날짜 및 시간
+        var thisYear = now.getFullYear(); //현재년도
+        var preYear = now.getFullYear()-1;//전년도
+        var thisDay = String(now.getDate()).padStart(2, '0'); // 일
+        var thisMonth = String(now.getMonth() + 1).padStart(2, '0');
+        
+        let selectYearList = [
+            [thisYear, thisYear  ]
+           ,[preYear,  preYear  ]
+        ];
+        var selectBoxYearList = {
+                data : selectYearList
+               ,targetId : "<@pageId>_selectBoxYear"
+        }
+        C_UICOM.makeSelectBox(selectBoxYearList, "single");
+        
+        let selectMonthList = [
+            ["01", "01"], ["02", "02"], ["03", "03"], ["04", "04"], ["05", "05"], ["06", "06"],
+            ["07", "07"], ["08", "08"], ["09", "09"], ["10", "10"], ["11", "11"], ["12", "12"]
+        ];
+
+        var selectBoxMonthList = {
+                data : selectMonthList
+               ,targetId : "<@pageId>_selectBoxMonth"
+        }
+        C_UICOM.makeSelectBox(selectBoxMonthList, "single");
+        C_UICOM.setSingleBox("<@pageId>_selectBoxMonth", thisMonth);
+        
+        
+        let selectDayList = [
+            ["ALL", "전체"],
+            ["01", "01"], ["02", "02"], ["03", "03"], ["04", "04"], ["05", "05"],
+            ["06", "06"], ["07", "07"], ["08", "08"], ["09", "09"], ["10", "10"], 
+            ["11", "11"], ["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"],
+            ["16", "16"], ["17", "17"], ["18", "18"], ["19", "19"], ["20", "20"],
+            ["21", "21"], ["22", "22"], ["23", "23"], ["24", "24"], ["25", "25"],
+            ["26", "26"], ["27", "27"], ["28", "28"], ["29", "29"], ["30", "30"],
+            ["31", "31"]
+        ];
+
+        var selectBoxDayhList = {
+                data : selectDayList
+               ,targetId : "<@pageId>_selectBoxDay"
+        }
+        C_UICOM.makeSelectBox(selectBoxDayhList, "single");
+        C_UICOM.setSingleBox("<@pageId>_selectBoxDay", thisDay);
+        
+        /*############################################ 조회일 #########################################*/
+    
+    });
+    var <@pageId> = {
+         sendParm : {}
+        ,BRAND_ID  : G_VAL.session.BRAND_ID 
+        ,COMPANY_LIST : ""
+        ,loadComponent : function(parm) {       
+         }
+        ,openEdit               : function() {
+
+            let parm = {
+                 gridParm   : <@pageId>.sendParm.gridParm   
+                ,popupTitle : `예제 편집`
+                ,size       : "NORMAL"          // 최대화 "MAX"
+            }
+            
+            C_POP.open("popup_common_tableEditPopup", <@pageId>.sendParm, function(retData){
+                <@pageId>.reload();
+            });
+
+         }
+        ,excelDown : function() {
+            <@pageId>.<@pageId>_grid.excelDownload();
+         }
+        ,search     : function() {
+
+            let selectBoxCompany     = C_UICOM.getData("<@pageId>_selectBoxCompany");
+            let selectBoxYear        = C_UICOM.getData("<@pageId>_selectBoxYear");
+            let selectBoxMonth       = C_UICOM.getData("<@pageId>_selectBoxMonth");
+            let selectBoxDay         = C_UICOM.getData("<@pageId>_selectBoxDay");
+            let searchDate           = "";
+            
+            if( selectBoxDay == "ALL"){
+            	searchDate = selectBoxYear+"-"+selectBoxMonth;
+            }else{
+                searchDate = selectBoxYear+"-"+selectBoxMonth+"-"+selectBoxDay;
+            	
+            }
+
+            let requestParm = {};
+            requestParm["companyCd"]   = selectBoxCompany;
+            requestParm["searchDate"]  = searchDate;
+            requestParm["day"]         = selectBoxDay;
+            var parm = {
+                    queryId  : "dataUpload.getMaterialsExceluploadLog1"
+                   ,requestParm   : requestParm
+            }
+   
+            C_COM.requestQuery(parm, function(resultData) {
+                var rparm = {
+                    targetId       : "<@pageId>_tableId"
+                   ,list           : resultData.data
+                }
+                let rowCountElement = document.getElementById("<@pageId>_rowCnt");
+                rowCountElement.textContent = resultData.data.length;//newCount;
+                
+                
+                C_COM.renderHtml("<@pageId>", rparm);
+            });
+
+         }
+        
+        ,fnDelete : function( uploadLogId,applyCompYn,companyCd,fileId) {
+
+            var message = "업로드된 내용을 삭제 하시게씁니까?";
+            if( applyCompYn == "Y"){
+            	message = message +"\n\n 물류정보에 적용된 데이타입니다.\n\n 삭제시 물류 데이터도 같이 삭제합니다.";
+            }
+            
+            C_POP.confirm(message, function() {
+            	
+            	let requestParm = {}; 
+                requestParm["uploadLogId"]  = uploadLogId;
+                requestParm["applyCompYn"]  = applyCompYn;
+                requestParm["companyCd"]    = companyCd;
+                requestParm["fileId"]       = fileId;
+                
+                var parm = {
+                     serviceId              : "DataUploadService.deleteExcelUplod"
+                    ,requestParm            : requestParm
+                }
+
+                C_COM.requestService(parm, function(resultData) {
+                	alert("deleteExcelUplod 완료");
+                	<@pageId>.search();
+                });
+            });
+
+         }
+        ,upload : function() {
+            
+            $("#<@pageId> #errorLog").hide();
+            $("#<@pageId> #errorMsg").html("");
+            $("#<@pageId> #sheetNum").html("");
+            $("#<@pageId> #stopIdx").html("");
+
+            let selectBoxCompany        = C_UICOM.getData("<@pageId>_selectBoxCompany");
+            
+            // for 문을 이용하여 조회
+            let foundCompany = null;
+            for (let i = 0; i < <@pageId>.COMPANY_LIST.length; i++) {
+                if (<@pageId>.COMPANY_LIST[i][0] === selectBoxCompany) {
+                    foundCompany = <@pageId>.COMPANY_LIST[i][1]; // 해당하는 회사 이름 저장
+                    break; // 찾으면 루프 종료
+                }
+            }
+            
+            C_POP.confirm('선택된 '+foundCompany+' 물류회사를 업로드 하시겠습니까?\n\n중복된 데이타가 아닌지 확인하시기 바랍니다.', function() {
+                C_COM.selectMaterialsExcelUploadToTable(function(retData) {
+                    if(retData.state == "S") {
+                        C_POP.alert('Excel Upload에 성공하였습니다.');
+                    } else if(retData.state == "E") {
+                        $("#<@pageId> #errorLog").show();
+                        
+                        $("#<@pageId> #errorMsg").html(retData.msg);
+
+                        $("#<@pageId> #sheetNum").html(retData.sheetNum);
+                        
+                        $("#<@pageId> #stopIdx").html(retData.stopIdx);
+                        
+                        if(isValid(retData.dupleNum)) {
+                            $("#<@pageId> #errorMsg").append(":" + retData.dupleNum);
+                            
+                        }
+                        $('#<@pageId> #scrollwrap').scrollTop($('#<@pageId> #scrollwrap')[0].scrollHeight);
+                        C_POP.alert('오류가 발생하였습니다.\n\n하단에 오류 메시지를 확인하세요.');
+                    } else {
+                        dwrite(retData);
+                    }
+                    <@pageId>.search();
+                },selectBoxCompany); 
+                
+            });
+                    
+        }
+
+        ,fileDownload : function(fileId) {
+            C_POP.confirm('다운로드 받으시겠습니까?', function() {
+                C_COM.fileDownload(fileId);
+                
+            });
+         }
+        ,fileMngPopup : function() {
+        	C_POP.open("popup_common_fileMngPopup", {}, function(retData){
+                //dalert(retData);
+            });
+         }
+        ,reload     : function() {
+            
+            let selectBoxCompany        = C_UICOM.getData("<@pageId>_selectBoxCompany");
+            // for 문을 이용하여 조회
+            let foundCompany = null;
+            for (let i = 0; i < <@pageId>.COMPANY_LIST.length; i++) {
+                if (<@pageId>.COMPANY_LIST[i][0] === selectBoxCompany) {
+                    foundCompany = <@pageId>.COMPANY_LIST[i][1]; // 해당하는 회사 이름 저장
+                    break; // 찾으면 루프 종료
+                }
+            }
+
+            C_POP.confirm('선택된 '+foundCompany+' 물류회사를 업로드 하시겠습니까?\n\n중복된 데이타가 아닌지 확인하시기 바랍니다.', function() {
+                C_COM.selectMaterialsExcelUploadToTable(function(retData) {
+                    if(retData.state == "S") {
+                        C_POP.alert('Excel Upload에 성공하였습니다.');
+                    } else if(retData.state == "E") {
+                        $("#<@pageId> #errorLog").show();
+                        
+                        $("#<@pageId> #errorMsg").html(retData.msg);
+
+                        $("#<@pageId> #sheetNum").html(retData.sheetNum);
+                        
+                        $("#<@pageId> #stopIdx").html(retData.stopIdx);
+                        
+                        if(isValid(retData.dupleNum)) {
+                            $("#<@pageId> #errorMsg").append(":" + retData.dupleNum);
+                            
+                        }
+                        $('#<@pageId> #scrollwrap').scrollTop($('#<@pageId> #scrollwrap')[0].scrollHeight);
+                        C_POP.alert('오류가 발생하였습니다.\n\n하단에 오류 메시지를 확인하세요.');
+                    } else {
+                        dwrite(retData);
+                    }
+                },<@pageId>.currentCompanyCd);  
+            });
+            
+         }
+    }
+    // History back으로 이동해왔을 경우 이루틴이 실행된다.
+    C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+    });
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+    <compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+
+    <!-- search filter box start -->
+    <div class="srch-card mt10">
+        <div class="srch-card-inwrap">
+            <div class="col9 col10-sm srch-card-form">
+
+                <div class="col4 col5-md col10-sm display-h-end mb5">
+                    <label class="src-title01">물류회사</label>
+                    <!-- 싱글 박스 인경우 -->
+                    <select id="<@pageId>_selectBoxCompany" class="form-control form-control-sm col10 mr5" ></select>
+                </div>
+
+               <div class="col5 col5-md col10-sm display-h-end mb5">
+                    <label class="src-title01">조회 년월일</label>
+                   <select id="<@pageId>_selectBoxYear" class="form-control form-control-sm col3"  >
+                   </select>&nbsp;&nbsp;
+                   <select id="<@pageId>_selectBoxMonth" class="form-control form-control-sm col3"  >
+                   </select>&nbsp;&nbsp;
+                   <select  id="<@pageId>_selectBoxDay" class="form-control form-control-sm col3">
+                   </select>
+               </div>
+                
+            </div>
+            <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+                <button class="srch-btn col10 mr5" type="button" onclick="<@pageId>.search()">검 색</button>
+            </div>
+        </div>
+    </div>
+    <!-- search filter box end -->
+
+
+    <!-- button / total start -->
+
+    <div class="display-between display-sm-between mt10">
+        <div class="col4-md col10-sm display-h-end mb5">
+        </div>
+        <div class="display-w-end col4 col4-md col10-sm mb5">
+          <span class="col2-sm w80px">Total : <span class="txt-red" id="<@pageId>_rowCnt"></span></span>
+          <button class="flat-btn col2-sm mr5"  type="button" onclick="<@pageId>.upload()"    >물류업로드</button>
+          <button class="flat-btn col2-sm mr5"  type="button" onclick="<@pageId>.fileMngPopup()"    >양식다운로드</button>
+          <!--
+          <button class="flat-btn col2-sm mr5"  type="button" onclick="<@pageId>.openEdit()"    >편 집</button>
+          <button class="flat-btn col2-sm"      type="button" onclick="<@pageId>.excelDown()"   >엑셀다운</button>
+           -->
+        </div>
+    </div>
+
+    <!-- button / total end -->
+
+
+    <!-- table area start -->
+    <div class="tb-card-allwrap col10">
+        <div class="card-inwrap">
+            <div class="card-cnt-wrap">
+                <div class="table-allwrap ">
+                <!-- table start -->
+                <table class="table-inwrap">
+                  <colgroup>
+                    <col width="5%">
+                    <col width="*" class="hide-area">
+                    <col width="16%" class="hide-area">
+                    <col width="10%">                    
+                    <col width="10%">
+                    <col width="15%">                    
+                    <col width="15%">
+                    <col width="10%">                    
+                  </colgroup>
+                  <thead class="table-thead">
+                    <tr>
+                      <th scope="col">Num</th>
+                      <th scope="col">업체</th>
+                      <th scope="col">파일</th>
+                      <th scope="col">파일받기</th>
+                      <th scope="col">물류적용</th>
+                      <th scope="col">적용일</th>
+                      <th scope="col">등록일</th>
+                      <th scope="col">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody id="<@pageId>_tableId">
+                  </tbody>
+                  <script type="text/x-jsrender" id="<@pageId>_tableId_template">    
+                      {{for list}}
+                          <tr id="trId_{{:#index}}" name="<@pageId>_tr_{{:#index}}" '>
+                              <td>{{:#index + 1}}</td>
+                              <td>{{:COMPANY_NM}}</td>
+                              <td>{{:ORG_FILE_NM}}</td>
+                              <td><button class="srch-btn" type="button" onclick="<@pageId>.fileDownload('{{:FILE_ID}}')">다운로드</button></td>
+                              <td>{{:APPLY_COMP_NM}}</td>
+                              <td>{{:APPLY_COMPLETED_DATE}}</td>
+                              <td>{{:CREATE_DATE}}</td>
+                              <td><button class="srch-btn col10 mr5" type="button" onclick="<@pageId>.fnDelete('{{:UPLOAD_LOG_ID}}','{{:APPLY_COMP_YN}}','{{:COMPANY_CD}}','{{:FILE_ID}}')">삭제하기</button></td>
+                          </tr>
+                      {{/for}}
+                  </script>
+                  <script type="text/x-jsrender" id="<@pageId>_tableId_noData_template">    
+                     <tr>    
+                         <td colspan=7>자료가 없습니다.</td>    
+                     </tr>
+                  </script>
+                  
+                </table>
+                <!-- table end -->
+              </div>
+            </div>
+        </div>
+    </div>    
+    <!-- table area end -->
+</page-component>

@@ -1,0 +1,137 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectList	: []
+		,stockList	: []
+		,loadComponent : function(selectList) {
+
+			<@compId>.stockList = C_STOCK.getStockList();
+			
+			if( isEmpty(<@compId>.stockList) || <@compId>.stockList.length == 0) {
+				C_POP.alert('재고 정보가 존재하지 않습니다.');
+				return;
+			}
+			
+			let sendParm = {
+				gridParm : {
+					 tableDataList	: <@compId>.stockList
+					,columnMap 		: {
+						 "STOCK_MST_ID" 	: { headerText : "지점매출ID"	, hidden : "Y"			}
+						,"PRODUCT_CD" 		: { headerText : "상품코드"  	,width : "150px"		}
+						,"PRODUCT_NM" 		: { headerText : "상품명"  		,width : "200px"		}
+						,"UNIT" 			: { headerText : "단위"  								}
+						,"startDate" 		: { headerText : "기준일"								}
+						,"inQuantitySum" 	: { headerText : "총입고량"		, dataType : "number"	}
+						,"outQuantitySum" 	: { headerText : "총출고량"		, dataType : "number"	}
+						,"AVG_QUANTITY" 	: { headerText : "적정재고량"	, dataType : "number"  	}
+						,"nujukSumQt" 		: { headerText : "현재재고량"	, dataType : "number"	}
+						,"STOCK_RATE"		: { headerText : "재고율" 	 							}
+						,"STOCK_ANALY"		: { headerText : "재고 상태" 	,width : "150px"		}
+						,"avgLossQt"		: { headerText : "Loss Qt"		, dataType : "number"	}
+						,"avgLossRt"		: { headerText : "Loss Rate"	, dataType : "number"	}
+					 }
+					,addColumnMap	: {
+						noSort	: {
+							 "STOCK_ANALY" 	: "Y"
+							,"avgLossQt" 	: "Y"
+							,"avgLossRt" 	: "Y"
+						}
+					 }
+					,columnConfig		: {
+						makeCellViewData	: {
+							"STOCK_RATE"	: function(cellText, rowData) {
+								if(isNumber(cellText)) 	cellText = cellText + "%";
+								else					cellText = "";
+								return cellText;
+								
+							 }
+							,"STOCK_ANALY" 	: function(cellText, rowData) {
+								let rate = Math.round(rowData.nujukSumQt / rowData.AVG_QUANTITY *1000 ) / 10;
+								let eobj = C_STOCK.evaluationCriteriaOfStock(rate);
+								
+								if(isEmpty(eobj)) return "";
+								
+								let retStr = `<span style="color:${eobj.COLOR_CODE}"	>${eobj.EVALUATION}</span>`;
+								return retStr;
+							 }
+							,"outQuantitySum" 	: function(cellText, rowData) {
+								if(isEmpty(cellText) || !isNumber(cellText)) 	return cellText;
+								else 											return addComma(toNumber(cellText, 2, "ceil"));
+							 }
+							,"nujukSumQt" 		: function(cellText, rowData) {
+								if(isEmpty(cellText) || !isNumber(cellText)) 	return cellText;
+								else 											return addComma(toNumber(cellText, 2, "ceil"));
+							 }
+						 }
+						,columnTooltip : {
+							STOCK_ANALY : "- 매입Data 점검필요\n1. 매입 Data가 매우 작거나, 없는 경우로 매입 Data의 누락 가능성이 있습니다.\n2. 공식적인 매입(입고)가 부족한 상태에서 매출(출고)가 발생한 경우로 사입을 의심해 볼 수 있습니다."
+						}
+					 }
+					,rowConfig		: {
+						onDblClickRow : function(rowData) {
+							<@parentId>.moveTabToCompStockAnalysisTab2(rowData.PRODUCT_CD);
+						}
+					 }
+					,primaryKeyList		: ["STOCK_MST_ID"]
+					,searchColumnList	: ["PRODUCT_CD", "PRODUCT_NM"]	
+					,orderColumnList 	: ["PRODUCT_CD"]				
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "STORE_ID"
+							,targetColumn	: "STORE_NM"
+							,optionList 	: <@compId>.selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisObj) {
+								G_VAL.current.storeId = selectVal;
+								<@parentId>.makeStockOfDay(function() {
+									<@compId>.stockList = C_STOCK.getStockList();
+									thisObj.reload({tableDataList : <@compId>.stockList});
+								});
+							 }
+						}
+					]
+				 }
+				,editButtonTitle : "주문요청"
+				,callbackEditButton : function(parm) {
+					
+					C_POP.alert('준비중 입니다.');
+
+					return;
+					
+					let storeId = <@parentId>.<@compId>_editor.selectBoxValue;
+					
+					C_POP.open("popup_storeManage_requestOrderPopup", { storeId : storeId, stockList : <@compId>.stockList}, function(retData){
+
+					});
+				 }
+				,callbackSearchButton : function() {
+					<@parentId>.<@compId>_editor.reload();
+				 }
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			
+			C_STOCK.makeStockOfDay({}, function() {
+				<@compId>.selectList = selectList;
+				<@compId>.loadComponent();	
+			});
+			
+		});
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

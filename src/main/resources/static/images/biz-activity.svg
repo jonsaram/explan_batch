@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="666" height="651.868" viewBox="0 0 666 651.868">
+  <defs>
+    <clipPath id="clip-path">
+      <rect width="7" height="252.5" fill="none"/>
+    </clipPath>
+  </defs>
+  <g id="biz-activity" transform="translate(-2339 232)">
+    <g id="그룹_89" data-name="그룹 89" transform="translate(2339 -232)">
+      <g id="사각형_70" data-name="사각형 70" fill="#fff" stroke="#b9bdcd" stroke-width="1.5">
+        <rect width="235" height="622" rx="5" stroke="none"/>
+        <rect x="0.75" y="0.75" width="233.5" height="620.5" rx="4.25" fill="none"/>
+      </g>
+      <g id="그룹_91" data-name="그룹 91">
+        <g id="사각형_75" data-name="사각형 75" fill="#7280af" stroke="#b9bdcd" stroke-width="1">
+          <path d="M5,0H230a5,5,0,0,1,5,5V62a0,0,0,0,1,0,0H0a0,0,0,0,1,0,0V5A5,5,0,0,1,5,0Z" stroke="none"/>
+          <path d="M5,.5H230A4.5,4.5,0,0,1,234.5,5V61.5a0,0,0,0,1,0,0H.5a0,0,0,0,1,0,0V5A4.5,4.5,0,0,1,5,.5Z" fill="none"/>
+        </g>
+        <text id="재무상태표" transform="translate(60 42)" fill="#fff" font-size="25" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">재무상태표</tspan></text>
+      </g>
+      <g id="그룹_93" data-name="그룹 93" transform="translate(12 76)">
+        <g id="사각형_77" data-name="사각형 77" fill="#f5f5f5" stroke="#d5d7df" stroke-width="1.5">
+          <rect width="211" height="260" rx="3" stroke="none"/>
+          <rect x="0.75" y="0.75" width="209.5" height="258.5" rx="2.25" fill="none"/>
+        </g>
+        <g id="사각형_78" data-name="사각형 78" transform="translate(0 292)" fill="#f5f5f5" stroke="#d5d7df" stroke-width="1.5">
+          <rect width="211" height="111" rx="3" stroke="none"/>
+          <rect x="0.75" y="0.75" width="209.5" height="109.5" rx="2.25" fill="none"/>
+        </g>
+        <g id="사각형_79" data-name="사각형 79" transform="translate(0 420)" fill="#f5f5f5" stroke="#d5d7df" stroke-width="1.5">
+          <rect width="211" height="111" rx="3" stroke="none"/>
+          <rect x="0.75" y="0.75" width="209.5" height="109.5" rx="2.25" fill="none"/>
+        </g>
+        <text id="자_산" data-name="자 산" transform="translate(106 139)" font-size="22" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="-22.715" y="0">자 산</tspan></text>
+        <text id="부_채" data-name="부 채" transform="translate(106 358)" font-size="22" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="-22.715" y="0">부 채</tspan></text>
+        <text id="자본_이익잉여금_" data-name="자본
+(이익잉여금)" transform="translate(106 470)" font-size="22" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="-20.24" y="0">자본</tspan><tspan x="-58.41" y="32">(이익잉여금)</tspan></text>
+      </g>
+    </g>
+    <g id="그룹_90" data-name="그룹 90" transform="translate(2829 -232)">
+      <g id="사각형_71" data-name="사각형 71" fill="#fff" stroke="#b9bdcd" stroke-width="1">
+        <rect width="176" height="622" rx="5" stroke="none"/>
+        <rect x="0.5" y="0.5" width="175" height="621" rx="4.5" fill="none"/>
+      </g>
+      <g id="사각형_80" data-name="사각형 80" transform="translate(12 76)" fill="#f5f5f5" stroke="#d5d7df" stroke-width="1">
+        <rect width="152" height="531" rx="3" stroke="none"/>
+        <rect x="0.5" y="0.5" width="151" height="530" rx="2.5" fill="none"/>
+      </g>
+      <g id="사각형_81" data-name="사각형 81" transform="translate(12 551)" fill="#e7e7e7" stroke="#d5d7df" stroke-width="1">
+        <path d="M0,0H152a0,0,0,0,1,0,0V53a3,3,0,0,1-3,3H3a3,3,0,0,1-3-3V0A0,0,0,0,1,0,0Z" stroke="none"/>
+        <path d="M.5.5h151a0,0,0,0,1,0,0V53a2.5,2.5,0,0,1-2.5,2.5H3A2.5,2.5,0,0,1,.5,53V.5A0,0,0,0,1,.5.5Z" fill="none"/>
+      </g>
+      <text id="매출액_매출원가_매출총이익_판관비_영업이익_영업외손익_법인세비용" data-name="매출액
+매출원가
+매출총이익 
+판관비
+영업이익
+영업외손익
+법인세비용" transform="translate(58 204)" fill="#373737" font-size="17" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">매출액</tspan><tspan x="0" y="40">매출원가</tspan><tspan x="0" y="80">매출총이익 </tspan><tspan x="0" y="120">판관비</tspan><tspan x="0" y="160">영업이익</tspan><tspan x="0" y="200">영업외손익</tspan><tspan x="0" y="240">법인세비용</tspan></text>
+      <g id="그룹_92" data-name="그룹 92">
+        <g id="사각형_76" data-name="사각형 76" fill="#7280af" stroke="#b9bdcd" stroke-width="1">
+          <path d="M5,0H171a5,5,0,0,1,5,5V62a0,0,0,0,1,0,0H0a0,0,0,0,1,0,0V5A5,5,0,0,1,5,0Z" stroke="none"/>
+          <path d="M5,.5H171A4.5,4.5,0,0,1,175.5,5V61.5a0,0,0,0,1,0,0H.5a0,0,0,0,1,0,0V5A4.5,4.5,0,0,1,5,.5Z" fill="none"/>
+        </g>
+        <text id="손익계산서" transform="translate(31 42)" fill="#fff" font-size="25" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">손익계산서</tspan></text>
+      </g>
+      <text id="당기순이익" transform="translate(38 589)" font-size="22" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">당기순이익</tspan></text>
+      <g id="반복_그리드_7" data-name="반복 그리드 7" transform="translate(34.5 196.16)" clip-path="url(#clip-path)">
+        <g transform="translate(-2866.5 55.5)">
+          <line id="선_43" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 95.5)">
+          <line id="선_43-2" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 135.5)">
+          <line id="선_43-3" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 175.5)">
+          <line id="선_43-4" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 215.5)">
+          <line id="선_43-5" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 255.5)">
+          <line id="선_43-6" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+        <g transform="translate(-2866.5 295.5)">
+          <line id="선_43-7" data-name="선 43" x2="8" transform="translate(2866.5 -54.5)" fill="none" stroke="#8694c2" stroke-width="3"/>
+        </g>
+      </g>
+    </g>
+    <g id="그룹_88" data-name="그룹 88" transform="translate(2638 -161)">
+      <g id="그룹_94" data-name="그룹 94">
+        <g id="사각형_72" data-name="사각형 72" transform="translate(0 -7)" fill="rgba(0,100,126,0.66)" stroke="#00647e" stroke-width="1">
+          <rect width="129" height="200" rx="64.5" stroke="none"/>
+          <rect x="0.5" y="0.5" width="128" height="199" rx="64" fill="none"/>
+        </g>
+        <g id="사각형_73" data-name="사각형 73" transform="translate(0 157)" fill="rgba(23,45,119,0.73)" stroke="#001a6e" stroke-width="1">
+          <rect width="129" height="200" rx="64.5" stroke="none"/>
+          <rect x="0.5" y="0.5" width="128" height="199" rx="64" fill="none"/>
+        </g>
+        <g id="사각형_74" data-name="사각형 74" transform="translate(0 323)" fill="rgba(81,47,116,0.69)" stroke="#310064" stroke-width="1">
+          <rect width="129" height="200" rx="64.5" stroke="none"/>
+          <rect x="0.5" y="0.5" width="128" height="199" rx="64" fill="none"/>
+        </g>
+        <text id="재무활동" transform="translate(21 101)" fill="#fff" font-size="24" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">재무활동</tspan></text>
+        <text id="투자활동" transform="translate(21 265)" fill="#fff" font-size="24" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">투자활동</tspan></text>
+        <text id="영업활동" transform="translate(21 431)" fill="#fff" font-size="24" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500"><tspan x="0" y="0">영업활동</tspan></text>
+      </g>
+      <path id="패스_10" data-name="패스 10" d="M2663.422-2.017l7.674,10,7.674-10" transform="translate(-2606.596 172.165)" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3" opacity="0.72"/>
+      <path id="패스_11" data-name="패스 11" d="M2663.422-2.017l7.674,10,7.674-10" transform="translate(-2606.596 336.843)" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3" opacity="0.72"/>
+    </g>
+    <g id="그룹_95" data-name="그룹 95" transform="translate(2445.851 -64.453)">
+      <path id="패스_12" data-name="패스 12" d="M2917,349.22v32.862H2451.63V323.854" transform="translate(-2445.851 101.489)" fill="none" stroke="#f57b00" stroke-width="1.5"/>
+      <path id="패스_13" data-name="패스 13" d="M2446.01,360.555l5.821-7.844,5.737,7.844" transform="translate(-2446.01 71.489)" fill="none" stroke="#f57b00" stroke-linecap="round" stroke-width="2.5"/>
+      <path id="패스_14" data-name="패스 14" d="M2638.674-69.114h-41.486V317.606h-45.256" transform="translate(-2445.851 69.114)" fill="none" stroke="#7f89b0" stroke-width="2"/>
+      <path id="패스_16" data-name="패스 16" d="M0,0H45.416" transform="translate(105.649 246.849)" fill="none" stroke="#7f89b0" stroke-width="2"/>
+      <path id="패스_15" data-name="패스 15" d="M2767,251.024h39.684V52.361h41.3" transform="translate(-2445.851 77.468)" fill="none" stroke="#7f89b0" stroke-width="2"/>
+      <path id="패스_17" data-name="패스 17" d="M2638.674,82.448h-47.066v-106.6h-41.989" transform="translate(-2445.851 69.114)" fill="none" stroke="#7f89b0" stroke-width="2"/>
+      <path id="패스_18" data-name="패스 18" d="M0,7.844,5.821,0l5.737,7.844" transform="translate(103.857 392.498) rotate(-90)" fill="none" stroke="#7f89b0" stroke-linecap="round" stroke-width="2.5"/>
+      <path id="패스_19" data-name="패스 19" d="M0,7.844,5.821,0l5.737,7.844" transform="translate(103.857 252.362) rotate(-90)" fill="none" stroke="#7f89b0" stroke-linecap="round" stroke-width="2.5"/>
+      <path id="패스_20" data-name="패스 20" d="M0,7.844,5.821,0l5.737,7.844" transform="translate(103.857 51.144) rotate(-90)" fill="none" stroke="#7f89b0" stroke-linecap="round" stroke-width="2.5"/>
+      <path id="패스_21" data-name="패스 21" d="M0,7.844,5.821,0l5.737,7.844" transform="translate(404.398 124.05) rotate(90)" fill="none" stroke="#7f89b0" stroke-linecap="round" stroke-width="2.5"/>
+    </g>
+  </g>
+</svg>

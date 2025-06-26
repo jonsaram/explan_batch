@@ -1,0 +1,136 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 parm					: {}	
+		,addButtonCallbackFnMap : {}	
+		,reload : function(updateParm) {
+			if(isEmpty(updateParm)) updateParm= {};
+			
+			updateParm["searchValue"] = $("#<@compId>_searchValue").val();
+			
+			// System 특성상 Component내의 Component정의는 상위 객체(Page 또는 Popup)의 하위 객체로 등록되기 때문에
+			// Component호출시 <@parentId>를 사용한다.
+
+			<@parentId>["<@compId>_editor"].reload(updateParm);
+
+			// onSearch Event처리
+			if(typeof <@compId>.parm.onSearch == "function") <@compId>.parm.onSearch(updateParm["searchValue"]); 
+		 }
+		,getGridInstance : function() {
+			return <@parentId>["<@compId>_editor"].getGridInstance();
+		 }
+		,save : function() {
+			C_POP.confirm('저장하시겠습니까?', function() {
+				<@parentId>["<@compId>_editor"].save(function(tableList) {
+					C_POP.alert('저장되었습니다.');
+				});
+			});
+		 }
+		,getGridData : function(type) {
+			return <@parentId>["<@compId>_editor"].getGridData(type);
+		 }
+		,refreshTotalCnt : function() {
+			<@parentId>["<@compId>_editor"].refreshTotalCnt();
+		 }
+		,getSelectedRowData : function() {
+			return <@parentId>["<@compId>_editor"].getSelectedRowData();
+		 }
+		,defaultSelectCell : function() {
+			<@parentId>["<@compId>_editor"].defaultSelectCell();
+		 }
+		,clearGrid			: function() {
+			<@parentId>["<@compId>_editor"].clearGrid();
+		}
+		,buttonCallBack : function(btnId) {
+			let fn = <@compId>.addButtonCallbackFnMap[btnId];
+			if(typeof fn == "function") fn();
+		 }
+		,setGridTitle	: function(title) {
+			$("#<@compId> #gridTitle").html(title);
+		 }
+		,setGridTitle	: function(title) {
+			$("#<@compId> #gridTitle").html(title);
+		 }
+		,getCompGrid	: function() {
+			return <@parentId>.<@compId>_editor;
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		
+		<@compId>.parm = parm;
+		
+		parm.gridParm.rowCntId = "<@compId>_rowCnt";
+		
+		// Grid Component Import
+		C_COMP.import("<@compId>_editor", "component_compGrid",{gridParm : parm.gridParm} , function(tableList) {
+			C_COMP.callback("<@compId>", tableList);
+		});		
+		
+		// 추가 버튼 처리
+		if(isValid(parm.addButtonList)) {
+			
+			$.each(parm.addButtonList, function(idx) {
+				let btnId = "btnId" + idx;
+				<@compId>.addButtonCallbackFnMap[btnId] = this.onClick;
+				parm.addButtonList[idx].btnId = btnId;
+			});
+			
+			var rparm = {
+				 targetId 	: "<@compId>_buttonDiv"
+				,list		: parm.addButtonList
+				,replace	: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+		}
+		
+		if(isEmpty(parm.gridTitle)) {
+			$("#<@compId> #grdtitleDiv").hide();
+		}
+		
+		// 읽기 전용인경우 저장 버튼 숨기기 
+		if(parm.gridParm.readOnly == "Y") {
+			$("#<@compId>_saveButton").hide();
+		}
+
+		// 검색창 숨기기
+		if(parm.hideSearchBox == "Y") {
+			$("#<@compId> #searchBox").html("");
+		}
+		
+	});
+</script>
+<component>
+
+    <!-- table area start -->
+	<div class="table-allwrap display-column"> <!-------------------- 이 부분에 클래스명 추가 ( display-column ) -------------------->
+	    <div class="card-tit-wrap" id="grdtitleDiv">
+	        <div class="card-tit" id="gridTitle"><@gridTitle></div>
+	    </div>
+	    <div class="display-between display-sm-between deco-line pt10 pl10 pr10 pb5">
+	        <div class="col4-md col10-sm display-h-end" id="searchBox">
+	          <span class="col2-sm w80px mb3">검색어</span>
+	          <input type="text" class="form-control form-control-sm mr5" id="<@compId>_searchValue" onEnter="<@compId>.reload()">
+	          <button class="srch-btn" type="button" onclick="<@compId>.reload()">검 색</button>
+	        </div>
+	        <div class="display-w-end col4 col4-md col10-sm">
+	          <span class="col2-sm w120px txt-r mr10 mt5">Total : <span class="txt-red" id="<@compId>_rowCnt"></span></span>              
+	       	  <div id="<@compId>_buttonDiv"></div>
+	          <button id="<@compId>_saveButton" class="flat-btn col2-sm mr5" type="button" onclick="<@compId>.save()">저장</button>
+	        </div>
+			<script type="text/x-jsrender" id="<@compId>_buttonDiv_template">
+			{{for list}}
+				<button class="flat-btn col2-sm mr5" type="button" id="<@compId>_editBtn" onclick="<@compId>.buttonCallBack('{{:btnId}}')">{{:title}}</button>
+			{{/for}}
+			</script>    
+	        
+	    </div>
+	    <div class="table-inwrap-scroll"> <!-------------------- 이 부분에 div + 클래스명 추가 ( table-inwrap-scroll ) -------------------->
+			<!-- table start -->
+			<compnent id="<@compId>_editor"></compnent>    
+			<!-- table end -->        
+	    </div>
+	</div>
+    <!-- table area end -->
+ 
+</component>

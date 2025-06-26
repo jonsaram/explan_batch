@@ -1,0 +1,982 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="dataUpload">
+
+	<cache />
+
+    <select id="getUnitPriceBrand" resultType="java.util.HashMap">
+        /* dataUpload.getUnitPriceBrand */
+        SELECT BRAND_ID
+        FROM   TBL_EXP_BUYER_BRAND A
+        WHERE EXISTS (
+                        SELECT 1
+                        FROM TBL_EXP_FOOD_MATERIALS_MASTER B
+                        WHERE B.BRAND_ID = A.BRAND_ID
+                     )
+    </select>
+	
+    <select id="getBonfoodUnitPrice" resultType="java.util.HashMap">
+        /* dataUpload.getBonfoodUnitPrice */
+        SELECT A.COMPANY_CD
+              ,B.PRODUCT_CD
+              ,MAX(B.PRODUCT_NM) AS PRODUCT_NM
+              ,MAX(B.UNIT) AS UNIT
+              ,MAX(B.UNIT_PRICE) AS UNIT_PRICE
+        FROM   TBL_EXP_MATERIALS_EXCELUPLOAD_LOG A
+               JOIN TBL_EXP_BONFOOD_SALES_TEMP B
+                 ON  1 = 1
+                 AND A.UPLOAD_LOG_ID = B.UPLOAD_LOG_ID
+        WHERE  1 = 1
+        AND    A.COMPANY_CD = #{companyCd}
+        AND    A.APPLY_COMP_YN = 'N'
+        GROUP BY A.COMPANY_CD
+                ,B.PRODUCT_CD
+    </select>
+    
+    <select id="getHaramUnitPrice" resultType="java.util.HashMap">
+        /* dataUpload.getHaramUnitPrice */
+        SELECT A.COMPANY_CD
+              ,C.PRODUCT_CD
+              ,MAX(C.PRODUCT_NM) AS PRODUCT_NM
+              ,MAX(B.UNIT_PRICE) AS UNIT_PRICE
+        FROM   TBL_EXP_MATERIALS_EXCELUPLOAD_LOG A
+               JOIN TBL_EXP_HARAM_SALES_TEMP B
+                 ON  1 = 1
+                 AND A.UPLOAD_LOG_ID = B.UPLOAD_LOG_ID
+               JOIN TBL_EXP_FOOD_COMPANY_PRODUCT C
+                 ON  1 = 1
+                 AND A.COMPANY_CD = C.COMPANY_CD
+        WHERE  1 = 1
+        AND    A.COMPANY_CD = #{companyCd}
+        AND    A.APPLY_COMP_YN = 'N'
+        GROUP BY A.COMPANY_CD
+                ,C.PRODUCT_CD
+    </select>
+    
+    <update id="setCompanyUnitPrice" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.setCompanyUnitPrice */
+        UPDATE TBL_EXP_FOOD_COMPANY_PRODUCT
+        SET    UNIT_PRICE = #{UNIT_PRICE} 
+              ,UPDATE_USER = #{UPDATE_USER} 
+              ,UPDATE_DATE = GET_KRDT(SYSDATE) 
+        WHERE  1 = 1
+        AND    PRODUCT_CD = #{PRODUCT_CD} 
+        AND    COMPANY_CD = #{COMPANY_CD} 
+    </update>
+    
+    <!-- 첨부파일 조회 이응규 -->
+    <select id="getFile" resultType="java.util.HashMap">
+        /* dataUpload.getFile */
+        SELECT GRP_FILE_ID     
+              ,FILE_ID         
+              ,ORG_FILE_NM     
+              ,STORED_FILE_NM  
+              ,FILE_SIZE       
+              ,FILE_TYPE       
+              ,ORDER_NUM       
+              ,DEL_YN          
+              ,OWNER_CD         
+              ,UPDATE_USER     
+              ,UPDATE_DATE     
+              ,CREATE_USER     
+              ,CREATE_DATE       
+        FROM   TBL_EXP_FILEMNG
+        WHERE    1 = 1
+        <if test="grpFileId != null and grpFileId != '' " >
+          AND    GRP_FILE_ID = #{grpFileId}
+        </if>
+        <if test=" fileId != null and fileId != '' " >
+          AND    FILE_ID = #{fileId}
+        </if>
+        ORDER BY ORDER_NUM , CREATE_DATE DESC
+    </select>
+    
+    
+    <delete id="delMaterialsExceluploadLog">
+        /* dataUpload.delMaterialsExceluploadLog */
+        DELETE FROM TBL_EXP_MATERIALS_EXCELUPLOAD_LOG
+         WHERE UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+    </delete>
+    <delete id="delBonfoodSalesTemp">
+        /* dataUpload.delSpcSalesTemp */
+        DELETE FROM TBL_EXP_BONFOOD_SALES_TEMP
+         WHERE UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+    </delete>
+    <delete id="delJanggaSalesTemp">
+        /* dataUpload.delJanggaSalesTemp */
+        DELETE FROM TBL_EXP_JANGGA_SALES_TEMP
+         WHERE UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+    </delete>
+    <delete id="delHaramSalesTemp">
+        /* dataUpload.delHaramSalesTemp */
+        DELETE FROM TBL_EXP_HARAM_SALES_TEMP
+         WHERE UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+    </delete>
+    
+    <!-- 엑셀업로드 신규 상품 조회 -->
+    <select id="getBonfoodTempProduct" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getBonfoodTempProduct */
+        SELECT DISTINCT A.COMPANY_ID AS COMPANY_ID
+             , A.PRODUCT_CD
+             , A.PRODUCT_NM
+             , (SELECT CODE_ID
+                FROM   ${dbHdr}${comnHdr}TBL_EXP_CODE
+                WHERE  1 = 1
+                AND    GRP_CODE_ID = 'FOOD_PRODUCT_UNIT'
+                AND    CODE_NM  = A.UNIT
+               ) AS UNIT
+             , B.PRODUCT_CD
+        FROM   (
+                SELECT (
+                        SELECT COMPANY_ID
+                        FROM  TBL_EXP_FOOD_MATERIALS_COMPANY
+                        WHERE COMPANY_CD = 'obong_BONFS'
+                        ) AS COMPANY_ID
+                     , PRODUCT_NM
+                     , UNIT
+                     , PRODUCT_CD
+                FROM   TBL_EXP_BONFOOD_SALES_TEMP
+               ) A
+               LEFT OUTER JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B
+                 ON  1 = 1
+                 AND A.COMPANY_ID = B.COMPANY_ID
+                 AND A.PRODUCT_CD = B.PRODUCT_CD
+        WHERE  1 = 1
+        AND    B.PRODUCT_CD IS NULL
+    </select>
+    
+    <insert id="insertFoodCompanyProduct" flushCache="true">
+        /* dataUpload.insertFoodCompanyProduct */
+        INSERT INTO TBL_EXP_FOOD_COMPANY_PRODUCT (
+             PRODUCT_ID
+            ,COMPANY_ID
+            ,PRODUCT_CD
+            ,PRODUCT_NM
+            ,UNIT
+
+            ,DEL_YN
+            ,FOOD_MATERIALS_UNIT
+            ,CONVERSION_QUANTITY
+            ,MATERIALS_CD
+            ,CREATE_USER
+
+            ,CREATE_DATE
+        )
+        VALUES(
+             LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))
+            ,#{COMPANY_ID          , jdbcType=VARCHAR}
+            ,#{PRODUCT_CD          , jdbcType=VARCHAR}
+            ,#{PRODUCT_NM          , jdbcType=VARCHAR}
+            ,#{UNIT                , jdbcType=VARCHAR}
+                                    
+            ,#{DEL_YN              , jdbcType=VARCHAR}
+            ,#{FOOD_MATERIALS_UNIT , jdbcType=VARCHAR}
+            ,#{CONVERSION_QUANTITY , jdbcType=NUMERIC}
+            ,#{MATERIALS_CD        , jdbcType=VARCHAR}
+            ,#{CREATE_USER}     
+
+            ,GET_KRDT(SYSDATE)  
+        )
+    </insert> 
+    <!-- 엑셀업로드 로그 조회 -->
+    <select id="getMaterialsExceluploadLog" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getMaterialsExceluploadLog */
+        SELECT UPLOAD_LOG_ID
+              ,COMPANY_CD
+              ,FILE_ID
+              ,APPLY_COMP_YN
+              ,APPLY_COMPLETED_DATE
+        FROM   TBL_EXP_MATERIALS_EXCELUPLOAD_LOG
+        WHERE  1 = 1
+        <if test=" companyCd != null and companyCd != '' ">
+            AND    COMPANY_CD  = #{companyCd}
+        </if>
+        <if test=" applyCompYn != null and applyCompYn != '' ">
+            AND    APPLY_COMP_YN = #{applyCompYn}
+        </if>
+        ORDER BY CREATE_DATE
+    </select>
+    
+    <!-- 엑셀업로드 로그 조회 -->
+    <select id="getMaterialsExceluploadLog1" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getMaterialsExceluploadLog1 */
+        SELECT A.UPLOAD_LOG_ID
+              ,A.COMPANY_CD
+              ,B.COMPANY_NM
+              ,DECODE(A.APPLY_COMP_YN,'Y','적용','미적용') AS APPLY_COMP_NM
+              ,A.APPLY_COMP_YN
+              ,TO_CHAR(A.APPLY_COMPLETED_DATE,'YYYY-MM-DD HH24:MI:SS')  AS APPLY_COMPLETED_DATE
+              ,A.FILE_ID
+              ,C.ORG_FILE_NM
+              ,TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS CREATE_DATE
+        FROM   TBL_EXP_MATERIALS_EXCELUPLOAD_LOG A
+               JOIN TBL_EXP_FOOD_MATERIALS_COMPANY B
+                 ON  1 = 1
+                 AND A.COMPANY_CD = B.COMPANY_CD
+               JOIN TBL_EXP_FILEMNG C
+                 ON  1 = 1
+                 AND A.FILE_ID = C.FILE_ID 
+        WHERE  1 = 1
+        <if test=" companyCd != null and companyCd != '' ">
+            AND    A.COMPANY_CD  = #{companyCd}
+        </if>
+        <choose>
+            <when test=" !'ALL'.equals(day) ">
+                AND    TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD' ) = #{searchDate}
+            </when>
+            <otherwise>
+                AND    TO_CHAR(A.CREATE_DATE,'YYYY-MM' ) = #{searchDate}
+            </otherwise>
+        </choose>
+        ORDER BY A.CREATE_DATE
+    </select>
+    
+
+    <insert id="excelInsertToBonfood" flushCache="true">
+        /* dataUpload.excelInsertToBonfood */
+        INSERT INTO TBL_EXP_BONFOOD_SALES_TEMP( 
+             STORE_ID
+            ,PRODUCT_CD
+            ,YYYYMMDD
+            ,UNIT_PRICE
+            ,QUANTITY
+            ,SUPPLY_PRICE
+            ,SURTAX
+            ,TOTAL_AMOUNT
+        )
+        SELECT ${selectCaluse} FROM DUAL
+    </insert>    
+    
+    <insert id="excelInsertToJangga" flushCache="true">
+        /* dataUpload.excelInsertToJangga */
+        INSERT INTO TBL_EXP_JANGGA_SALES_TEMP(
+             YYYYMMDD
+            ,QUANTITY
+            ,UNIT_PRICE
+            ,SUPPLY_PRICE
+            ,STORE_ID
+            ,UPLOAD_LOG_ID
+        )
+        VALUES(
+              #{YYYYMMDD, jdbcType=VARCHAR}
+             ,#{QUANTITY, jdbcType=VARCHAR}
+             ,#{UNIT_PRICE, jdbcType=VARCHAR}
+             ,#{SUPPLY_PRICE, jdbcType=VARCHAR}
+             ,#{STORE_ID, jdbcType=VARCHAR}
+             ,#{UPLOAD_LOG_ID, jdbcType=VARCHAR}
+        )
+    </insert>     
+
+    <insert id="excelInsertToHaram" flushCache="true">
+        /* dataUpload.excelInsertToHaram */
+        INSERT INTO TBL_EXP_HARAM_SALES_TEMP(
+             YYYYMMDD
+            ,QUANTITY
+            ,WEIGHT
+            ,UNIT_PRICE
+            ,STORE_ID
+            ,SUPPLY_PRICE
+            ,UPLOAD_LOG_ID
+        )
+        VALUES(
+              #{YYYYMMDD, jdbcType=VARCHAR}
+             ,#{QUANTITY, jdbcType=VARCHAR}
+             ,#{WEIGHT, jdbcType=VARCHAR}
+             ,#{UNIT_PRICE, jdbcType=VARCHAR}
+             ,#{STORE_ID, jdbcType=VARCHAR}
+             ,#{SUPPLY_PRICE, jdbcType=VARCHAR}
+             ,#{UPLOAD_LOG_ID, jdbcType=VARCHAR}
+        )
+    </insert>     
+   
+    <insert id="excelInsertToBonfs" flushCache="true">
+        /* dataUpload.excelInsertToBonfs */
+        INSERT INTO TBL_EXP_BONFOOD_SALES_TEMP(
+              STORE_ID
+             ,PRODUCT_CD
+             ,PRODUCT_NM
+             ,STANDARD
+             ,UNIT
+             ,YYYYMMDD
+             ,UNIT_PRICE
+             ,QUANTITY
+             ,SUPPLY_PRICE
+             ,SURTAX
+             ,TOTAL_AMOUNT
+             ,UPLOAD_LOG_ID
+        )
+        VALUES(
+              #{STORE_ID     , jdbcType=VARCHAR}
+             ,#{PRODUCT_CD   , jdbcType=VARCHAR}
+             ,#{PRODUCT_NM   , jdbcType=VARCHAR}
+             ,#{STANDARD     , jdbcType=VARCHAR}
+             ,#{UNIT         , jdbcType=VARCHAR}
+             ,#{YYYYMMDD     , jdbcType=VARCHAR}
+             ,#{UNIT_PRICE   , jdbcType=VARCHAR}
+             ,#{QUANTITY     , jdbcType=VARCHAR}
+             ,#{SUPPLY_PRICE , jdbcType=VARCHAR}
+             ,#{SURTAX       , jdbcType=VARCHAR}
+             ,#{TOTAL_AMOUNT , jdbcType=VARCHAR}
+             ,#{UPLOAD_LOG_ID , jdbcType=VARCHAR}
+
+        )
+    </insert>  
+    
+    
+    <update id="setCompanyConUnitPrice" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.setCompanyConUnitPrice */
+        UPDATE TBL_EXP_FOOD_COMPANY_PRODUCT
+        SET    CONVERSION_UNIT_PRICE = #{CONVERSION_UNIT_PRICE} 
+              ,UPDATE_USER = #{UPDATE_USER} 
+              ,UPDATE_DATE = GET_KRDT(SYSDATE) 
+        WHERE  1 = 1
+        AND    PRODUCT_ID = #{PRODUCT_ID} 
+    </update>
+    
+    <update id="setMaterialsConUnitPrice" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  jobScheduler.setMaterialsConUnitPrice */
+        UPDATE TBL_EXP_FOOD_MATERIALS_MASTER
+        SET    CONVERSION_UNIT_PRICE  = #{CONVERSION_UNIT_PRICE}  
+        WHERE  1 = 1
+        AND    MATERIALS_CD = #{MATERIALS_CD}
+    </update>
+
+    
+    <!-- 변환 단위당 단가 조회  -->
+    <select id="getConversionUnitPrice" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getConversionUnitPrice */
+        SELECT MATERIALS_CD
+              ,MATERIALS_NM
+              ,ROUND(AVG(UNIT_PRICE), 2) AS CONVERSION_UNIT_PRICE
+        FROM   (
+                SELECT A.MATERIALS_CD,
+                       A.MATERIALS_NM,
+                       B.UNIT_PRICE AS UNIT_PRICE1,
+                       NVL(B.CONVERSION_QUANTITY, 0) AS CONVERSION_QUANTITY,
+                       ROUND(B.UNIT_PRICE / B.CONVERSION_QUANTITY, 2) AS UNIT_PRICE
+                FROM   TBL_EXP_FOOD_MATERIALS_MASTER A
+                       JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B
+                         ON   A.MATERIALS_CD = B.MATERIALS_CD
+                         AND  (B.CONVERSION_QUANTITY != 0 OR B.CONVERSION_QUANTITY IS NOT NULL)
+                WHERE  A.BRAND_ID = #{brandId} 
+                ORDER BY A.MATERIALS_CD
+        ) A
+        WHERE  1 = 1
+        GROUP BY MATERIALS_CD
+                ,MATERIALS_NM
+    </select>
+        <!-- 본푸드 오봉집 엑셀 템프데이타 조회  -->
+    <select id="getBonfoodSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getBonfoodSales */
+        SELECT A.YYYYMMDD
+              ,A.PRODUCT_ID  
+              ,A.STORE_ID  
+              ,A.PRODUCT_NM                       AS PRODUCT_NM
+              ,A.COMPANY_ID                       AS COMPANY_ID
+              ,A.YEAR                             AS  YEAR  
+              ,A.MONTH                            AS MONTH
+              ,A.DAY                              AS DAY
+              ,NVL(A.UNIT_PRICE, 0)               AS UNIT_PRICE
+              ,NVL(A.QUANTITY, 0)                 AS QUANTITY
+              ,NVL(A.CONVERSION_QUANTITY, 0)      AS CONVERSION_QUANTITY
+              ,NVL(A.FOOD_MATERIALS_QUANTITY, 0)  AS FOOD_MATERIALS_QUANTITY
+              ,NVL(A.CONVERSION_UNIT_PRICE, 0)    AS CONVERSION_UNIT_PRICE
+              ,NVL(A.TOTAL_AMOUNT, 0)             AS TOTAL_AMOUNT
+              ,NVL(A.SUPPLY_PRICE, 0)             AS SUPPLY_PRICE
+              ,A.DEL_YN                           AS DEL_YN
+              ,A.PRODUCT_CD                       AS PRODUCT_CD
+        FROM   (
+                SELECT  B.PRODUCT_ID                     
+                       ,B.PRODUCT_NM
+                       ,B.COMPANY_ID                     
+                       ,C.STORE_ID                       
+                       ,SUBSTR(A.YYYYMMDD, 1, 4) AS YEAR 
+                       ,SUBSTR(A.YYYYMMDD, 5, 2) AS MONTH
+                       ,SUBSTR(A.YYYYMMDD, 7, 2) AS DAY  
+                       ,TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYYMMDD'), 'YYYY-MM-DD') AS YYYYMMDD 
+                       ,A.UNIT_PRICE          
+                       ,A.QUANTITY            
+                       ,B.CONVERSION_QUANTITY 
+                       ,A.QUANTITY * B.CONVERSION_QUANTITY AS FOOD_MATERIALS_QUANTITY    
+                       ,CASE WHEN (A.QUANTITY * B.CONVERSION_QUANTITY) IS NULL OR (A.QUANTITY * B.CONVERSION_QUANTITY) = 0 THEN 0
+                             ELSE ROUND( A.SUPPLY_PRICE/(A.QUANTITY * B.CONVERSION_QUANTITY),3)
+                        END AS CONVERSION_UNIT_PRICE
+                       ,A.TOTAL_AMOUNT                     
+                       ,A.SUPPLY_PRICE                     
+                       ,'N' AS DEL_YN                      
+                       ,B.PRODUCT_CD                       
+                FROM   (
+                        SELECT YYYYMMDD     
+                              ,UNIT_PRICE   
+                              ,STORE_ID     
+                              ,PRODUCT_CD   
+                              ,QUANTITY     
+                              ,SUPPLY_PRICE 
+                              ,SURTAX       
+                              ,TOTAL_AMOUNT 
+                        FROM (
+                            SELECT  YYYYMMDD
+                                   ,TO_NUMBER(REPLACE(UNIT_PRICE, ',', '')) AS UNIT_PRICE
+                                   ,STORE_ID
+                                   ,PRODUCT_CD
+                                   ,TO_NUMBER(REPLACE(QUANTITY, ',', '')) AS QUANTITY
+                                   ,TO_NUMBER(REPLACE(SUPPLY_PRICE, ',', '')) AS SUPPLY_PRICE
+                                   ,TO_NUMBER(REPLACE(SURTAX, ',', '')) AS SURTAX
+                                   ,TO_NUMBER(REPLACE(TOTAL_AMOUNT, ',', '')) AS TOTAL_AMOUNT
+                            FROM (
+                                SELECT  YYYYMMDD
+                                       ,UNIT_PRICE
+                                       ,STORE_ID
+                                       ,PRODUCT_CD
+                                       ,QUANTITY
+                                       ,SUPPLY_PRICE
+                                       ,SURTAX
+                                       ,TOTAL_AMOUNT
+                                FROM   TBL_EXP_BONFOOD_SALES_TEMP
+                                WHERE  1 = 1
+                                AND    UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+                            )
+                        )
+                    ) A
+                       JOIN (
+                              SELECT A.COMPANY_ID
+                                    ,B.PRODUCT_CD
+                                    ,B.PRODUCT_ID
+                                    ,B.PRODUCT_NM
+                                    ,B.CONVERSION_QUANTITY
+                              FROM   TBL_EXP_FOOD_MATERIALS_COMPANY A
+                                     JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B
+                                       ON  1 = 1
+                                       AND A.COMPANY_ID = B.COMPANY_ID
+                              WHERE  1 = 1
+                              AND    A.BRAND_ID = 'obong'
+                              AND    A.COMPANY_CD = 'obong_BONFS'
+                              AND    A.DEL_YN != 'Y'
+                       ) B
+                         ON  1 = 1
+                         AND A.PRODUCT_CD = B.PRODUCT_CD
+                       JOIN TBL_EXP_FOOD_COMPANY_SRORE_MAPPING C
+                         ON  1 = 1
+                         AND B.COMPANY_ID = C.COMPANY_ID
+                         AND A.STORE_ID  = C.COMPANY_STORE_CD
+                         AND C.BRAND_ID = 'obong'
+                WHERE  1 = 1
+               ) A
+    </select>
+    <!-- 본푸드 오봉집 엑셀 템프데이타 조회  -->
+    <select id="getBonfoodSales_BAK" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getBonfoodSales */
+        SELECT A.YYYYMMDD
+              ,A.PRODUCT_ID  
+              ,A.STORE_ID  
+              ,MAX(A.PRODUCT_NM)                       AS PRODUCT_NM
+              ,MAX(A.COMPANY_ID)                       AS COMPANY_ID
+              ,MAX(A.YEAR)                             AS  YEAR  
+              ,MAX(A.MONTH)                            AS MONTH
+              ,MAX(A.DAY)                              AS DAY
+              ,MAX(NVL(A.UNIT_PRICE, 0))               AS UNIT_PRICE
+              ,SUM(NVL(A.QUANTITY, 0))                 AS QUANTITY
+              ,MAX(NVL(A.CONVERSION_QUANTITY, 0))      AS CONVERSION_QUANTITY
+              ,SUM(NVL(A.FOOD_MATERIALS_QUANTITY, 0))  AS FOOD_MATERIALS_QUANTITY
+              ,AVG(NVL(A.CONVERSION_UNIT_PRICE, 0))    AS CONVERSION_UNIT_PRICE
+              ,SUM(NVL(A.TOTAL_AMOUNT, 0))             AS TOTAL_AMOUNT
+              ,SUM(NVL(A.SUPPLY_PRICE, 0))             AS SUPPLY_PRICE
+              ,MAX(A.DEL_YN)                           AS DEL_YN
+              ,MAX(A.PRODUCT_CD)                       AS PRODUCT_CD
+        FROM   (
+                SELECT  B.PRODUCT_ID                     
+                       ,B.PRODUCT_NM
+                       ,B.COMPANY_ID                     
+                       ,C.STORE_ID                       
+                       ,SUBSTR(A.YYYYMMDD, 1, 4) AS YEAR 
+                       ,SUBSTR(A.YYYYMMDD, 5, 2) AS MONTH
+                       ,SUBSTR(A.YYYYMMDD, 7, 2) AS DAY  
+                       ,TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYYMMDD'), 'YYYY-MM-DD') AS YYYYMMDD 
+                       ,A.UNIT_PRICE          
+                       ,A.QUANTITY            
+                       ,B.CONVERSION_QUANTITY 
+                       ,A.QUANTITY * B.CONVERSION_QUANTITY AS FOOD_MATERIALS_QUANTITY    
+                       ,CASE WHEN (A.QUANTITY * B.CONVERSION_QUANTITY) IS NULL OR (A.QUANTITY * B.CONVERSION_QUANTITY) = 0 THEN 0
+                             ELSE ROUND( A.SUPPLY_PRICE/(A.QUANTITY * B.CONVERSION_QUANTITY),3)
+                        END AS CONVERSION_UNIT_PRICE
+                       ,A.TOTAL_AMOUNT                     
+                       ,A.SUPPLY_PRICE                     
+                       ,'N' AS DEL_YN                      
+                       ,B.PRODUCT_CD                       
+                FROM   (
+                        /* 엑셀 업로드 데이타중 PRODUCT_CD별 가장 최근 데이타 */
+                        SELECT YYYYMMDD     
+                              ,UNIT_PRICE   
+                              ,STORE_ID     
+                              ,PRODUCT_CD   
+                              ,QUANTITY     
+                              ,SUPPLY_PRICE 
+                              ,SURTAX       
+                              ,TOTAL_AMOUNT 
+                        FROM (
+                            SELECT  YYYYMMDD
+                                   ,TO_NUMBER(REPLACE(UNIT_PRICE, ',', '')) AS UNIT_PRICE
+                                   ,STORE_ID
+                                   ,PRODUCT_CD
+                                   ,TO_NUMBER(REPLACE(QUANTITY, ',', '')) AS QUANTITY
+                                   ,TO_NUMBER(REPLACE(SUPPLY_PRICE, ',', '')) AS SUPPLY_PRICE
+                                   ,TO_NUMBER(REPLACE(SURTAX, ',', '')) AS SURTAX
+                                   ,TO_NUMBER(REPLACE(TOTAL_AMOUNT, ',', '')) AS TOTAL_AMOUNT
+                                   ,ROW_NUMBER() OVER (PARTITION BY PRODUCT_CD ORDER BY YYYYMMDD DESC) AS RN
+                            FROM (
+                                SELECT  YYYYMMDD
+                                       ,UNIT_PRICE
+                                       ,STORE_ID
+                                       ,PRODUCT_CD
+                                       ,QUANTITY
+                                       ,SUPPLY_PRICE
+                                       ,SURTAX
+                                       ,TOTAL_AMOUNT
+                                FROM   TBL_EXP_BONFOOD_SALES_TEMP
+                            )
+                        )
+                        WHERE RN = 1
+                    ) A
+                       JOIN (
+                              SELECT A.COMPANY_ID
+                                    ,B.PRODUCT_CD
+                                    ,B.PRODUCT_ID
+                                    ,B.PRODUCT_NM
+                                    ,B.CONVERSION_QUANTITY
+                              FROM   TBL_EXP_FOOD_MATERIALS_COMPANY A
+                                     JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B
+                                       ON  1 = 1
+                                       AND A.COMPANY_ID = B.COMPANY_ID
+                              WHERE  1 = 1
+                              AND    A.BRAND_ID = 'obong'
+                              AND    A.COMPANY_CD = 'obong_BONFS'
+                              AND    A.DEL_YN != 'Y'
+                       ) B
+                         ON  1 = 1
+                         AND A.PRODUCT_CD = B.PRODUCT_CD
+                       JOIN TBL_EXP_FOOD_COMPANY_SRORE_MAPPING C
+                         ON  1 = 1
+                         AND B.COMPANY_ID = C.COMPANY_ID
+                         AND A.STORE_ID  = C.COMPANY_STORE_CD
+                         AND C.BRAND_ID = 'obong'
+                WHERE  1 = 1
+               ) A
+        GROUP BY A.YYYYMMDD
+                ,A.PRODUCT_ID  
+                ,A.STORE_ID
+    </select>
+     
+     <!-- 장가 오봉집 엑셀 템프데이타 조회  -->
+    <select id="getJanggaSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* dataUpload.getJanggaSales */
+        SELECT A.YYYYMMDD
+              ,A.PRODUCT_ID  
+              ,A.STORE_ID  
+              ,A.COMPANY_ID               AS COMPANY_ID
+              ,A.YEAR                     AS YEAR  
+              ,A.MONTH                    AS MONTH
+              ,A.DAY                      AS DAY
+              ,A.UNIT_PRICE               AS UNIT_PRICE
+              ,A.QUANTITY                 AS QUANTITY
+              ,A.FOOD_MATERIALS_QUANTITY  AS FOOD_MATERIALS_QUANTITY
+              ,A.CONVERSION_UNIT_PRICE    AS CONVERSION_UNIT_PRICE
+              ,A.SALES                    AS TOTAL_AMOUNT
+              ,A.SUPPLY_PRICE             AS SUPPLY_PRICE
+              ,'N'                        AS DEL_YN
+              ,A.PRODUCT_CD               AS PRODUCT_CD
+        FROM   (
+                    SELECT A.PRODUCT_ID
+                          ,A.PRODUCT_CD
+                          ,A.COMPANY_ID
+                          ,A.STORE_ID
+                          ,A.STORE_ID
+                          ,A.YEAR
+                          ,A.MONTH
+                          ,A.DAY
+                          ,A.YYYYMMDD
+                          ,A.UNIT_PRICE
+                          ,A.QUANTITY
+                          ,A.SALES  
+                          ,A.SUPPLY_PRICE  
+                          ,A.CONVERSION_QUANTITY
+                          ,A.QUANTITY * A.CONVERSION_QUANTITY AS FOOD_MATERIALS_QUANTITY 
+                         ,CASE WHEN A.CONVERSION_QUANTITY IS NULL OR (TO_NUMBER(REPLACE(A.QUANTITY, ',', '')) * A.CONVERSION_QUANTITY) = 0 THEN 0
+                                                ELSE ROUND( TO_NUMBER(REPLACE(A.SUPPLY_PRICE, ',', ''))/(TO_NUMBER(REPLACE(A.QUANTITY, ',', '')) * A.CONVERSION_QUANTITY),3)
+                                           END AS CONVERSION_UNIT_PRICE
+                    FROM   (
+                               SELECT TBL_PRODUCT.PRODUCT_ID
+                                     ,TBL_PRODUCT.PRODUCT_CD
+                                     ,TBL_PRODUCT.COMPANY_ID
+                                     ,B.STORE_ID
+                                     ,A.STORE_ID
+                                     ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 1, 4) AS YEAR
+                                     ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 6, 2) AS MONTH
+                                     ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 9, 2) AS DAY
+                                     ,A.YYYYMMDD
+                                     ,CASE WHEN REGEXP_LIKE(A.UNIT_PRICE, '^[0-9,]+$') 
+                                           THEN TO_NUMBER(REPLACE(A.UNIT_PRICE, ',', ''))
+                                           ELSE 0
+                                           END AS UNIT_PRICE
+                                           
+                                     ,CASE WHEN REGEXP_LIKE(A.QUANTITY, '^[0-9,]+$') 
+                                           THEN TO_NUMBER(REPLACE(A.QUANTITY, ',', ''))
+                                           ELSE 0
+                                           END AS QUANTITY
+                                     ,CASE WHEN REGEXP_LIKE(A.SUPPLY_PRICE, '^[0-9,]+$') 
+                                           THEN TO_NUMBER(REPLACE(A.SUPPLY_PRICE, ',', ''))
+                                           ELSE 0
+                                           END AS SALES  
+                                     ,CASE WHEN REGEXP_LIKE(A.SUPPLY_PRICE, '^[0-9,]+$') 
+                                           THEN TO_NUMBER(REPLACE(A.SUPPLY_PRICE, ',', ''))
+                                           ELSE 0
+                                           END AS SUPPLY_PRICE  
+                                     ,TBL_PRODUCT.CONVERSION_QUANTITY
+                               FROM   TBL_EXP_JANGGA_SALES_TEMP A
+                                      JOIN (      
+                                               SELECT A.PRODUCT_ID
+                                                     ,A.PRODUCT_CD
+                                                     ,B.COMPANY_ID
+                                                     ,A.CONVERSION_QUANTITY
+                                               FROM   TBL_EXP_FOOD_COMPANY_PRODUCT A
+                                                      JOIN TBL_EXP_FOOD_MATERIALS_COMPANY B
+                                                        ON  1 = 1
+                                                        AND B.COMPANY_CD = 'obong_JANGGA'
+                                                        AND A.COMPANY_ID = B.COMPANY_ID
+                                               WHERE  1 = 1
+                                      )TBL_PRODUCT
+                                        ON 1 = 1
+                                      JOIN TBL_EXP_STORE_MST B
+                                        ON  1 = 1
+                                        AND B.BRAND_ID = 'obong'
+                                        AND A.STORE_ID = B.STORE_ID  
+                               WHERE 1 = 1      
+                               AND    UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+                    ) A
+               ) A
+    </select>
+    
+    <!-- 하람 오봉집 엑셀 템프데이타 조회  -->
+    <select id="getHaramSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  dataUpload.getHaramSales */
+        SELECT A.YYYYMMDD
+              ,A.PRODUCT_ID  
+              ,A.STORE_ID  
+              ,A.COMPANY_ID               AS COMPANY_ID
+              ,A.YEAR                     AS YEAR  
+              ,A.MONTH                    AS MONTH
+              ,A.DAY                      AS DAY
+              ,A.UNIT_PRICE               AS UNIT_PRICE
+              ,A.QUANTITY                 AS QUANTITY
+              ,A.FOOD_MATERIALS_QUANTITY  AS FOOD_MATERIALS_QUANTITY
+              ,A.CONVERSION_UNIT_PRICE    AS CONVERSION_UNIT_PRICE
+              ,A.SALES                    AS TOTAL_AMOUNT
+              ,A.SUPPLY_PRICE             AS SUPPLY_PRICE
+              ,'N'                        AS DEL_YN
+              ,A.PRODUCT_CD               AS PRODUCT_CD
+        FROM   (
+                SELECT TBL_PRODUCT.PRODUCT_ID
+                      ,TBL_PRODUCT.PRODUCT_CD
+                      ,TBL_PRODUCT.PRODUCT_NM
+                      ,TBL_PRODUCT.COMPANY_ID
+                      ,B.STORE_ID
+                      ,A.STORE_ID
+                      ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 1, 4) AS YEAR
+                      ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 6, 2) AS MONTH
+                      ,SUBSTR(TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD'), 9, 2) AS DAY
+                      ,TO_CHAR(TO_DATE(A.YYYYMMDD, 'YYYY-MM-DD'), 'YYYY-MM-DD')  AS YYYYMMDD
+                      ,TO_NUMBER(A.UNIT_PRICE)      AS UNIT_PRICE  
+                      ,TO_NUMBER(A.WEIGHT)        AS QUANTITY    
+                      ,TO_NUMBER(TBL_PRODUCT.CONVERSION_QUANTITY) AS CONVERSION_QUANTITY
+                      ,ROUND(TO_NUMBER(A.SUPPLY_PRICE))    AS SALES
+                      ,ROUND(TO_NUMBER(A.SUPPLY_PRICE))    AS SUPPLY_PRICE
+                      ,TO_NUMBER(A.WEIGHT) * TBL_PRODUCT.CONVERSION_QUANTITY AS FOOD_MATERIALS_QUANTITY  
+                      ,CASE WHEN TBL_PRODUCT.CONVERSION_QUANTITY IS NULL OR TBL_PRODUCT.CONVERSION_QUANTITY = 0 THEN 0
+                                             ELSE  ROUND(TO_NUMBER(A.SUPPLY_PRICE)/(TO_NUMBER(A.WEIGHT) * TBL_PRODUCT.CONVERSION_QUANTITY),3)
+                                        END AS CONVERSION_UNIT_PRICE
+                FROM   TBL_EXP_HARAM_SALES_TEMP A
+                       JOIN (      
+                                SELECT A.PRODUCT_ID
+                                      ,A.PRODUCT_CD
+                                      ,A.PRODUCT_NM
+                                      ,B.COMPANY_ID
+                                      ,A.CONVERSION_QUANTITY
+                                FROM   TBL_EXP_FOOD_COMPANY_PRODUCT A
+                                       JOIN TBL_EXP_FOOD_MATERIALS_COMPANY B
+                                         ON  1 = 1
+                                         AND B.COMPANY_CD = 'obong_HARAM'
+                                         AND A.COMPANY_ID = B.COMPANY_ID
+                                WHERE  1 = 1
+                       )TBL_PRODUCT
+                         ON 1 = 1
+                       JOIN TBL_EXP_STORE_MST B
+                         ON  1 = 1
+                         AND B.BRAND_ID = 'obong'
+                         AND A.STORE_ID = B.STORE_ID  
+                WHERE 1 = 1     
+                AND   A.UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+               ) A
+    </select>
+    
+    <!-- SPC 오봉집 엑셀 템프데이타 조회  -->
+    <select id="getSpcSales" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  "dataUpload".getSpcSales */
+        SELECT A.YYYYMMDD
+              ,A.PRODUCT_ID  
+              ,A.STORE_ID  
+              ,MAX(A.COMPANY_ID)               AS COMPANY_ID
+              ,MAX(A.YEAR)                     AS YEAR  
+              ,MAX(A.MONTH)                    AS MONTH
+              ,MAX(A.DAY)                      AS DAY
+              ,AVG(A.UNIT_PRICE)               AS UNIT_PRICE
+              ,SUM(A.QUANTITY)                 AS QUANTITY
+              ,SUM(A.FOOD_MATERIALS_QUANTITY)  AS FOOD_MATERIALS_QUANTITY
+              ,AVG(A.CONVERSION_UNIT_PRICE)    AS CONVERSION_UNIT_PRICE
+              ,SUM(A.SALES)                    AS TOTAL_AMOUNT
+              ,SUM(A.SUPPLY_PRICE)             AS SUPPLY_PRICE
+              ,'N'                             AS DEL_YN
+              ,MAX(A.PRODUCT_CD)               AS PRODUCT_CD
+        FROM   (
+                SELECT  B.PRODUCT_ID 
+                       ,B.PRODUCT_CD                    
+                       ,B.PRODUCT_NM
+                       ,B.COMPANY_ID                     
+                       ,C.STORE_ID      
+                       ,A.YYYYMMDD                      
+                       ,SUBSTR(A.YYYYMMDD, 1, 4) AS YEAR 
+                       ,SUBSTR(A.YYYYMMDD, 6, 2) AS MONTH
+                       ,SUBSTR(A.YYYYMMDD, 9, 2) AS DAY 
+                       
+                      ,TO_NUMBER(A.SALE_PRICE)      AS UNIT_PRICE  
+                      ,TO_NUMBER(A.QUANTITY)        AS QUANTITY    
+                      ,TO_NUMBER(B.CONVERSION_QUANTITY) AS CONVERSION_QUANTITY
+                      ,ROUND(TO_NUMBER(A.SUPPLY_PRICE))    AS SALES
+                      ,ROUND(TO_NUMBER(A.SUPPLY_PRICE))    AS SUPPLY_PRICE
+                      ,TO_NUMBER(A.QUANTITY) * B.CONVERSION_QUANTITY AS FOOD_MATERIALS_QUANTITY  
+                      ,CASE WHEN B.CONVERSION_QUANTITY * TO_NUMBER(A.QUANTITY) IS NULL OR B.CONVERSION_QUANTITY* TO_NUMBER(A.QUANTITY)  = 0 THEN 0
+                                             ELSE  ROUND(TO_NUMBER(A.SUPPLY_PRICE)/(TO_NUMBER(A.QUANTITY) * B.CONVERSION_QUANTITY),3)
+                                        END AS CONVERSION_UNIT_PRICE
+                FROM   (
+                        /* 엑셀 업로드 데이타중 PRODUCT_CD별 가장 최근 데이타 */
+                        SELECT STORE_ID
+                              ,YYYYMMDD
+                              ,PRODUCT_CD
+                              ,PRODUCT_NM
+                              ,UNIT
+                              ,SALE_PRICE
+                              ,QUANTITY
+                              ,SUPPLY_PRICE
+                              ,SURTAX
+                              ,TOTAL_AMOUNT
+                        FROM (
+                            SELECT  STORE_ID
+                                   ,YYYYMMDD
+                                   ,PRODUCT_CD
+                                   ,PRODUCT_NM
+                                   ,UNIT
+                                   ,SALE_PRICE
+                                   ,QUANTITY
+                                   ,SUPPLY_PRICE
+                                   ,SURTAX
+                                   ,TOTAL_AMOUNT
+                                   ,ROW_NUMBER() OVER (PARTITION BY PRODUCT_CD ORDER BY YYYYMMDD DESC) AS RN
+                            FROM (
+                                SELECT STORE_ID
+                                      ,YYYYMMDD
+                                      ,PRODUCT_CD
+                                      ,PRODUCT_NM
+                                      ,UNIT
+                                      ,SALE_PRICE
+                                      ,QUANTITY
+                                      ,SUPPLY_PRICE
+                                      ,SURTAX
+                                      ,TOTAL_AMOUNT
+                                FROM   TBL_EXP_SPC_SALES_TEMP
+                            )
+                        )
+                        WHERE RN = 1
+                    ) A
+                       JOIN (
+                              SELECT A.COMPANY_ID
+                                    ,B.PRODUCT_CD
+                                    ,B.PRODUCT_ID
+                                    ,B.PRODUCT_NM
+                                    ,B.CONVERSION_QUANTITY
+                              FROM   TBL_EXP_FOOD_MATERIALS_COMPANY A
+                                     JOIN TBL_EXP_FOOD_COMPANY_PRODUCT B
+                                       ON  1 = 1
+                                       AND A.COMPANY_ID = B.COMPANY_ID
+                              WHERE  1 = 1
+                              AND    A.BRAND_ID = 'obong'
+                              AND    A.COMPANY_CD = 'obong_SPC'
+                              AND    A.DEL_YN != 'Y'
+                       ) B
+                         ON  1 = 1
+                         AND A.PRODUCT_CD = B.PRODUCT_CD
+                       JOIN TBL_EXP_FOOD_COMPANY_SRORE_MAPPING C
+                         ON  1 = 1
+                         AND B.COMPANY_ID = C.COMPANY_ID
+                         AND A.STORE_ID  = C.COMPANY_STORE_CD
+                         AND C.BRAND_ID = 'obong'
+                WHERE  1 = 1    
+               ) A
+        GROUP BY A.YYYYMMDD
+                ,A.PRODUCT_ID  
+                ,A.STORE_ID
+    </select>
+    
+    <update id="updateMaterialsExceluploadLog" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  dataUpload.updateMaterialsExceluploadLog */ 
+        UPDATE TBL_EXP_MATERIALS_EXCELUPLOAD_LOG
+        SET    APPLY_COMP_YN = #{APPLY_COMP_YN}
+               <if test=" APPLY_COMP_YN == 'Y' ">
+                   ,APPLY_COMPLETED_DATE = GET_KRDT(SYSDATE)
+               </if>
+              ,UPDATE_USER   = #{UPDATE_USER}
+              ,UPDATE_DATE   = GET_KRDT(SYSDATE)
+        WHERE  1 = 1
+        AND    UPLOAD_LOG_ID = #{UPLOAD_LOG_ID}
+    </update>
+    
+    <insert id="insertFoodMaterialsSales" flushCache="true">
+        /* dataUpload.insertFoodMaterialsSales */
+        INSERT INTO TBL_EXP_FOOD_MATERIALS_SALES(
+                MATERIALS_SALES_ID
+               ,PRODUCT_ID
+               ,PRODUCT_CD
+               ,COMPANY_ID
+               ,COMPANY_CD
+               ,STORE_ID
+               ,YEAR
+               ,MONTH
+               ,DAY
+               ,YYYYMMDD
+               ,UNIT_PRICE
+               ,QUANTITY
+               ,FOOD_MATERIALS_QUANTITY
+               ,SALES
+               ,SUPPLY_PRICE
+               ,CONVERSION_UNIT_PRICE
+               ,DEL_YN
+               ,UPLOAD_LOG_ID
+               ,CREATE_USER
+               ,CREATE_DATE
+        )
+        VALUES(
+                LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))
+               ,#{PRODUCT_ID}
+               ,#{PRODUCT_CD}
+               ,#{COMPANY_ID}
+               ,#{COMPANY_CD}
+               ,#{STORE_ID}
+               ,#{YEAR}
+               ,#{MONTH}
+               ,#{DAY} 
+               ,#{YYYYMMDD}
+               ,#{UNIT_PRICE, jdbcType=NUMERIC}
+               ,#{QUANTITY, jdbcType=NUMERIC}
+               ,#{FOOD_MATERIALS_QUANTITY, jdbcType=NUMERIC}
+               ,#{TOTAL_AMOUNT, jdbcType=NUMERIC}
+               ,#{SUPPLY_PRICE, jdbcType=NUMERIC}
+               ,#{CONVERSION_UNIT_PRICE, jdbcType=NUMERIC}
+               ,#{DEL_YN} 
+               ,#{UPLOAD_LOG_ID}
+               ,#{UPDATE_USER}
+               ,GET_KRDT(SYSDATE)
+        )
+    </insert>    
+    
+    <!-- 식자재 매출 입력,수정 -->
+    <update id="mergeFoodMaterialsSales" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  dataUpload.mergeFoodMaterialsSales */ 
+        MERGE INTO TBL_EXP_FOOD_MATERIALS_SALES T
+        USING (
+            SELECT #{YYYYMMDD}                                  AS YYYYMMDD,
+                   #{PRODUCT_ID}                                AS PRODUCT_ID,
+                   #{STORE_ID}                                  AS STORE_ID,
+                   #{PRODUCT_CD}                                AS PRODUCT_CD,
+                   #{COMPANY_ID}                                AS COMPANY_ID,
+                   #{YEAR}                                      AS YEAR,
+                   #{MONTH}                                     AS MONTH,
+                   #{DAY}                                       AS DAY,
+                   #{UNIT_PRICE, jdbcType=NUMERIC}              AS UNIT_PRICE,
+                   #{QUANTITY, jdbcType=NUMERIC}                AS QUANTITY,
+                   #{FOOD_MATERIALS_QUANTITY, jdbcType=NUMERIC} AS FOOD_MATERIALS_QUANTITY,
+                   #{TOTAL_AMOUNT, jdbcType=NUMERIC}            AS SALES,
+                   #{SUPPLY_PRICE, jdbcType=NUMERIC}            AS SUPPLY_PRICE,
+                   #{CONVERSION_UNIT_PRICE, jdbcType=NUMERIC}   AS CONVERSION_UNIT_PRICE,
+                   #{DEL_YN}                                    AS DEL_YN,
+                   #{UPLOAD_LOG_ID}                             AS UPLOAD_LOG_ID,
+                   #{UPDATE_USER}                               AS UPDATE_USER,
+                   #{CREATE_USER}                               AS CREATE_USER
+            FROM DUAL
+        ) S
+        ON ( T.YYYYMMDD = S.YYYYMMDD AND T.PRODUCT_ID = S.PRODUCT_ID AND T.STORE_ID = S.STORE_ID)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                T.PRODUCT_CD              = S.PRODUCT_CD,
+                T.COMPANY_ID              = S.COMPANY_ID,
+                T.YEAR                    = S.YEAR,
+                T.MONTH                   = S.MONTH,
+                T.DAY                     = S.DAY,
+                T.UNIT_PRICE              = S.UNIT_PRICE,
+                T.QUANTITY                = S.QUANTITY,
+                T.FOOD_MATERIALS_QUANTITY = S.FOOD_MATERIALS_QUANTITY,
+                T.SALES                   = S.SALES,
+                T.SUPPLY_PRICE            = S.SUPPLY_PRICE,
+                T.CONVERSION_UNIT_PRICE   = S.CONVERSION_UNIT_PRICE,
+                T.DEL_YN                  = S.DEL_YN,
+                T.UPLOAD_LOG_ID           = S.UPLOAD_LOG_ID,
+                T.UPDATE_USER             = S.UPDATE_USER,
+                T.UPDATE_DATE             = GET_KRDT(SYSDATE)
+        WHEN NOT MATCHED THEN
+            INSERT (
+                MATERIALS_SALES_ID
+               ,PRODUCT_ID
+               ,PRODUCT_CD
+               ,COMPANY_ID
+               ,STORE_ID
+               ,YEAR
+               ,MONTH
+               ,DAY
+               ,YYYYMMDD
+               ,UNIT_PRICE
+               ,QUANTITY
+               ,FOOD_MATERIALS_QUANTITY
+               ,SALES
+               ,SUPPLY_PRICE
+               ,CONVERSION_UNIT_PRICE
+               ,DEL_YN
+               ,UPLOAD_LOG_ID
+               ,CREATE_USER
+               ,CREATE_DATE
+            ) VALUES (
+                LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16))
+               ,S.PRODUCT_ID
+               ,S.PRODUCT_CD
+               ,S.COMPANY_ID
+               ,S.STORE_ID
+               ,S.YEAR
+               ,S.MONTH
+               ,S.DAY
+               ,S.YYYYMMDD
+               ,S.UNIT_PRICE
+               ,S.QUANTITY
+               ,S.FOOD_MATERIALS_QUANTITY
+               ,S.SALES
+               ,S.SUPPLY_PRICE
+               ,S.CONVERSION_UNIT_PRICE
+               ,S.DEL_YN
+               ,S.UPLOAD_LOG_ID
+               ,S.CREATE_USER
+               ,GET_KRDT(SYSDATE)
+            )
+    </update>
+    
+</mapper>
+
+
+
+
+

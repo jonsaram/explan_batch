@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="config">
+
+	<cache />
+<!-- 
+	
+	<select id="getCommonCodeList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+	
+	
+	
+	</select>
+	<update id="updateSample" parameterType="map">
+
+	</update>
+ -->
+ 
+	<update id="deleteMainStock" parameterType="map">
+		/* config.deleteMainStock  */
+		DELETE FROM TBL_EXP_STOCK_ANALYSIS
+		WHERE BRAND_ID = #{BRAND_ID}
+	</update>
+
+	<update id="updateMainStock" parameterType="map">
+		/* config.updateMainStock  */
+		INSERT INTO TBL_EXP_STOCK_ANALYSIS (BRAND_ID, STORE_ID, OTOV, INOV)
+			WITH STAVG AS (
+				SELECT
+					 STORE_ID
+					,STOCK_MST_ID
+					,PRODUCT_CD
+					,PRODUCT_NM
+					,UNIT
+					,ROUND(AVG(QUANTITY)) * SAVE_PERIOD AS AVG_QUANTITY
+				FROM VIEW_STOCK_IN_OUT		
+				WHERE USE_YN = 'Y'
+					AND INOUT = 'OUT'
+					AND BRAND_ID = #{BRAND_ID}
+				GROUP BY
+					STORE_ID, STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, SAVE_PERIOD, UNIT	
+			)
+			, STSUM AS (
+				SELECT
+					 STORE_ID
+					,STOCK_MST_ID
+					,PRODUCT_CD
+					,PRODUCT_NM
+					,UNIT
+					,YYYYMMDD
+					,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN -QUANTITY 	ELSE 0 END) * 100) / 100 AS SUM_QUANTITY
+					,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN 0 			ELSE 0 END) * 100) / 100 AS IN_QUANTITY
+					,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN 0 		WHEN INOUT = 'OUT' THEN QUANTITY 	ELSE 0 END) * 100) / 100 AS OUT_QUANTITY
+				FROM VIEW_STOCK_IN_OUT		
+				WHERE USE_YN = 'Y'
+					AND BRAND_ID = #{BRAND_ID}
+				GROUP BY
+					STORE_ID, STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, UNIT, YYYYMMDD
+			)
+			, ADJST AS (
+				SELECT 
+					 STORE_ID
+					,STOCK_MST_ID
+					,ADJUST_QUANTITY, TO_CHAR(ADJUST_DATE, 'YYYY-MM-DD') AS ADJUST_DATE
+				FROM (
+				    SELECT 
+				        STORE_ID,
+				        STOCK_MST_ID,
+				        ADJUST_QUANTITY,
+				        ADJUST_DATE,
+				        ROW_NUMBER() OVER (
+				            PARTITION BY STORE_ID, STOCK_MST_ID 
+				            ORDER BY ADJUST_DATE DESC
+				        ) AS RN
+				    FROM TBL_EXP_STOCK_ADJUST
+				    WHERE 1=1
+				        AND BRAND_ID = #{BRAND_ID}                    
+				)
+				WHERE RN = 1
+			)
+			, TGT AS (
+				SELECT 
+					 B.STORE_ID
+					,A.STOCK_MST_ID
+					,C.PRODUCT_CD
+					,C.PRODUCT_NM
+					,C.UNIT
+					,C.YYYYMMDD
+					,C.IN_QUANTITY
+					,C.OUT_QUANTITY
+					,B.AVG_QUANTITY
+					,C.SUM_QUANTITY
+				FROM 
+					 TBL_EXP_STOCK_MST 	A
+					,STAVG				B
+					,STSUM				C
+					,ADJST				D
+				WHERE 1=1
+					AND A.USE_YN 	= 'Y'
+					AND A.STOCK_MST_ID = B.STOCK_MST_ID
+					AND B.STORE_ID = C.STORE_ID
+					AND B.STOCK_MST_ID = C.STOCK_MST_ID
+					AND C.STORE_ID = D.STORE_ID
+					AND C.STOCK_MST_ID = D.STOCK_MST_ID
+					AND C.YYYYMMDD	   > D.ADJUST_DATE
+				ORDER BY A.PRODUCT_CD, C.YYYYMMDD
+			)
+			, STC AS (
+				SELECT
+					 T.*
+					,CASE WHEN AVG_QUANTITY = 0 THEN 0 ELSE ROUND(STC_QUANTITY / AVG_QUANTITY * 1000) / 10 END AS SRATE
+				FROM ( 
+					SELECT
+						  A.STORE_ID
+						 ,A.STORE_NM
+						 ,B.PRODUCT_CD
+						 ,B.AVG_QUANTITY
+						,SUM(SUM_QUANTITY) + C.ADJUST_QUANTITY AS STC_QUANTITY
+					FROM
+						 TBL_EXP_STORE_MST 	A 
+						,TGT				B
+						,ADJST				C
+					WHERE 1=1
+						AND A.STORE_ID 		= B.STORE_ID	
+						AND B.STORE_ID 		= C.STORE_ID	
+						AND B.STOCK_MST_ID 	= C.STOCK_MST_ID	
+					GROUP BY A.STORE_ID, A.STORE_NM, B.PRODUCT_CD, B.AVG_QUANTITY, C.ADJUST_QUANTITY
+				) T
+			)
+			, MNMX AS (
+				SELECT 
+					 MAX( BOTTOM_VAL ) AS MAX_TOP
+					,MIN( TOP_VAL	) AS MIN_BOTTOM
+				FROM 
+					TBL_EXP_STOCK_EVALUATION_CRITERIA
+				WHERE
+					BRAND_ID = #{BRAND_ID}
+			)
+			, RST AS (
+				SELECT 
+					  STORE_ID
+					 ,STORE_NM
+					 ,SUM(CASE WHEN SRATE <![CDATA[>]]> MAX_TOP 	THEN 1 ELSE 0 END) AS INOV
+					 ,SUM(CASE WHEN SRATE <![CDATA[<]]> MIN_BOTTOM 	THEN 1 ELSE 0 END) AS OTOV
+				FROM 
+					 STC
+					,MNMX
+				GROUP BY
+					STORE_ID, STORE_NM
+			)
+			SELECT
+				 #{BRAND_ID} AS BRAND_ID
+				,STORE_ID
+				,INOV
+				,OTOV
+			FROM RST 
+
+	</update>
+ 
+</mapper>

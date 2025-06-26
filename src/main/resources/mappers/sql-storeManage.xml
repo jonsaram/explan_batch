@@ -1,0 +1,877 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="storeManage">
+
+	<cache />
+	
+	<update id="setStockInitData" parameterType="map">
+		INSERT INTO TBL_EXP_STOCK_STORE_CFG (
+			 STOCK_STORE_CFG_ID
+			,BRAND_ID
+			,STORE_ID
+			,STOCK_MST_ID
+		)
+		SELECT
+			 DBMS_RANDOM.STRING('X', 16) AS STOCK_STORE_CFG_ID
+			,BRAND_ID
+			,#{STORE_ID} AS STORE_ID
+			,STOCK_MST_ID
+		FROM
+			 TBL_EXP_STOCK_MST
+		WHERE 1=1
+			AND BRAND_ID = #{BRAND_ID}
+	</update>
+	
+	
+	<sql id="getStoreManageCfg_body">
+		SELECT
+			 B.STOCK_STORE_CFG_ID
+			,A.STOCK_MST_ID
+			,B.STORE_ID
+			,C.STORE_NM
+			,A.BRAND_ID
+			,A.PRODUCT_CD
+			,A.PRODUCT_TYPE
+			,A.PRODUCT_NM
+			,A.UNIT
+			,B.START_QUANTITY
+			,TO_CHAR(B.START_DATE, 'YYYY-MM-DD') AS START_DATE
+			,B.FULL_QUANTITY
+		FROM
+			 TBL_EXP_STOCK_MST			A	
+			,TBL_EXP_STOCK_STORE_CFG	B
+			,TBL_EXP_STORE_MST			C
+		WHERE 1=1
+			AND A.STOCK_MST_ID 	= B.STOCK_MST_ID
+			AND B.STORE_ID 		= C.STORE_ID
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+
+	
+	<select id="getStoreManageCfg" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStoreManageCfg  */
+		<include refid="getStoreManageCfg_body"/>
+	</select>
+	<select id="getStoreManageCfg_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* storeManage.getStoreManageCfg_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getStoreManageCfg_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getStoreManageCfg_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStoreManageCfg_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getStoreManageCfg_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+
+	<sql id="getStockInOut_body">
+		SELECT
+			 BRAND_ID
+			,STORE_ID
+			,STOCK_MST_ID
+			,PRODUCT_CD
+			,PRODUCT_NM
+			,YYYYMMDD
+			,UNIT
+			,QUANTITY
+			,INOUT
+			,SAVE_PERIOD
+		FROM
+			 VIEW_STOCK_IN_OUT
+		WHERE 1=1	 
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</sql>
+
+	
+	<select id="getStockInOut" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockInOut  */
+		<include refid="getStockInOut_body"/>
+	</select>
+	<select id="getStockInOut_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* storeManage.getStockInOut_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getStockInOut_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getStockInOut_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockInOut_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getStockInOut_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+
+
+
+
+
+	<select id="getStockAnalysis" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockAnalysis  */
+
+		WITH STAVG AS (
+			SELECT
+				 STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				,ROUND(AVG(QUANTITY)) * SAVE_PERIOD AS AVG_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE	1=1
+				<include refid="common.gridOptionWhere"/>
+				AND INOUT = 'OUT'
+			GROUP BY
+				STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, SAVE_PERIOD, UNIT	
+		)
+		, STSUM AS (
+			SELECT
+				 STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				,TO_CHAR(TO_DATE(MIN(YYYYMMDD), 'YYYY-MM-DD'), 'YYYY-MM-DD') AS START_YYYYMMDD
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN -QUANTITY 	ELSE 0 END) * 100) / 100 AS SUM_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN 0 			ELSE 0 END) * 100) / 100 AS IN_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN 0 		WHEN INOUT = 'OUT' THEN QUANTITY 	ELSE 0 END) * 100) / 100 AS OUT_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE	1=1
+				<include refid="common.gridOptionWhere"/>
+			GROUP BY
+				STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, UNIT	
+		)
+		SELECT 
+			 B.STOCK_MST_ID
+			,B.PRODUCT_CD
+			,B.PRODUCT_NM
+			,B.UNIT
+			,B.START_YYYYMMDD
+			,B.IN_QUANTITY
+			,B.OUT_QUANTITY
+			,A.AVG_QUANTITY
+			,B.SUM_QUANTITY
+		FROM 
+			 STAVG A
+			,STSUM B
+		WHERE 1=1
+			AND A.STOCK_MST_ID(+) 	= B.STOCK_MST_ID 
+			AND A.PRODUCT_CD(+) 	= B.PRODUCT_CD 
+	</select>
+
+
+	<select id="getStockAnalysisByDay" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockAnalysisByDay  */
+
+		WITH STAVG AS (
+			SELECT
+				 STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				,ROUND(AVG(QUANTITY)) * SAVE_PERIOD AS AVG_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE	1=1
+			<include refid="common.gridOptionWhere"/>
+				AND INOUT = 'OUT'
+			GROUP BY
+				STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, SAVE_PERIOD, UNIT	
+		)
+		, STSUM AS (
+			SELECT
+				 STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				, YEAR, MONTH, DAY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN -QUANTITY 	ELSE 0 END) * 100) / 100 AS SUM_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN 0 			ELSE 0 END) * 100) / 100 AS IN_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN 0 		WHEN INOUT = 'OUT' THEN QUANTITY 	ELSE 0 END) * 100) / 100 AS OUT_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE	1=1
+			<include refid="common.gridOptionWhere"/>
+			GROUP BY
+				STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, UNIT, YEAR, MONTH, DAY
+		)
+		SELECT 
+			 B.STOCK_MST_ID
+			,B.PRODUCT_CD
+			,B.PRODUCT_NM
+			,B.UNIT
+			, YEAR, MONTH, DAY
+			, YEAR || MONTH || DAY AS YYYYMMDD
+			,B.IN_QUANTITY
+			,B.OUT_QUANTITY
+			,A.AVG_QUANTITY
+			,B.SUM_QUANTITY
+		FROM 
+			 STAVG A
+			,STSUM B
+		WHERE 1=1
+			AND A.STOCK_MST_ID(+) 	= B.STOCK_MST_ID 
+			AND A.PRODUCT_CD(+) 	= B.PRODUCT_CD
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+
+
+	<select id="getStockAnalysisByDay2" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockAnalysisByDay2  */
+
+		WITH STAVG AS (
+			SELECT
+				 STORE_ID
+				,STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				,ROUND(AVG(QUANTITY)) * SAVE_PERIOD AS AVG_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE USE_YN = 'Y'
+				AND INOUT = 'OUT'
+				AND BRAND_ID = #{BRAND_ID}
+				AND STORE_ID = #{STORE_ID}
+			GROUP BY
+				STORE_ID, STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, SAVE_PERIOD, UNIT	
+		)
+		, STSUM AS (
+			SELECT
+				 STORE_ID
+				,STOCK_MST_ID
+				,PRODUCT_CD
+				,PRODUCT_NM
+				,UNIT
+				,YYYYMMDD
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN -QUANTITY 	ELSE 0 END) * 100) / 100 AS SUM_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN 0 			ELSE 0 END) * 100) / 100 AS IN_QUANTITY
+				,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN 0 		WHEN INOUT = 'OUT' THEN QUANTITY 	ELSE 0 END) * 100) / 100 AS OUT_QUANTITY
+			FROM VIEW_STOCK_IN_OUT		
+			WHERE USE_YN = 'Y'
+				AND BRAND_ID = #{BRAND_ID}
+				AND STORE_ID = #{STORE_ID}
+			GROUP BY
+				STORE_ID, STOCK_MST_ID, PRODUCT_CD, PRODUCT_NM, UNIT, YYYYMMDD
+		)
+		, ADJST AS (
+			SELECT 
+				 STORE_ID
+				,STOCK_MST_ID
+				,TO_CHAR(MAX(ADJUST_DATE), 'YYYY-MM-DD') AS ADJUST_DATE
+			FROM TBL_EXP_STOCK_ADJUST
+			WHERE 1=1
+				AND BRAND_ID = #{BRAND_ID}
+				AND STORE_ID = #{STORE_ID}
+			GROUP BY STORE_ID, STOCK_MST_ID
+		)
+		, LST_UPDATE AS (
+			SELECT 
+			    TO_CHAR(MAX(APPLY_COMPLETED_DATE), 'YYYY-MM-DD') AS APPLY_COMPLETED_DATE
+			FROM
+			     TBL_EXP_FOOD_MATERIALS_COMPANY     A
+			    ,TBL_EXP_MATERIALS_EXCELUPLOAD_LOG  B
+			WHERE 1=1
+			    AND A.COMPANY_CD = B.COMPANY_CD
+			    AND A.BRAND_ID = #{BRAND_ID}
+		)
+		SELECT 
+			 B.STORE_ID
+			,A.STOCK_MST_ID
+			,C.PRODUCT_CD
+			,C.PRODUCT_NM
+			,C.UNIT
+			,C.YYYYMMDD
+			,NVL(C.IN_QUANTITY , 0) AS IN_QUANTITY 
+			,NVL(C.OUT_QUANTITY, 0) AS OUT_QUANTITY
+			,NVL(B.AVG_QUANTITY, 0) AS AVG_QUANTITY
+			,NVL(C.SUM_QUANTITY, 0) AS SUM_QUANTITY
+		FROM 
+			 TBL_EXP_STOCK_MST 	A
+			,STAVG				B
+			,STSUM				C
+			,ADJST				D
+		WHERE 1=1
+			AND A.USE_YN 		= 'Y'
+			AND A.STOCK_MST_ID 	= B.STOCK_MST_ID
+			AND B.STORE_ID 		= C.STORE_ID
+			AND B.STOCK_MST_ID 	= C.STOCK_MST_ID
+			AND C.STORE_ID 		= D.STORE_ID
+			AND C.STOCK_MST_ID 	= D.STOCK_MST_ID
+			AND C.YYYYMMDD	   	<![CDATA[>=]]> D.ADJUST_DATE
+			AND C.YYYYMMDD	   	<![CDATA[<=]]> (SELECT APPLY_COMPLETED_DATE FROM LST_UPDATE)
+		ORDER BY A.PRODUCT_CD, C.YYYYMMDD
+	</select>
+
+
+
+	<select id="getOrderProductList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+	    SELECT
+	         A.BRAND_ID
+	        ,A.MATERIALS_CD AS BASE_PRODUCT_CD
+	        ,A.MATERIALS_NM AS BASE_PRODUCT_NM
+	        ,A.PRODUCT_CLASS
+	        ,B.PRODUCT_CD	AS PRODUCT_CD
+	        ,B.PRODUCT_NM   AS PRODUCT_NM
+	        ,B.UNIT_PRICE
+	        ,B.CONVERSION_QUANTITY 
+	    FROM
+	         TBL_EXP_FOOD_MATERIALS_MASTER	A
+	        ,TBL_EXP_FOOD_COMPANY_PRODUCT	B
+	    WHERE 1=1
+	        AND A.MATERIALS_CD = B.MATERIALS_CD
+	        AND A.BRAND_ID = #{BRAND_ID}
+	    ORDER BY PRODUCT_CD
+	</select>
+	<select id="getOrderProductList2" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getOrderProductList2  */
+
+		WITH TGT AS (
+		    SELECT 
+		         T.STORE_ID
+		        ,T.STOCK_MST_ID
+		        ,TO_CHAR(T.ADJUST_DATE, 'YYYYMMDD') AS ADJUST_DATE
+		        ,T.ADJUST_QUANTITY
+		    FROM 
+		        TBL_EXP_STOCK_ADJUST T
+		    JOIN (
+		        SELECT 
+		             STORE_ID
+		            ,STOCK_MST_ID
+		            ,MAX(ADJUST_DATE) AS MAX_REG_DATE
+		        FROM 
+		            TBL_EXP_STOCK_ADJUST
+		        GROUP BY 
+		            STORE_ID, STOCK_MST_ID 
+		    ) LST ON 
+		            T.STORE_ID      = LST.STORE_ID 
+		        AND T.STOCK_MST_ID  = LST.STOCK_MST_ID 
+		        AND T.ADJUST_DATE   = LST.MAX_REG_DATE    
+		)
+		,RST AS (
+		    SELECT
+		         STOCK_MST_ID
+		        ,AVG_QUANTITY
+		        ,SUM_QUANTITY
+		        ,CASE WHEN AVG_QUANTITY = 0 THEN ((SUM_QUANTITY + ADJUST_QUANTITY) * 100) ELSE ((SUM_QUANTITY + ADJUST_QUANTITY) / AVG_QUANTITY *100) END AS ST_RATE
+		    FROM (
+		        SELECT 
+		             A.STOCK_MST_ID
+		            ,ROUND(AVG(CASE WHEN INOUT = 'IN' THEN 0 WHEN INOUT = 'OUT' THEN QUANTITY * SAVE_PERIOD ELSE 0 END)) 		 AS AVG_QUANTITY
+		            ,ROUND(SUM(CASE WHEN INOUT = 'IN' THEN QUANTITY WHEN INOUT = 'OUT' THEN -QUANTITY 	ELSE 0 END) * 100) / 100 AS SUM_QUANTITY
+		            ,B.ADJUST_QUANTITY
+		        FROM 
+		             VIEW_STOCK_IN_OUT   A
+		            ,TGT                 B   
+		        WHERE 1=1
+		            AND A.STORE_ID      = B.STORE_ID
+		            AND A.STOCK_MST_ID  = B.STOCK_MST_ID
+		            AND A.YYYYMMDD       >  B.ADJUST_DATE
+				<include refid="common.gridOptionWhere"/>
+		        GROUP BY     
+		            A.STOCK_MST_ID, B.ADJUST_QUANTITY
+		    )
+		)
+		,PDT AS (
+		    SELECT
+		         A.BRAND_ID
+		        ,A.MATERIALS_CD
+		        ,A.MATERIALS_NM
+		        ,A.PRODUCT_CLASS
+		        ,B.PRODUCT_CD
+		        ,B.PRODUCT_NM
+		        ,B.UNIT_PRICE
+		        ,B.CONVERSION_QUANTITY 
+		    FROM
+		         TBL_EXP_FOOD_MATERIALS_MASTER	A
+		        ,TBL_EXP_FOOD_COMPANY_PRODUCT	B
+		    WHERE
+		        A.MATERIALS_CD = B.MATERIALS_CD
+		)
+		SELECT 
+		     A.STOCK_MST_ID			AS STOCK_MST_ID		
+		    ,B.PRODUCT_CD       	AS BASE_PRODUCT_CD    
+		    ,B.PRODUCT_NM       	AS BASE_PRODUCT_NM    
+		    ,B.UNIT             	AS UNIT          
+		    ,A.AVG_QUANTITY     	AS AVG_QUANTITY  
+		    ,A.SUM_QUANTITY     	AS SUM_QUANTITY  
+		    ,C.PRODUCT_CD       	AS PRODUCT_CD    
+		    ,C.PRODUCT_NM       	AS PRODUCT_NM
+		    ,C.UNIT_PRICE       	AS UNIT_PRICE
+		    ,C.CONVERSION_QUANTITY	AS CONVERSION_QUANTITY
+		    ,C.PRODUCT_CLASS		AS PRODUCT_CLASS
+		FROM 
+		     RST A
+		    ,TBL_EXP_STOCK_MST B
+		    ,PDT C	
+		WHERE 1=1
+		    AND A.STOCK_MST_ID      = B.STOCK_MST_ID
+		    AND B.BRAND_ID			= C.BRAND_ID
+		    AND B.PRODUCT_CD		= C.MATERIALS_CD
+
+		<include refid="common.gridOptionOrder"/>
+
+	</select>
+
+	<update id="insertOrderMst" parameterType="map">
+		/* storeManage.insertOrderMst  */
+
+		INSERT INTO TBL_EXP_ORDER_MST (
+			 ORDER_ID		
+		    ,STORE_ID       
+		    ,ORDER_DATE		
+		    ,STATE			
+		    ,CREATE_USER    
+		    ,CREATE_DATE    
+		) VALUES (
+			 #{ORDER_ID			}		
+		    ,#{STORE_ID			}       
+		    ,GET_KRDT(SYSDATE)		
+		    ,#{STATE			}			
+		    ,#{sessionVo.userId	}    
+		    ,GET_KRDT(SYSDATE)
+		)
+	</update>
+	
+	<update id="insertOrderProduct" parameterType="map">
+		/* storeManage.insertOrderProduct  */
+		
+		INSERT INTO TBL_EXP_ORDER_PRODUCT (
+			 ORDER_ID		
+		    ,PRODUCT_CD
+		    ,ORDER_CNT
+		    ,CREATE_USER    
+		    ,CREATE_DATE    
+		) VALUES (
+			 #{ORDER_ID			}		
+		    ,#{PRODUCT_CD		}       
+		    ,#{ORDER_CNT		}       
+		    ,#{sessionVo.userId	}    
+		    ,GET_KRDT(SYSDATE)
+		)
+	</update>
+	
+	<select id="getOrderList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getOrderList  */
+		SELECT
+			 A.ORDER_ID
+			,A.STORE_ID
+			,TO_CHAR(A.ORDER_DATE, 'YYYY-MM-DD HH24:MI:SS') AS ORDER_DATE
+			,A.STATE
+			,B.PRODUCT_CD
+			,B.ORDER_CNT
+			,C.PRODUCT_NM
+			,C.CONVERSION_QUANTITY
+			,C.UNIT_PRICE
+			,D.UNIT
+		FROM	
+			 TBL_EXP_ORDER_MST				A
+			,TBL_EXP_ORDER_PRODUCT			B
+			,TBL_EXP_FOOD_COMPANY_PRODUCT	C
+			,TBL_EXP_FOOD_MATERIALS_MASTER  D
+		WHERE 1=1	
+			AND A.ORDER_ID 		= B.ORDER_ID
+			AND B.PRODUCT_CD	= C.PRODUCT_CD
+			AND C.MATERIALS_CD	= D.MATERIALS_CD
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>		
+	
+	<select id="updateOrderState" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.cancelOrder  */
+		UPDATE 
+			TBL_EXP_ORDER_MST 
+		SET 
+			STATE = #{STATE}
+		WHERE 
+			ORDER_ID = #{ORDER_ID}
+	</select>
+
+
+	<select id="getStockAdjustList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockAdjustList  */
+		SELECT
+			 A.STOCK_ADJUST_ID
+			,A.BRAND_ID
+			,A.STORE_ID
+			,A.STOCK_MST_ID
+			,TO_CHAR(A.ADJUST_DATE, 'YYYY-MM-DD') AS ADJUST_DATE
+			,B.PRODUCT_CD
+			,B.PRODUCT_NM
+			,B.UNIT
+			,A.ADJUST_QUANTITY
+		FROM
+			 TBL_EXP_STOCK_ADJUST	A
+			,TBL_EXP_STOCK_MST		B
+		WHERE 1=1
+			AND	A.STOCK_MST_ID = B.STOCK_MST_ID
+
+	    <if test='parm == null or parm.equals("")'>
+			/* 일반 쿼리로 접근 */
+			AND A.BRAND_ID = #{BRAND_ID}
+			AND A.STORE_ID = #{STORE_ID}
+			
+			ORDER BY A.STORE_ID, A.ADJUST_DATE	
+	    </if>
+
+	    <if test='parm != null and !parm.equals("")'>
+			/* Grid Component에서 접근 */
+			<include refid="common.gridOptionWhere"/>
+			<include refid="common.gridOptionOrder"/>
+	    </if>
+	</select>
+
+    <!-- ===== 이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    ===== -->
+
+    <!-- 지점정보 조회 -->
+    <select id="getStoreMst" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* storeManage.getStoreMst  */
+        SELECT A.STORE_ID
+              ,A.STORE_ID
+              ,B.BRAND_ID
+              ,B.POS_COMP_CD
+              ,B.POS_GROUP_ID
+              ,A.STORE_NM
+              ,A.STORE_NM1
+              ,A.STORE_NM2
+              ,A.STORE_NM3
+              ,A.STORE_NM4
+              ,A.STORE_NM5
+              ,A.ADDRESS
+              ,A.STORE_MANAGER_NM
+              ,A.REGION
+              ,A.DEPARTMENT_CHARGE
+              ,A.CONTRACT_DATE
+              ,A.OPENING_DAY
+              ,A.TRANSFER_DAY
+              ,A.CLOSING_DATE
+              ,A.FRANCHISE_STORE
+              ,A.NOTE
+              ,A.TB_ROTATION
+              ,A.TB_ROTATION_GOAL
+              ,A.START_MARKETING
+              ,A.SUPERVISOR
+              ,A.PHONE_MANAGER
+              ,A.PHONE_STORE
+              ,A.ROYALTY
+              ,A.UPDATE_USER
+              ,A.UPDATE_DATE
+              ,A.CREATE_USER
+              ,A.CREATE_DATE
+              ,A.PASSWD
+              ,A.BUSINESS_REGNUM
+              ,A.POS_CD
+              ,A.TAXPAL_USE_YN
+        FROM   TBL_EXP_STORE_MST A
+               JOIN TBL_EXP_BUYER_BRAND B
+                 ON  1 = 1
+                 AND A.BRAND_ID = B.BRAND_ID
+        WHERE  1 = 1
+        <if test=" brandId != null and brandId != ''  ">
+            AND    A.BRAND_ID =  #{brandId} 
+        </if>
+        <if test=" region != null and region != ''  ">
+            AND    A.REGION =  #{region} 
+        </if>
+        <if test=" storeId != null and storeId != ''  ">
+            AND    A.STORE_ID = #{storeId} 
+        </if>
+        <if test=" storeCd != null and storeCd != ''  ">
+            AND    A.STORE_ID = #{storeCd} 
+        </if>
+        <if test=" storeNm != null and storeNm != ''  ">
+            AND    A.STORE_NM = #{storeNm} 
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("N")'>
+            AND    A.BUSINESS_REGNUM IS NOT NULL
+        </if>
+        <if test='businessRegNumNull !=null and  businessRegNumNull.equals("Y")'>
+            AND    A.BUSINESS_REGNUM IS NULL
+        </if>
+        <if test=" taxpalUseYn != null and taxpalUseYn != ''  ">
+            AND    A.TAXPAL_USE_YN = #{taxpalUseYn} 
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("Y")'>
+            AND    A.CLOSING_DATE IS NULL
+        </if>
+        <if test='closingDateNull !=null and  closingDateNull.equals("N")'>
+            AND    A.CLOSING_DATE IS NOT NULL
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("Y")'>
+            AND    A.POS_USE_YN = 'Y'
+        </if>
+        <if test='posUseYn !=null and  posUseYn.equals("N")'>
+            AND    A.POS_CD IS NOT NULL
+        </if>
+        ORDER BY BRAND_ID
+                ,STORE_NM  
+    </select>
+    
+    <!-- API 전송로그 조회 -->
+    <select id="getStoreAddInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* storeManage.getStoreAddInfo  */
+        SELECT A.STORE_NM
+              ,A.STORE_ID
+              ,A.STORE_ID
+              ,A.TAXPAL_USE_YN
+              ,B.STORE_ADD_INFO_ID
+              ,B.SITE_CD
+              ,B.SITE_NM
+              ,B.ID
+              ,B.PASSWD
+              ,B.CONFIRM_YN
+        FROM   TBL_EXP_STORE_MST A
+               LEFT OUTER JOIN TBL_EXP_STORE_ADD_INFO  B
+                 ON  1 = 1
+                 AND A.STORE_ID = B.STORE_ID
+        WHERE  1 = 1
+            <include refid="common.gridOptionWhere"/>
+            <include refid="common.gridOptionOrder"/>
+    </select>
+    
+    <!-- ##### 이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    이응규 작업 구간    ##### -->
+
+	<update id="updateStoreSalesMst" parameterType="map">
+		/* storeManage.updateStoreSalesMst  */
+		MERGE
+		INTO
+			${dbHdr}${posHdr}TBL_EXP_STORE_SALES_MST tgt
+				USING 
+				(
+					SELECT   #{CashReceiptAmt} AS CASH_RECEIPT_AMT 	--현금영수증금액
+			                ,#{CustNum}	AS CUST_AMT    				--고객수
+			                ,#{VoidAmt}	AS VOID_AMT    				--반품금액
+			                ,#{SellAllCnt} AS SELL_ALL_CNT	    	--총건수 (취소 포함)
+			                ,#{CardAmt} AS CARD_AMT	    			--카드금액
+			                ,#{CashbagAmt} AS CASHBAG_AMT	    	--캐쉬백금액
+			                ,#{DcAmt} AS DC_AMT		    			--할인금액
+			                ,#{StoreCode} AS STORE_CODE	    		--가맹점코드
+			                ,#{EdenredAmt} AS EDENRED_AMT	    	--전자결제금액
+			                ,#{ReceiveAmt} AS RECEIVE_AMT	    	--결제합계
+			                ,#{CouponAmt} AS COUPON_AMT	    		--쿠폰금액
+			                ,#{KeepAmt}	AS KEEP_AMT    				--보관금금액
+			                ,#{SellCnt}	AS SELL_CNT    				--건수
+			                ,#{TickAmt}	AS TICK_AMT    				--외상금액
+			                ,#{CancelAmt} AS CANCEL_AMT	    		--취소금액
+			                ,#{WorkAmt}	AS WORK_AMT    				--봉사료
+			                ,#{EndTimeDate} AS END_TIME_DATE    	--일자
+			                ,#{CashAmt} AS CASH_AMT    				--현금금액
+			                ,#{PointAmt} AS POINT_AMT	    		--포인트금액
+			                ,#{EtcAmt} AS ETC_AMT		    		--기타금액
+			                ,#{SDCancelAmt} AS SDCANCEL_AMT   		--지취금액
+			                ,#{StoreId}	AS STORE_ID					--지점ID
+			                ,#{StoreSalesId} AS STORE_SALES_ID 		--일별매출ID
+					  FROM DUAL
+				) src
+		ON
+			(	tgt.STORE_ID = src.STORE_ID
+			AND tgt.YEAR = SUBSTR(src.END_TIME_DATE,0,4)
+			AND tgt.MONTH = SUBSTR(src.END_TIME_DATE,5,2)
+			AND tgt.DAY = SUBSTR(src.END_TIME_DATE,7,2)
+			)
+			WHEN MATCHED
+		THEN
+		UPDATE
+			SET
+				tgt.TAXABLE_AMOUNT = NULL,
+				tgt.SURTAX_SUM = NULL,
+				tgt.NET_SALES = src.RECEIVE_AMT,-- 
+				tgt.AVERAGE_SALES = NULL,
+				tgt.CUSTOMERS_NUM = src.CUST_AMT, --
+				tgt.RECEIPT_CNT = NULL,
+				tgt.RECEIPT_PRICE = NULL,
+				tgt.CARD_SALES = src.CARD_AMT,--
+				tgt.CASH_SALES = src.CASH_AMT,--
+				tgt.DISCOUNT_PRICE = src.DC_AMT, --
+				tgt.ETC_SALES = NULL,
+				tgt.UPDATE_USER = 'SYSTEM',
+				tgt.UPDATE_DATE = SYSDATE,
+				tgt.GROSS_SALES = src.RECEIVE_AMT --
+				WHEN NOT MATCHED
+		THEN
+		INSERT
+			   (STORE_SALES_ID,
+				STORE_ID,
+				YEAR,
+				MONTH,
+				DAY,
+				TAXABLE_AMOUNT,
+				SURTAX_SUM,
+				NET_SALES,
+				AVERAGE_SALES,
+				CUSTOMERS_NUM,
+				RECEIPT_CNT,
+				RECEIPT_PRICE,
+				CARD_SALES,
+				CASH_SALES,
+				DISCOUNT_PRICE,
+				ETC_SALES,
+				CREATE_USER,
+				CREATE_DATE,
+				GROSS_SALES)
+		VALUES (src.STORE_SALES_ID,
+				src.STORE_ID,
+				SUBSTR(src.END_TIME_DATE,0,4),
+				SUBSTR(src.END_TIME_DATE,5,2),
+				SUBSTR(src.END_TIME_DATE,7,2),
+				NULL,
+				NULL,
+				src.RECEIVE_AMT,
+				NULL,
+				src.CUST_AMT,
+				NULL,
+				NULL,
+				src.CARD_AMT,
+				src.CASH_AMT,
+				src.DC_AMT,
+				NULL,
+				'SYSTEM',
+				SYSDATE,
+				src.RECEIVE_AMT)
+	</update>
+	
+
+	<update id="insertFoodMaterialsSalesFromOrder" parameterType="map">
+		/* storeManage.insertFoodMaterialsSalesFromOrder  */
+		INSERT INTO TBL_EXP_FOOD_MATERIALS_SALES (
+		     MATERIALS_SALES_ID
+		    ,PRODUCT_ID
+		    ,COMPANY_ID
+		    ,STORE_ID
+		    ,YEAR
+		    ,MONTH
+		    ,DAY
+		    ,UNIT_PRICE
+		    ,QUANTITY
+		    ,FOOD_MATERIALS_QUANTITY
+		    ,SALES
+		    ,SUPPLY_PRICE
+		    ,DEL_YN
+		    ,CREATE_USER
+		    ,CREATE_DATE
+		    ,PRODUCT_CD
+		    ,YYYYMMDD 
+			,ORDER_ID
+		)
+		SELECT
+		     LOWER(SUBSTR(RAWTOHEX(SYS_GUID()), 1, 16)) AS MATERIALS_SALES_ID     
+			,C.PRODUCT_ID                   			AS PRODUCT_ID             
+			,C.COMPANY_ID                   			AS COMPANY_ID             
+		    ,B.STORE_ID                     			AS STORE_ID               
+		    ,'-'                            			AS YEAR                   
+		    ,'-'                            			AS MONTH                  
+		    ,'-'                            			AS DAY                    
+		    ,C.UNIT_PRICE                    			AS UNIT_PRICE             
+		    ,A.ORDER_CNT                       			AS QUANTITY               
+		    ,NULL                           			AS FOOD_MATERIALS_QUANTITY
+		    ,NULL                           			AS SALES                  
+			,NULL			                   			AS SUPPLY_PRICE           
+			,'N'                            			AS DEL_YN                 
+			,#{sessionVo.userId	}            			AS CREATE_USER            
+			,GET_KRDT(SYSDATE)               			AS CREATE_DATE            
+		    ,A.PRODUCT_CD                   			AS PRODUCT_CD             
+		    ,TO_CHAR(sysdate, 'YYYY-MM-DD') 			AS YYYYMMDD               
+		    ,B.ORDER_ID									AS ORDER_ID
+		FROM 
+		     TBL_EXP_ORDER_PRODUCT  		A
+		    ,TBL_EXP_ORDER_MST      		B
+		    ,TBL_EXP_FOOD_COMPANY_PRODUCT	C 
+		WHERE 1=1
+		    AND A.ORDER_ID 		= B.ORDER_ID
+		    AND A.PRODUCT_CD 	= C.PRODUCT_CD
+		    AND A.ORDER_ID 		= #{ORDER_ID}
+	</update>
+	
+	<update id="deleteFoodMaterialsSalesFromOrder" parameterType="map">
+		DELETE FROM TBL_EXP_FOOD_MATERIALS_SALES
+		WHERE 1=1
+        <if test=" ORDER_ID != null and ORDER_ID != '' ">
+            AND ORDER_ID        = #{ORDER_ID}
+        </if>
+        <if test=" UPLOAD_LOG_ID != null and UPLOAD_LOG_ID != '' ">
+            AND UPLOAD_LOG_ID        = #{UPLOAD_LOG_ID}
+        </if>
+	</update>
+	
+	
+	<update id="makeInitStockAdjust" parameterType="map">
+		/* storeManage.makeInitStockAdjust  */
+		MERGE INTO TBL_EXP_STOCK_ADJUST T
+		USING (
+		    SELECT
+		         #{BRAND_ID} 							AS BRAND_ID 
+		        ,STORE_ID 								AS STORE_ID		  
+		        ,STOCK_MST_ID 							AS STOCK_MST_ID   
+		        ,TO_CHAR(sysdate - 240, 'YYYY-MM-DD') 	AS ADJUST_DATE
+		        ,ROUND(AVG(QUANTITY) / 2) * SAVE_PERIOD AS ADJUST_QUANTITY
+		    FROM VIEW_STOCK_IN_OUT A	
+		    WHERE USE_YN 			= 'Y'
+		      AND INOUT 			= 'OUT'
+		      AND BRAND_ID			= #{BRAND_ID}
+		      AND A.STORE_ID 		= #{STORE_ID}
+		      AND YYYYMMDD 		   >= TO_CHAR(sysdate - 240, 'YYYY-MM-DD') 
+		    GROUP BY
+		        STOCK_MST_ID, STORE_ID, PRODUCT_CD, SAVE_PERIOD
+		) S
+		ON (
+		    	T.BRAND_ID 		= S.BRAND_ID
+		    AND T.STORE_ID 		= S.STORE_ID
+		    AND T.STOCK_MST_ID 	= S.STOCK_MST_ID
+		    AND T.ADJUST_DATE 	= S.ADJUST_DATE
+		)
+		WHEN MATCHED THEN
+		    UPDATE SET
+		        T.ADJUST_QUANTITY = S.ADJUST_QUANTITY
+		WHEN NOT MATCHED THEN
+		    INSERT (STOCK_ADJUST_ID, BRAND_ID, STORE_ID, STOCK_MST_ID, ADJUST_DATE, ADJUST_QUANTITY, CREATE_USER, CREATE_DATE)
+		    VALUES (
+		         #{BRAND_ID} || COMMON_SEQ.nextval
+		        ,S.BRAND_ID
+		        ,S.STORE_ID
+		        ,S.STOCK_MST_ID
+		        ,S.ADJUST_DATE
+		        ,S.ADJUST_QUANTITY
+		        ,#{sessionVo.userId}
+		        ,GET_KRDT(SYSDATE)
+		    )
+	</update>
+	
+	
+	<select id="getStockMasterList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockMasterList  */
+		SELECT
+		     A.STOCK_MST_ID
+		    ,A.BRAND_ID
+		    ,A.PRODUCT_CD
+		    ,A.PRODUCT_TYPE
+		    ,A.PRODUCT_NM
+		    ,A.UNIT
+			,A.SAVE_PERIOD
+		    ,A.USE_YN
+		    ,B.PRODUCT_CLASS
+		FROM 
+		     TBL_EXP_STOCK_MST               A
+		    ,TBL_EXP_FOOD_MATERIALS_MASTER   B
+		    ,${dbHdr}${comnHdr}TBL_EXP_CODE	 C
+		WHERE 1=1
+		    AND A.PRODUCT_CD 	= B.MATERIALS_CD
+		    AND B.PRODUCT_CLASS	= C.CODE_ID
+		    AND C.GRP_CODE_ID	= 'PRODUCT_CLASS'
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+	</select>
+
+	<select id="getStockAdjustDateList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* storeManage.getStockAdjustDateList  */
+		SELECT 
+		    DISTINCT TO_CHAR(ADJUST_DATE, 'YYYY-MM-DD') AS ADJUST_DATE
+		FROM 
+		    TBL_EXP_STOCK_ADJUST
+		WHERE 1=1
+		    AND BRAND_ID = #{BRAND_ID}
+		    AND STORE_ID = #{STORE_ID}
+	</select>
+		
+	
+</mapper>

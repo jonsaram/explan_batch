@@ -1,0 +1,379 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@popupId> = {
+   	 APPROVAL_ID	: ""
+   	,RELATION_ID	: ""
+   	,appMember 		: {}
+   	,getAppMemberToList : function() {
+   		let resultList = []
+   		$.each(<@popupId>.appMember, function(key, obj) {
+   			// 결재 Type 설정
+   			obj["AL_APPR"]		= "";
+   			obj["AL_AGREE"]		= "";
+   			obj["AL_NOTICE"]	= "";
+   			obj["AL_" + obj["APPROVAL_TYPE"]] = "active";
+   			
+   			resultList.push(obj);
+   		});
+   		resultList.orderBy("ORDER_NUM", "ASC");
+   		return resultList;
+   	 }
+       ,memberSearchPopup : function() {
+    	   debugger;
+           //C_POP.open('popup_userSearchPopup', {}, function(retData) {
+           C_POP.open('popup_common_selectUserPopup', {}, function(retData) {
+               <@popupId>.addMember(retData);
+           });
+        }
+       ,callCompFn : function() {
+           <@popupId>.textEditorComp.testFn("aaa");
+        }
+       ,callCompSetMode : function() {
+       	let parm = {mode:"R"}
+           <@popupId>.textEditorComp.setMode(parm);
+        }
+       ,addMember : function(retData) {
+       	
+       	if(isEmpty(retData)) return;
+       	
+       	if(isValid(<@popupId>.appMember[retData.USER_ID])) {
+       		alert('이미 등록되어 있는 사원입니다.');
+       		return;
+       	}
+       	
+       	retData.APPROVAL_TYPE = 'APPR';		// Member 최초 등록시 결재로 설정
+       	
+       	let mlst = <@popupId>.getAppMemberToList();
+       	
+       	retData.ORDER_NUM = mlst.length;
+       	
+           <@popupId>.appMember[retData.USER_ID] = retData;
+           
+           <@popupId>.loadAppMember();
+           
+        }
+       ,loadAppMember : function() {
+       	let mlst = <@popupId>.getAppMemberToList();
+debugger;       	
+       	// 기안자 표시
+           let rparm = {
+                targetId   : "signMember"
+               ,templateId : "reqMember"
+               ,regMember  : mlst[0]
+           }
+           C_COM.renderHtml("<@popupId>", rparm);
+       	
+       	// 결재자 표시
+       	$.each(mlst, function(idx) {
+       		if(idx > 0) {
+           		// 결재자 추가
+                   let rparm = {
+                        targetId   : "signMember"
+                       ,addMember  : this
+                       ,append		: "Y"
+                   }
+                   C_COM.renderHtml("<@popupId>", rparm);
+       		}
+       	});
+        }
+       // 결재 Type 설정
+       ,setApprovalType : function(userId, approvalType,obj) {
+    	   
+		$(obj).siblings().removeClass("approval-btn-active").addClass("approval-btn");
+		$(obj).addClass("approval-btn-active");
+       	<@popupId>.appMember[userId].APPROVAL_TYPE = approvalType;
+        }
+       ,delMember : function(userId) {/* 결재자 삭제 */
+       	let delIdx = <@popupId>.appMember[userId].ORDER_NUM;
+       	<@popupId>.appMember = removeMember(<@popupId>.appMember, userId);
+       	$.each(<@popupId>.appMember, function(key, obj) {
+				if(obj.ORDER_NUM > delIdx) obj.ORDER_NUM = obj.ORDER_NUM - 1;         		
+       	});
+           <@popupId>.loadAppMember();
+        }
+       /* 결재상신 */
+       ,approvalSave : function () {
+			C_POP.confirm('결재를 진행 하시겠습니까?', function() {
+debugger;				
+		        let parm = {
+	                queryId        : "approval.saveResultAppr"
+	               ,requestParm    : {
+	            	   	 APPROVAL_ID 		: '<@APPROVAL_ID>'
+	            	   	,APPROVAL_COMMENT 	: <@popupId>.approvalComment.getData()
+	            	   	,STATE				: 'COMPLETE'
+	            	}
+	        	}
+		        if('<@LST_APPR>' == 'Y') {
+		        	
+		        	C_COM.requestQuery(parm);	
+		        	let parmSnd = {
+	                    queryId        : "approval.saveResultMainAppr"
+	                   ,requestParm    : {
+	                   	   	 APPROVAL_ID	: '<@APPROVAL_ID>'
+	                   	   	,STATE			: 'COMPLETE' 
+	                   	}
+		        	}
+		        	C_COM.requestQuery(parmSnd);	
+		        	
+		        	let parmThird = {
+	                    queryId        : "approval.saveNoticeAppr"
+	                   ,requestParm    : {
+	                   	   	 APPROVAL_ID	: '<@APPROVAL_ID>'
+	                   	}
+		        	}
+
+		        	C_COM.requestQuery(parmThird, function(resultData) {
+						if( resultData.state == "S"){
+							// 결재 후처리 
+				            var parm = {
+				                 serviceId              : "ApprovalService.approvalAfterProcess"
+				                ,requestParm            : {APPROVAL_ID : '<@APPROVAL_ID>'}
+				            }
+				            C_COM.requestService(parm, function(resultData) {
+								C_POP.alert('결재가 완료 되었습니다.');
+								<@popupId>.close('reload');
+				            });
+				            
+				            <@popupId>.sendAlarmToNoticeUser();
+						}else{
+							alert(resultData.msg)
+						}
+					});	
+		        	
+		        } else {
+		        	C_COM.requestQuery(parm, function(resultData) {
+						if( resultData.state == "S"){
+				        	// 다음 결재자에게 Alarm 전송
+				        	<@popupId>.sendAlarmToNextAppr();
+				        	
+							C_POP.alert('결재가 완료 되었습니다.');
+							<@popupId>.close('reload');
+						}else{
+							alert(resultData.msg)
+						}
+					});	
+		        }
+								
+			});
+        }
+		,apprReject : function() {
+			C_POP.confirm('결재를 반려 하시겠습니까?', function() {
+		        let parm = {
+	                queryId        : "approval.saveResultAppr"
+	               ,requestParm    : {
+	            	   	 APPROVAL_ID 		: '<@APPROVAL_ID>'
+	            	   	,APPROVAL_COMMENT 	: <@popupId>.approvalComment.getData()
+	            	   	,STATE				: 'REJECT'
+	            	}
+	        	}
+	        	let parmSnd = {
+                    queryId        : "approval.saveResultMainAppr"
+                   ,requestParm    : {
+                   	   	 APPROVAL_ID	: '<@APPROVAL_ID>'
+                   	   	,STATE			: 'REJECT' 
+                   	}
+	        	}
+	        	lastParm = {
+	        		queryGroup : [
+	        			 parm
+	        			,parmSnd
+	        		]
+	        	}
+		        
+				C_COM.requestQuery(lastParm, function(resultData) {
+					if( resultData.state == "S"){
+						C_POP.alert('결재가 반려 되었습니다.');
+						<@popupId>.close('reload');
+					}else{
+						alert(resultData.msg)
+					}
+				});				
+				
+			});
+			
+		 }
+		,sendAlarmToNextAppr : function() {
+            var parm = {
+                 queryId              : "approval.getNowApprUserInfo"
+                ,requestParm            : {APPROVAL_ID : '<@APPROVAL_ID>'}
+            }
+            C_COM.requestQuery(parm, function(resultData) {
+            	
+            	let appUserInfo = resultData.data[0];
+            	
+				if( resultData.state == "S"){
+					let parm = {
+						 userId 	: appUserInfo.USER_ID
+						,content	: appUserInfo.TITLE
+						,directExec	: 'MOVE/MN_APR_STA'
+					}
+					
+					C_ALARM.addAlarm(parm, function(retData) {
+
+					});
+				}
+            });
+		 }
+		,sendAlarmToNoticeUser : function() {
+            var parm = {
+                 queryId              : "approval.getNowNoticeUserInfo"
+                ,requestParm            : {APPROVAL_ID : '<@APPROVAL_ID>'}
+            }
+            C_COM.requestQuery(parm, function(resultData) {
+            	
+				if( resultData.state == "S"){
+	            	let noticeUserList = resultData.data;
+	            	
+	            	$.each(noticeUserList, function() {
+    					let parm = {
+    						 userId 	: this.USER_ID
+    						,content	: `${this.TITLE} 결재 완료 통보`
+    						,directExec	: 'MOVE/MN_APR_NOT'
+    					}
+    					C_ALARM.addAlarm(parm, function(retData) {
+
+    					});
+	            	});
+            	}
+            });
+		 }
+       ,close : function(retData) {
+       	if(isEmpty(retData)) retData = {};
+           C_POP.close(retData);
+        }
+   }
+   // Popup Load가 완료된후 실행 된다.
+   C_POP.onLoadPopup("<@popupId>", function(data) {
+      let parm = {
+              queryId        : "approval.getApproval"
+             ,requestParm    : {APPROVAL_ID : data.APPROVAL_ID}
+		}
+		C_COM.requestQuery(parm, function(resultData) {
+         	
+             let rparm = {
+                  targetId   : "apprProcess"
+                 ,info       : resultData.data[0]
+             }
+
+             C_COM.renderHtml("<@popupId>", rparm);
+             
+             
+             // 첨부 파일
+ 			var parm = {
+ 				 GRP_FILE_ID 	: data.APPROVAL_ID
+ 				,OWNER_CD 		: "APPROVAL"
+ 				,mode			: "R"
+ 				,title			: "NA"
+ 			}
+ 			C_COMP.import("importMultiFilemng", "component_compMultiFilemng",parm , function() {
+ 			});
+		   
+		   	// 상신내용
+			C_COMP.import("approvalContents", "component_common_compTextarea",{height:190,editable:false,initData: rparm.info.CONTENTS} , function(data) {
+			});
+		   	
+		   	// 담당자 의견
+			C_COMP.import("approvalComment", "component_common_compTextarea",{height:90,editable:true,initData: ''} , function(data) {
+			});
+		});
+	});
+
+</script>
+
+<!-- modal-popup start -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <!-- header start -->
+      <div class="modal-header srch-pop-inwrap">
+        <h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle">결재 하기</h5>
+        <!-- button start -->
+        <div class="txt-r col1 col2-md col3-sm">
+          <button type="button" class="win-fullcls">
+          </button>
+          <button type="button" class="win-full">
+          </button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span class="pop-cls" aria-hidden="true"></span>
+          </button>
+        </div>
+        <!-- button end -->
+      </div>
+      <!-- header end -->
+
+      <!-- body start -->
+      <div class="modal-body">
+        <div class="body-inwrap">
+
+        <!-- table area start -->
+        <div class="tb-card-allwrap01 col10 mt10">
+            <div class="card-inwrap">
+              <div id="tb-scroll" class="card-cnt-wrap p20">
+                  <!-- table start -->
+                  <table class="tb-wr-wrap col10 col10-xs" id='apprProcess'></table>
+                  <script type="text/x-jsrender" id="apprProcess_template">
+                      <colgroup>
+                        <col>
+                        <col>
+                      </colgroup>
+                      <tbody>
+                        <tr>
+                          <th class="col1 col2-sm col10-xs">상신자</th>
+                          <td class="col9 col8-sm col10-xs">
+                              <input type="text" class="form-control form-control-sm col10"  id='USER_NM' value='{{:info.USER_NM}}'>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th class="col1 col2-sm col10-xs">제 목</th>
+                          <td class="col9 col8-sm col10-xs">
+                              <input type="text" class="form-control form-control-sm col10"  id='TITLE' value='{{:info.TITLE}}'>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>상신내용</th>
+                          <td id="contentId">
+								<component id="approvalContents" style='display:inline-block;'></component>
+						  </td>
+                        </tr> 
+                        <tr>
+                          <th>첨부파일</th>
+                          <td>
+                              <compnent id="importMultiFilemng" style='display:inline-block;height:78px;'></compnent>  
+                          </td>
+                        </tr>                                                                                                        
+                        <tr>
+                          <th>담당자 의견</th>
+                          <td>
+                             <component id="approvalComment" style='display:inline-block;'></component>
+                          </td>
+                        </tr>                                                                                                        
+                      </tbody>
+                    </script> 
+                  <!-- table end -->
+              </div>
+            </div>
+          </div>
+          <!-- table area end -->
+
+        </div>        
+<!--       </div> -->
+      <!-- body end -->
+
+      <!-- footer start -->
+      <div class="modal-footer">
+          <button type="button" class="btn flat-btn"  onclick="<@popupId>.approvalSave()">결재 하기</button>
+          <button type="button" class="btn flat-btn" onclick="<@popupId>.apprReject()">반려 하기</button>
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">취 소</button>
+      </div>
+      <!-- footer end -->
+    </div>
+  </div>
+</div>                      
+<!-- modal-popup end -->
+
+
+<script type="text/javascript">
+  $("#accordion .accordion_bar").accordion();
+</script>
+<!-- </body>
+</html> -->

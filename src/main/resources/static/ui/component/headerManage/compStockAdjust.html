@@ -1,0 +1,108 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+			
+			var parm = {
+				 queryId 		: "common.getStockProductList"
+				,requestParm	: { BRAND_ID : G_VAL.session.BRAND_ID }
+			}
+			let resultData = C_COM.requestQuery(parm);
+			
+			let productList = C_COM.makeCodeList(resultData.data, "PRODUCT_CD", "PRODUCT_NM");
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "storeManage.getStockAdjustList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_STOCK_ADJUST"
+					,columnMap 		: {
+						 "STOCK_ADJUST_ID"	: { headerText : "재고조정ID"	,hidden : "Y"									}
+						,"BRAND_ID"       	: { headerText : "브랜드ID"		,hidden : "Y"									}
+						,"STORE_ID"       	: { headerText : "가맹점ID"		,hidden : "Y"									}
+						,"STOCK_MST_ID"   	: { headerText : "재고ID"		,hidden : "Y"									}
+						,"ADJUST_DATE"      : { headerText : "조정일"		,dataType : "date", dateFormat : "YYYY-MM-DD" 	}
+						,"PRODUCT_CD"     	: { headerText : "상품CD"														}
+						,"PRODUCT_NM"     	: { headerText : "상품명"														}
+						,"ADJUST_QUANTITY"	: { headerText : "수량"			, dataType : "number"							}
+						,"UNIT"		     	: { headerText : "단위"			,width : "80px"									}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["STOCK_ADJUST_ID"]
+					,searchColumnList	: ["B.PRODUCT_CD", "B.PRODUCT_NM"]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,orderColumnList 	: ["ADJUST_DATE", "PRODUCT_CD"]
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "STORE_ID"
+							,targetColumn	: "STORE_NM"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisObj) {
+								G_VAL.current.storeId = selectVal;
+								thisObj.reload();
+							 }
+						},
+						{
+							 type			: "multiSelectBox"	
+							,title			: "상품명"
+							,whereColumn	: "B.PRODUCT_CD"
+							,optionList 	: productList
+						}
+					]
+				 }
+				,callbackEditButton : function(parm) {
+					C_POP.open("popup_storeManage_stockAdjustEditPopup", {}, function(retData){
+						<@parentId>.stockAdjustGrid.reload();
+					});
+				 }
+				,addButtonList : [
+					{
+						 title 		: "기본목록생성"
+						,onClick	: function() {
+							<@compId>.makeInitStockAdjust();
+						 }  
+					}
+				]
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				
+			}
+			C_COMP.import("stockAdjustGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,makeInitStockAdjust : function() {
+			C_POP.confirm('기본 재고 조사 목록을 작성 하시겠습니까?', function() {
+				var parm = {
+					 queryId 		: "storeManage.makeInitStockAdjust"
+					,requestParm	: {
+						 BRAND_ID 		: G_VAL.session.BRAND_ID
+						,STORE_ID		: G_VAL.current.storeId
+					}
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					alert('기본 재고 조사 목록을 생성 하였습니다.');
+					<@compId>.stockAdjustGrid.reload();
+				});
+			});
+		}	
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);	
+		});
+	});
+
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="stockAdjustGrid"></compnent>    
+    <!-- table area end -->
+</component>

@@ -1,0 +1,123 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(parm) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "headerManage.getBrandMenuMasterList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_BRAND_MENU_MASTER"
+					,columnMap 		: {
+						 "BRAND_ID"      			: { headerText : "브랜드ID"	, hidden : "Y", default : G_VAL.session.BRAND_ID 					}
+						,"BRAND_MENU_ID" 			: { headerText : "메뉴ID"	, hidden : "Y", ifNewAutoSet : "random"								} 
+						,"BRAND_MENU_CD" 			: { headerText : "메뉴CD"																		} 
+						,"MENU_NM"       			: { headerText : "메뉴명" 																		}
+						,"SELLING_PRICE" 			: { headerText : "판매가"   ,dataType 	: "number"												}
+						,"CONVERSION_UNIT_PRICE"    : { headerText : "원가"     ,noSave 	: "Y", dataType 	: "number"												}
+						,"UNIT_PRICE_RATE"    		: { headerText : "원가율"   ,noSave 	: "Y", noSort : "Y"										}
+						,"GROUP_1"      			: { headerText : "대분류"	,columnType : "selectbox", useBrandCodeId : "STORE_MENU_GROUP1" 	}
+						,"GROUP_2"      			: { headerText : "중분류"	,columnType : "selectbox", useBrandCodeId : "STORE_MENU_GROUP2" 	}
+					 }
+					,addColumnMap	: {
+						initSetData : {
+							"UNIT_PRICE_RATE" : function(cellText, rowData) {
+								let retval = rowData.CONVERSION_UNIT_PRICE / rowData.SELLING_PRICE;
+								if(!isNumber(retval)) return "";
+								retval = toNumber(retval * 100, 1, "round");
+								return retval + "%";
+							}
+						}
+					 }
+					,columnConfig 	: {
+                        onDblClickCell        : function(columnId, rowData) {
+                            if( in_array(columnId, ["CONVERSION_UNIT_PRICE", "UNIT_PRICE_RATE"] )) {
+                            	C_MENU.movePage("MENU1030_0400", {selectCompId : "compMenuRecipeManage", brandMenuId : rowData.BRAND_MENU_CD});
+                            }
+                        }
+					}
+					,primaryKeyList		: ["BRAND_MENU_ID"]
+					,searchColumnList	: ["A.BRAND_MENU_CD", "A.BRAND_ID", "A.MENU_NM"]		// Table 지정인경우 적용
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID	}
+					,orderColumnList 	: ["A.BRAND_MENU_CD"] // ORDER BY에 사용
+					,rowCntId			: "<@compId>_rowCnt"							// 목록 개수 표시 target Id(dom)
+					,readOnly			: "Y"
+				}
+				,addButtonList : [
+					{
+						 title 		: "메뉴명관리"
+						,onClick	: function() {
+							<@compId>.openEditMultiTable();
+						 }  
+					}
+				 ]
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,openEditMultiTable : function() {
+	
+			let sendParm = {
+				 gridParmFst : {
+					 /*
+					 requestQuery	: {
+						  queryId		: "headerManage.similarWordList"
+						 ,requestParm	: {}
+					 }
+					 */
+					 tableName		: "TBL_EXP_BRAND_MENU_MASTER"
+					,columnMap 		: {
+						 "BRAND_MENU_CD" 			: { headerText : "메뉴CD"						} 
+						,"MENU_NM"       			: { headerText : "메뉴명" 		,align : "left"	}
+					 }
+					,primaryKeyList		: ["BRAND_MENU_CD"					]
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID}
+					,searchColumnList	: ["MENU_NM"						]
+					,orderColumnList 	: ["BRAND_MENU_CD"				]
+					//,cellMergeList		: [["BRAND_MENU_CD", "MENU_NM", 1]	]
+					,readOnly			: "Y"
+					,useRuntimeLoad		: 100										// Scroll을 하단으로 내리면 page단위로 실시간으로 추가 Data를 가져온다. 가져오는 Page단위 
+				 }
+				,gridParmSnd : {
+					 tableName		: "TBL_EXP_WORD_GRP"
+					,columnMap 		: {
+						 "SIMILAR_WORD_ID"	: { headerText : "PKID"			,hidden : "Y" ,ifNewAutoSet : "random"					}
+						,"BRAND_ID" 		: { headerText : "Brand ID"		,hidden : "Y" ,initSetData : G_VAL.session.BRAND_ID	}
+						,"WORD_GRP_TYPE"	: { headerText : "단어연계Type"	,hidden : "Y" ,initSetData : "BRAND_MENU" 			}
+						,"WORD_GRP_ID" 		: { headerText : "메뉴CD"		,hidden : "Y" 										}
+						,"SIMILAR_WORD_NM"	: { headerText : "유사메뉴명"														}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["SIMILAR_WORD_ID"]
+					,searchColumnList	: ["SIMILAR_WORD_NM"]
+					,orderColumnList 	: ["SIMILAR_WORD_NM"]
+				 }
+				,popupTitle 	: "유사 메뉴명 관리"
+				,fstGridTitle	: "본사 메뉴명 목록"
+				,sndGridTitle	: "유사 메뉴명 목록"
+				,connectColumn 	: ["BRAND_MENU_CD"]						// 첫번쨰 Grid에서 두번쨰 그리드와 연계된 Column
+				,connectMapping	: {"BRAND_MENU_CD" : "WORD_GRP_ID" }	// 연계 컬럼명이 다를 경우 Mapping 
+				,gridSize		: [6,4]
+				,titleComment	: "( 대상 메뉴명 : [MENU_NM/] )"
+				,size			: "NORMAL"
+				,hideDomIdList	: ["searchTitleSnd"]
+			}
+			
+			C_POP.open("popup_common_multiTableEditPopup", sendParm, function(retData){
+				<@compId>["<@compId>_tableGrid"].reload();
+			});
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent(parm);
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+<component>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224.798" height="233.298" viewBox="0 0 224.798 233.298">
+  <g id="pie-chart01" transform="translate(-1522.702 -457.702)">
+    <g id="그룹_40" data-name="그룹 40" transform="translate(876.5 300)">
+      <rect id="사각형_35" data-name="사각형 35" width="9" height="9" transform="translate(828 379)" fill="#ffcd56"/>
+      <rect id="사각형_37" data-name="사각형 37" width="9" height="9" transform="translate(774 379)" fill="#ff9f40"/>
+      <rect id="사각형_38" data-name="사각형 38" width="9" height="9" transform="translate(707 379)" fill="#4bc0c0"/>
+      <rect id="사각형_39" data-name="사각형 39" width="9" height="9" transform="translate(655 379)" fill="#0880bb"/>
+      <text id="대료실" transform="translate(843 388)" font-size="10" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.54"><tspan x="0" y="0">대료실</tspan></text>
+      <text id="주류" transform="translate(789 388)" font-size="11" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.54"><tspan x="0" y="0">주류</tspan></text>
+      <text id="세트메뉴" transform="translate(722 388)" font-size="10" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.54"><tspan x="0" y="0">세트메뉴</tspan></text>
+      <text id="기타" transform="translate(670 388)" font-size="10" font-family="NotoSansCJKkr-Medium, Noto Sans CJK KR" font-weight="500" opacity="0.54"><tspan x="0" y="0">기타</tspan></text>
+    </g>
+    <g id="타원_7" data-name="타원 7" transform="translate(1555 490)" fill="none" stroke="#4bc0c0" stroke-width="42">
+      <circle cx="79" cy="79" r="79" stroke="none"/>
+      <circle cx="79" cy="79" r="58" fill="none"/>
+    </g>
+    <g id="타원_10" data-name="타원 10" transform="translate(1624.263 457.702) rotate(40)" fill="none" stroke="#ffcd56" stroke-width="42" stroke-dasharray="190 306">
+      <circle cx="79" cy="79" r="79" stroke="none"/>
+      <circle cx="79" cy="79" r="58" fill="none"/>
+    </g>
+    <g id="타원_9" data-name="타원 9" transform="matrix(0.438, 0.899, -0.899, 0.438, 1670.373, 463.364)" fill="none" stroke="#ff9f40" stroke-width="42" stroke-dasharray="100 434">
+      <circle cx="79" cy="79" r="79" stroke="none"/>
+      <circle cx="79" cy="79" r="58" fill="none"/>
+    </g>
+    <g id="타원_8" data-name="타원 8" transform="matrix(0.174, -0.985, 0.985, 0.174, 1542.482, 633.082)" fill="none" stroke="#0880bb" stroke-width="42" stroke-dasharray="223 279">
+      <circle cx="79" cy="79" r="79" stroke="none"/>
+      <circle cx="79" cy="79" r="58" fill="none"/>
+    </g>
+  </g>
+</svg>

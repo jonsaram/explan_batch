@@ -1,0 +1,78 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+			 
+			 const yearList = [
+				  ["2025", "2025"]
+				 ,["2024", "2024"]
+				 ,["2023", "2023"]
+				 ,["2022", "2022"]
+				 ,["2021", "2021"]
+				 ,["2020", "2020"]
+			 ]
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_STORE_SALES_GOAL"
+					,columnMap 		: {
+						 "BRAND_ID"	: { headerText : "BRAND_ID", hidden : "Y"			}
+						,"STORE_ID"	: { headerText : "가맹점", width : "170px", align : "left", columnType : "selectbox", selectBoxCodeList : selectList }
+						,"YEAR"    	: { headerText : "년도"								}
+						,"MONTH1"  	: { headerText : "01월" 	, dataType : "number"	}
+						,"MONTH2"  	: { headerText : "02월" 	, dataType : "number"	}
+						,"MONTH3"  	: { headerText : "03월" 	, dataType : "number"	}
+						,"MONTH4"  	: { headerText : "04월" 	, dataType : "number"	}
+						,"MONTH5"  	: { headerText : "05월" 	, dataType : "number"	}
+						,"MONTH6"  	: { headerText : "06월" 	, dataType : "number"	}
+						,"MONTH7"  	: { headerText : "07월" 	, dataType : "number"	}
+						,"MONTH8"  	: { headerText : "08월" 	, dataType : "number"	}
+						,"MONTH9"  	: { headerText : "09월" 	, dataType : "number"	}
+						,"MONTH10" 	: { headerText : "10월"		, dataType : "number"	}
+						,"MONTH11" 	: { headerText : "11월"		, dataType : "number"	}
+						,"MONTH12" 	: { headerText : "12월"		, dataType : "number"	}
+					 }
+					,primaryKeyList		: ["BRAND_ID", "STORE_ID"	]
+					,searchColumnList	: ["YEAR"					]
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID 			}			
+					,orderColumnList 	: ["STORE_ID", "YEAR DESC"	]
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "STORE_ID"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisComp) {
+								G_VAL.current.storeId = selectVal;
+								thisComp.reload();
+							}
+						 }
+						,{
+							 type			: "multiSelectBox"	
+							,title			: "목표년도"
+							,whereColumn	: "YEAR"
+							,optionList 	: yearList
+						 }
+					]
+				 }
+				,noTitle 		: "Y"
+				,noBreadcrumb	: "Y"
+				
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);	
+		}, true, "STORE_ID");
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

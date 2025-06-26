@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="apple-touch-icon" href="/icon/ic_launcher_round.png">
+    <title>오봉집</title>
+    
+    <script src="./js/jquery.min.js"></script>
+	<script type="text/javascript" 	src="./js/libs/jsrender.js"					></script>
+	<!--	Project JS Lib -->
+	<script type="text/javascript" 	src="./ui/js/common/config.js"				></script>
+	<script type="text/javascript" 	src="./ui/js/common/function_ajax.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/common/function_common.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/common/project_common.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/oauth2Login.js"				></script>
+    <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+    	
+	<link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+	<link rel="stylesheet" href="css/bootstrap-4.4.1.min.css">  
+	<link rel="stylesheet" type="text/css" href="./css/common.css"/>
+	<link rel="stylesheet" type="text/css" href="./css/style.css"/>
+	<link rel="stylesheet" href="./ui/css/explangrid.css"> 
+	
+	<!--	로그인 -->
+    <script src="https://static.nid.naver.com/js/naveridlogin_js_sdk_2.0.2.js"></script>
+	<script src="https://accounts.google.com/gsi/client" async defer></script>
+	<script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+	<script>
+		
+		$(function() {
+		    const urlParams = new URLSearchParams(window.location.search);
+		    const reason = urlParams.get('REASON');
+		    if (reason) {
+				let error = decodeURIComponent(reason);
+				const errorMessages = {
+					  NOT_MATCH	: "로그인 정보와 일치하는 사용자가 없습니다.",
+					  LOGIN_TYPE: "올바른 로그인유형(본사/가맹점/관리자)를 선택하여 주십시오.",
+					  AUTH		: "로그인 사용자의 권한이 존재하지 않습니다.\n관리자에게 문의하세요."
+				};				
+				alert("로그인 정보를 확인하세요.\n" + errorMessages[reason]);
+				return;        
+		    }		
+			let session = C_COM.loadSessionData("session");
+			if( !isEmpty(session) ){
+				 $("input[name='loginType'][value='"+session.USER_TYPE+"']").prop("checked", true);
+				 $("#userId").val(session.USER_ID);
+				 $("#userPw").val("");
+				 $('#idSaving').prop('checked', false);
+			}else{
+				
+			    const savedId 	= getCookie('savedId');
+			    const loginType = getCookie('loginType');
+			    
+			    if (savedId) {
+			        $("#userId").val(savedId);
+			        $("#idSaving").prop('checked', true);
+			        $("input[name='loginType'][value='"+loginType+"']").prop("checked", true);
+			    }else{
+					setTimeout(()=>{
+				        $('#userId').val("");
+				        $("#userPw").val("");
+				        $('#idSaving').prop('checked', false);
+					},100)    	
+			    }			
+			}
+
+			
+			$("#userId").focus();
+			
+		    // 라디오 버튼 선택 시 이벤트 처리
+		    $("input[name='loginType']").change(function() {
+		        console.log("Selected login type:", $(this).val());
+		    });
+		    
+			// 아이디저장 클릭 시 동작
+			$("#idSaving").change(function (e) {
+				handleIdSaving(e.target.checked);
+			});
+			
+		    $("#userId, #userPw").keydown(function(e) {
+		        if (e.key === "Enter") {
+		            login();
+		        }
+		    });			
+			
+		    // 네이버 로그인 초기화.
+		    initializeNaverLogin();
+		    
+		    // 구글   로그인 초기화.
+		    /*
+		     */ 
+		    setTimeout(()=>{
+		        google.accounts.id.initialize({
+			          client_id: googleClientId,
+			          callback: handleCredentialResponse
+				});
+			
+	 			google.accounts.id.renderButton(
+			          document.getElementById("g_id_signin"),
+			          {
+			            width: 327,
+			          }
+				);
+	 			
+	 			var googleDiv = $('.login-google');
+	 			var googleButton = googleDiv.find('.nsm7Bb-HzV7m-LgbsSe-BPrWId');
+
+	 			if (googleButton.length) {
+	 			    googleButton.css("margin-left", "-50px");
+	 			}
+
+	 			setTimeout(()=>{$("#g_id_signin").find("[role='button']").children().eq(1).attr("style","margin-left: 11px !important;")},0) ;
+	 			
+	 			// 플레이스홀더 이미지를 숨기고, 실제 버튼 영역을 보이게 함
+	 	        //document.getElementById('google-placeholder').style.display = 'none';
+	 	        //document.getElementById('g_id_signin').style.display = 'block';
+		    },500)
+		   
+		});//END OF $(function()
+		    
+		    
+		    
+		/* 		
+		 *  네이버 로그인  		
+		 */ 		
+	     window.addEventListener("message", function(event) {
+	    	 
+	    	 if (event.data?.source === "react-devtools-content-script") {
+	    		 return;
+	    	 }
+ 	 
+			if (event.origin !== window.location.origin) return;
+			
+			var userInfo = event.data;
+			
+			goSetSession('NAVER',userInfo.email)
+	         
+	     });
+	
+		var naverLoginObj;
+		function initializeNaverLogin() {
+		
+			naverLoginObj = new naver.LoginWithNaverId({
+			    clientId: naverClientKey,
+			    callbackUrl: naverLoginCallback,
+			    isPopup: true,
+			    loginButton: { color: "green", type: 3, height: 48 },
+			});
+		
+			naverLoginObj.init();
+		        
+	         setTimeout(()=>{
+	        	$("#naverIdLogin img").hide();
+	        	$("#naverIdLogin_loginButton").text("네이버 계정으로 로그인");
+	        },200)
+		}
+		 
+	    
+			
+		/*
+		 * 카카오 로그인       
+		 */   
+		window.Kakao.init(kakaoInitKey) ;
+		function kakaoLogin(){
+			
+			let loginType = $("input[name='loginType']:checked").val();
+			let returnUrl = window.location.href;
+			let stateData = JSON.stringify({ loginType: loginType, returnUrl:returnUrl });
+			let encodedState = btoa(stateData); // base64 인코딩
+			window.Kakao.Auth.authorize({
+		        redirectUri: kakaoRedirectUri,//'http://localhost:8083/oauth', // 리디렉트 URI 설정
+		        //scope: 'profile_nickname, account_email, talk_message, plusfriend', 
+		        scope: 'profile_nickname, account_email, talk_message', 
+		        state: encodedState// CSRF 보호를 위한 state 값 (선택)
+		    });			
+		}
+ 			
+		  
+ 			
+		/*
+		 * 구글 로그인
+		 */ 
+		function handleCredentialResponse(response) {
+			 		
+			const userCredential = response.credential;
+			const userInfo = parseJwt(userCredential);
+		 	console.log( JSON.stringify(userInfo) + "Google 로그인 성공")
+			function parseJwt(token) {
+			    const base64Url = token.split('.')[1];
+			    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+			    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+			        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			    }).join(''));
+			    return JSON.parse(jsonPayload);
+			} 
+			 	
+		 	goSetSession('GOOGLE',userInfo.email)
+		}
+	
+		
+			
+		/* 
+		 * 일반 로그인
+		 */
+		function login() {
+				
+			let userId = $("#userId").val();
+			let userPw = $("#userPw").val();
+			let loginType = $("input[name='loginType']:checked").val();
+	
+			var sendParm = {
+				 targetUrl 	: _WEB_ROOT_URL + "/setSession.do"
+				,data		: {
+				    userId	 	: userId
+				   ,userPw		: userPw
+				   ,loginType	: loginType
+				   ,LOGIN_ID	: userId
+				   ,USER_ID		: userId
+				   ,PASSWD		: userPw
+				 }
+			}
+			C_COM.showLoadingBar();
+			ajaxRequest(sendParm, function(userInfo) {
+				C_COM.hideLoadingBar();
+
+				if(userInfo.state == "E") {
+					if(userInfo.IS_LOCK == "Y"){alert("현재 "+ userId +" 계정은 잠금상태입니다.\n관리자에게 문의하세요.");return;}
+					let errCnt = 0;
+					let msg = '로그인 정보를 확인 하세요.\n';
+					if( !isEmpty(userInfo.REASON) && userInfo.REASON == "NOT_MATCH")  { msg +="로그인 정보와 일치하는 사용자가 없습니다.";}
+					if( !isEmpty(userInfo.REASON) && userInfo.REASON == "LOGIN_TYPE") { msg +="올바른 로그인유형(본사/가맹점/관리자)를 선택하여 주십시오.";}
+					if( !isEmpty(userInfo.REASON) && userInfo.REASON == "AUTH")		  { msg +="로그인사용자의 권한이 존재하지 않습니다.\n관리자에게 문의하세요.";}
+					if( !isEmpty(userInfo.FAILED_ATTEMPTS)){ 
+																	errCnt = (Number(userInfo.FAILED_ATTEMPTS)+1) ; 
+																	msg +="\n\n "+ errCnt +" 회 로그인 실패하였습니다.";
+																	if( errCnt > 3){ msg +="\n계정보호를 위해 5회 로그인 실패시 계정이 잠깁니다.";}
+					}
+					alert(msg);
+					return;
+				}
+				
+				handleIdSaving(true);
+				
+				location.replace(_WEB_ROOT_URL + "/start.html");
+			});
+				
+		}
+
+		
+			
+		function handleIdSaving(isChecked) {
+		    const userId = $("#userId").val();
+		    const loginType = $("input[name='loginType']:checked").val(); 
+		    if (isChecked) {
+		        if (!userId) {
+		            alert("아이디를 입력해주세요.");
+		            $("#idSaving").prop("checked", false);
+		            return;
+		        }		    	
+		        setCookie('savedId', userId, 30);// 30일간 저장
+		        setCookie('loginType', loginType, 30);
+		    } else {
+		        setCookie('savedId', '', -1); // 쿠키 삭제
+		        setCookie('loginType', '', -1);
+		    }
+		}		
+		
+		function setCookie(name, value, days) {
+		    const date = new Date();
+		    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+		    document.cookie = `${name}=${encodeURIComponent(value)};expires=${date.toUTCString()};path=/`;
+		}
+		function getCookie(name) {
+		    const value = `; ${document.cookie}`;
+		    const parts = value.split(`; ${name}=`);
+		    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+		    return null;
+		}
+		
+		// 키 변환 후 새로운 항목 추가 함수
+		function addConvertedKeys(obj) {
+		    for (const key in obj) {
+		        // camelCase를 대문자와 밑줄 형식으로 변환
+		        const newKey = key.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
+		        // 변환된 키가 기존에 없다면 추가
+		        if (!obj.hasOwnProperty(newKey)) {
+		            obj[newKey] = obj[key];
+		        }
+		    }
+		}
+		
+		function goSetSession(mailType,eMail, uuid){
+			
+	 		var _DOMAIN_URL	= location.href.split("//")[0] + "//" + location.href.split("//")[1].split("/")[0];
+			var _WEB_ROOT_URL	= _DOMAIN_URL + "";
+			let loginType = $("input[name='loginType']:checked").val();
+			
+			var sendParm = {
+				targetUrl 	: _WEB_ROOT_URL + "/setSession.do"
+				,data		: {  
+					             loginType	: loginType
+								,mailType	: mailType
+								,eMail		: eMail
+								,uuid		: uuid || ''
+					 		  }
+			}
+			$("#loadingBar").show();
+			ajaxRequest(sendParm, function(userInfo) {
+				$("#loadingBar").hide();
+		
+				if(userInfo.state == "E") {
+					if( !isEmpty(userInfo.REASON) && userInfo.REASON == "LOGIN_TYPE") { alert("올바른 "+mailType+" 로그인유형(본사/가맹점/관리자)를 선택하여 주십시오."   );return;}
+					if( !isEmpty(userInfo.REASON) && userInfo.REASON == "AUTH")		  { alert(mailType+" 로그인사용자의 권한이 존재하지 않습니다.\n관리자에게 문의하세요.");return;}
+					alert(mailType+' 로그인 정보가 시스템에 등록되어 있지 않습니다.\n관리자에게 문의하세요.');return;
+				}
+					
+				location.replace(_WEB_ROOT_URL + "/start.html");
+			});	         
+			
+		}
+		
+		$(window).on('resize', function() {
+
+			var kakaoDiv = $('.login-kakao');
+		    var googleDiv = $('.login-google');
+
+		    if (kakaoDiv.length && googleDiv.length) {
+		        var kakaoWidth = kakaoDiv.outerWidth();
+		        var kakaoHeight = kakaoDiv.outerHeight();
+
+		        googleDiv.css({
+		            'width': kakaoWidth + 'px',
+		            'height': kakaoHeight + 'px'
+		        });
+
+		        var googleButtonDiv = googleDiv.find('[role="button"]');
+
+		        if (googleButtonDiv.length) {
+		            googleButtonDiv.css({
+		                'width': kakaoWidth + 'px',
+		                'height': kakaoHeight + 'px'
+		            });
+		        }
+		        
+		        var kakaoFontSize = kakaoDiv.css('font-size'); 
+		        var kakaoFontFamily = kakaoDiv.css('font-family');
+		        var kakaoFontWeight = kakaoDiv.css('font-weight');
+
+				googleDiv.find('.nsm7Bb-HzV7m-LgbsSe-BPrWId').css('font-size', kakaoFontSize + 'px');
+				googleDiv.find('.nsm7Bb-HzV7m-LgbsSe-BPrWId').style("margin-left,-50px");
+				setTimeout(()=>{$("#g_id_signin").find("[role='button']").children().eq(1).attr("style","margin-left: 11px !important;")},1000)
+				
+		      
+		    }
+		});
+
+	function oauth2Login(mail){
+		
+		alert(mail+" 로그인 준비중입니다.");
+		
+	}		
+	</script>
+</head>
+<body>
+    <!-- 메인 배너 시작 -->
+    <div class="banner-wrap">
+        <div class="swiper-container mySwiper">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide"><img src="images/login-bg01.jpeg" alt=""></div>
+                <div class="swiper-slide"><img src="images/login-bg02.jpeg" alt=""></div>
+            </div>
+        </div>
+    </div>
+    <!-- 메인 배너 끝 -->
+    <div class="banner-dimd"></div>
+    <div class="login-cnt-wrap">
+    
+        <!-- start header -->
+        <header class="login-top_wrapper">
+        </header>
+        <!-- end header -->
+        
+        <!-- start body -->
+        <div class="body-login-wrapper">
+            <!-- start login-box -->
+            <div class="login-wraper">
+                <div class="login-signature">
+                </div>
+                 <form name="form1" method="" action="#" class="mt10 mb20">
+                    <fieldset>            	
+                        <input type="radio" name="loginType" value="HEADER" checked="checked"/>
+                        <label for="">본사</label>
+                        <input type="radio" name="loginType" value="STORE" />
+                        <label for="">가맹점</label>
+                        <input type="radio" name="loginType" value="ADMIN"  />
+                        <label for="">관리자</label>                        
+                    </fieldset>
+                </form>
+                <div class="login-idpw">
+                    <form action="" method="post">
+                        <div class="login-input">
+                            <input type="text"  	id="userId"	class="w0" autocomplete="username">
+                            <input type="password"  id="userPw"	class="w0" autocomplete="off">
+                        </div>
+                    </form>
+                    <div class="txt-r">
+                        <input type="checkbox" id="idSaving" value="disabledcheckedno" />
+					    <label for="idSaving" class="fs12">아이디 저장</label>
+                    </div>
+                </div>
+                <div class="login-btn01" onclick="login()"><a href="#">LOGIN</a></div>
+                
+                  	<div class="login-naver mt20" id="naverIdLogin"><a href="javascript:naverLogin.login()">네이버 계정으로 로그인</a></div>	
+                	<div class="login-kakao"><a href="javascript:kakaoLogin()">카카오 계정으로 로그인</a></div>
+					<!-- <div class="login-google" id="g_id_signin" style="margin-top: 5px;"></div> -->	
+					
+					<div class="google-login-placeholder" style="height:40px;">
+    					<div class="login-google" id="g_id_signin" style="margin-top: 5px;"></div>
+					</div>
+<!-- 					
+					<div id="google-login-container" style="position: relative; height: 40px; margin-top: 5px;">
+					    초기 플레이스홀더 이미지
+					    <img id="google-placeholder" src="images/googleLoginImg.png" alt="구글 로그인" style="width:100%; height:100%;">
+					    구글 로그인 버튼이 렌더링될 영역
+					    <div id="g_id_signin" style="position:absolute; top:0; left:0; width:100%; height:100%; display: none;"></div>
+					</div>		 -->			
+            </div>
+            <!-- end login-box -->
+        </div>
+        <!-- end body -->
+        
+        <!-- start bottom -->
+        <footer class="login-bottom">
+            <span class="login-copyright">Copyright © 2024 explane, Inc</span>
+        </footer>
+        <!-- end bottom -->
+    </div>
+    <script>
+        var swiper = new Swiper(".mySwiper", {
+            spaceBetween: 80,
+            effect: "fade",
+            autoplay: true,
+        });
+    </script>
+    <!-- Loading Overlay -->
+    <div class="overlay" id="loadingOverlay">
+        <div class="spinner-border" role="status">
+            <span class="sr-only"></span>
+        </div>
+    </div>
+    
+</body>
+</html>

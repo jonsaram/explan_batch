@@ -1,0 +1,31 @@
+<script src="https://static.nid.naver.com/js/naveridlogin_js_sdk_2.0.2.js"></script>
+	<script>
+
+	let kakaoInitKey='fdc767ae526a940b2b944909df318145';
+	let naverClientKey ='Hz1rkiSTTPCVOEATPRsq';
+	let naverLoginCallback='http://localhost:8083/ui/main/system/naverLoginCallback.html';
+	let naverSetDomain='http://localhost:8083';
+
+ 	const naverLogin = new naver.LoginWithNaverId({
+ 		
+	    clientId: naverClientKey, // 네이버 개발자 센터에서 발급받은 클라이언트 ID
+	    callbackUrl: naverLoginCallback, // 네이버 API 설정에 등록한 Redirect URI
+	    isPopup: true, // 팝업 방식 사용 여부 (true: 팝업, false: 리디렉션)
+	    //loginButton: { color: "green", type: 3, height: 50 }, // 네이버 기본 버튼 설정 (사용 안 함)
+	    domain: naverSetDomain // 도메인 설정
+	    
+	});
+ 
+
+	function startLogin(){
+		
+		// 초기화 (SDK와 연동)
+		naverLogin.init();
+
+		
+	}
+	</script>
+
+<div>
+실제 로그인 페이지
+</div>

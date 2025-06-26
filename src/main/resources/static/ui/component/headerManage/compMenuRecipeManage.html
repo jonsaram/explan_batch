@@ -1,0 +1,70 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 openEditMultiTable : function() {
+			C_POP.open("popup_headerManage_menuRecipeEditPopup", {}, function(retData){
+				<@parentId>["<@compId>_tableGrid"].reload();
+			});
+		 }
+		,loadComponent : function(parm, callback) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "headerManage.getMenuRecipeConnectList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_MENU_RECIPE"
+					,columnMap 		: {
+						 "MENU_RECIPE_ID" 		: { headerText : "MENU_RECIPE_ID"		,hidden : "Y"					}
+						,"BRAND_MENU_ID" 		: { headerText : "BRAND_MENU_ID"		,hidden : "Y"					}
+						,"RECIPE_ID" 			: { headerText : "RECIPE_ID"			,hidden : "Y"					}
+						,"BRAND_MENU_CD" 		: { headerText : "메뉴CD"												}
+						,"MENU_NM" 				: { headerText : "메뉴명"												}
+						,"MENU_SUM_PRICE"		: { headerText : "메뉴원가"				,dataType : "number", fix : "2"	}
+						,"RECIPE_CD" 			: { headerText : "레시피CD"												}
+						,"RECIPE_NM" 			: { headerText : "레시피명"												}
+						,"CONVERSION_UNIT_PRICE": { headerText : "단가"					,dataType : "number", fix : "2"	}
+						,"QUANTITY"				: { headerText : "수량", width : "60px"	,dataType : "number", fix : "2"	}
+						,"RECIPE_SUM_PRICE"		: { headerText : "원가"					,dataType : "number", fix : "2"	}
+					 }
+					,columnConfig 	: {
+		                onDblClickCell        : function(columnId, rowData) {
+		                    if( in_array(columnId, ["CONVERSION_UNIT_PRICE"] )) {
+                            	C_MENU.movePage("MENU1030_0400", {selectCompId : "compRecipeMaterialsManage", recipeCd : rowData.RECIPE_CD});
+		                    	//commonCompFn.openEditUnitPriceConfig();
+		                    }
+		                }
+					 }
+					,primaryKeyList		: ["MENU_RECIPE_ID"]
+					,searchColumnList	: ["A.BRAND_MENU_CD", "C.RECIPE_CD", "MENU_NM", "RECIPE_NM"]	
+					,searchValue		: "<@directCallParm.brandMenuId>"
+					,orderColumnList 	: ["A.BRAND_MENU_CD"]
+					,searchWhereMap		: { "A.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,cellMergeList		: [["BRAND_MENU_CD", "MENU_SUM_PRICE", 1]]
+				 }
+				//,noEdit : "Y"
+				// Edit 버튼에 대한 Overide처리
+				,callbackEditButton : function(parm) {
+					<@compId>.openEditMultiTable();
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("brandMenuManageGrid", "component_compTableEditor",sendParm , function() {
+				
+				if(typeof callback == "function") callback();
+				
+			});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent(parm);
+	});
+
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="brandMenuManageGrid"></compnent>    
+    <!-- table area end -->
+</component>

@@ -1,0 +1,184 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		 sendParm			  : {}
+		,selectedRoleId		  : "-"
+		,close : function(returnData) {
+			if(isEmpty(returnData)) returnData = { reload : "Y" };
+			C_POP.close(returnData);
+		 }
+		,setGrid1 : function() {
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_ROLE"
+					,columnMap 		: {
+						 "ROLE_ID"			: { headerText : "Role ID"		}
+						,"ROLE_NM" 			: { headerText : "Role 명" 		}
+						,"USE_YN" 			: { headerText : "사용여부" 	}
+					 }
+					,primaryKeyList		: ["ROLE_ID"]
+					,searchColumnList	: ["ROLE_ID"]		// Table 지정인경우 적용
+					,columnConfig 	: {
+					 }
+					,rowConfig : {
+						onClickRow : function(rowData) {
+							if(isEmpty(rowData.ROLE_ID)						) return;
+							if(<@popupId>.selectedRoleId == rowData.ROLE_ID	) return;
+							<@popupId>.selectedRoleId = rowData.ROLE_ID;
+							<@popupId>.gridComp2.reload();
+						}
+					 }
+				 }
+				,gridTitle : "Role 마스터"
+			}
+			
+			C_COMP.import("gridComp1", "component_compGridWithSearch",sendParm , function(tableList) {
+				if(tableList.length > 0) {
+					<@popupId>.selectedRoleId = tableList[0].ROLE_ID;
+				} else {
+					<@popupId>.selectedRoleId = "-";
+				}
+				<@popupId>.setGrid2();
+			});		
+			
+		 }
+		,setGrid2 : function() {
+			let sendParm2 = {
+				gridParm : {
+					 tableName		: "TBL_EXP_ROLEMENU"
+					,columnMap 		: {
+						 "ROLE_ID" 	: { headerText : "Role ID"	,default : 	function() {return <@popupId>.selectedRoleId }		}
+						,"MENU_ID" 	: { headerText : "메뉴ID"																	}
+						,"AUTH_TYPE": { headerText : "권한Type"	,default : "A"													}
+					 }
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["ROLE_ID","MENU_ID"]
+					,searchColumnList	: ["ROLE_ID","MENU_ID"]		// Table 지정인경우 적용
+					,searchWhereMap		: {
+						"ROLE_ID" : function() { return <@popupId>.selectedRoleId; }
+					 }
+					,orderColumnList 	: ["ROLE_ID","MENU_ID"]
+				 }
+				,gridTitle : "Role 메뉴 Mapping"
+			}
+			
+			C_COMP.import("gridComp2", "component_compGridWithSearch",sendParm2 , function(tableList) {
+				
+			});		
+			
+		 }
+		,setGrid3 : function() {
+			let sendParm3 = {
+				gridParm : {
+					 tableName		: "TBL_EXP_MENU"
+					,columnMap 		: {
+						 "MENU_ID"       : { headerText : "메뉴ID"     }
+						,"MENU_NM"       : { headerText : "메뉴명"     }
+						,"MENU_DESC"     : { headerText : "메뉴설명"   }
+					 }
+					,columnConfig 		: {
+
+					 }
+					,primaryKeyList		: ["MENU_ID"]
+					,searchColumnList 	: ["MENU_ID", "MENU_NM"]
+					,orderColumnList 	: ["SORT_ORDER ASC"]
+					,readOnly			: "Y"
+				 }
+				,gridTitle : "메뉴 목록"
+			}
+
+			C_COMP.import("gridComp3", "component_compGridWithSearch",sendParm3 , function(tableList) {
+				
+			});		
+
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(parm) {
+		
+		////////////////////// 첫번째 그리드 ////////////////////////////////////
+		<@popupId>.setGrid1();
+
+		////////////////////// 세번째 그리드 ////////////////////////////////////
+		<@popupId>.setGrid3();
+		
+	
+	
+	});
+</script>
+<!-- modal-popup start -->
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="full-modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <!-- header start -->
+        <div class="modal-header srch-pop-inwrap">
+          <h5 class="modal-title col9 col8-md col7-sm"><@popupTitle></h5>
+          <!-- button start -->
+          <div class="txt-r col1 col2-md col3-sm">
+            <button type="button" class="win-fullcls" style="display:none">
+            </button>
+            <button type="button" class="win-full" style="display:none">
+            </button>
+            <button type="button" class="close" aria-label="Close" onclick="<@popupId>.close()">
+              <span class="pop-cls" aria-hidden="true"></span>
+            </button>
+          </div>
+          <!-- button end -->
+        </div>
+        <!-- header end -->
+  
+        <!-- body start -->
+        <div class="modal-body">
+          <div class="body-inwrap display-row-nowrap-md"> <!-------------------- 테이블 좌, 우 배치 시 -- 이 부분에 클래스명 추가 ( display-row-nowrap-md ) // 테이블 하나의 경우 클래스명 추가 불필요 -------------------->
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col5 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp1"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col5 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp2"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+            <!-- table area start -->
+            <div class="tb-card-allwrap col5 col10-md col10-sm mt10">
+                <div class="card-inwrap">
+                    <div id="tb-scroll" class="card-cnt-wrap">
+						<!-- table start -->
+						<compnent id="gridComp3"></compnent>    
+						<!-- table end -->        
+                    </div>
+                </div>
+            </div>
+            <!-- table area end -->            
+
+
+          </div>        
+        </div>
+        <!-- body end -->
+  
+        <!-- footer start -->
+        <div class="modal-footer">
+          <button type="button" class="btn outline-btn mr20" onclick="<@popupId>.close()">Close</button>
+        </div>
+        <!-- footer end -->
+      </div>
+    </div>
+</div>                      
+  <!-- modal-popup end -->

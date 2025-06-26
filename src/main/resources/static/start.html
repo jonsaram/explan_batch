@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>오봉집</title>
+	<link rel="apple-touch-icon" href="/icon/ic_launcher_round.png">
+    
+    <script src="js/jquery.min.js"></script>
+	<script src="js/jquery-ui-1.11.4.min.js"></script>
+	<script src="js/bootstrap.bundle.min.js"></script>
+	<script src="js/jstree-3.2.1.min.js"></script>
+	<script src="js/summernote-bs4.min.js"></script>
+	<script src="js/popper-1.11.0.min.js"></script>
+	<script src="js/bootstrapEdit.js"></script>
+	<script src="js/script.js"></script>
+	<script src="js/common.js"></script>
+	<script type="text/javascript" src="./js/libs/index.global.js"				></script>
+	<script type="text/javascript" 	src="./js/libs/jsrender.js"					></script>
+
+	<!--	Project JS Lib -->
+	<script type="text/javascript" 	src="./ui/js/common/config.js"				></script>
+	<script type="text/javascript" 	src="./ui/js/common/function_ajax.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/common/function_common.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/common/project_common.js"		></script>
+	<script type="text/javascript" 	src="./ui/js/explangrid.js"					></script>
+    <script type="text/javascript" 	src="./ui/js/lodash.js" 					></script>
+    <script type="text/javascript" 	src="./ui/js/dayjs.js"						></script>
+    <script type="text/javascript" 	src="./ui/js/excel.js"						></script>
+    <script type="text/javascript" 	src="./ui/js/chart.js"						></script>
+	
+    <!--	챠트 -->
+    <script type="text/javascript" src="./js/libs/highcharts.js"                ></script>
+    <script type="text/javascript" src="./js/libs/highcharts-more.js"           ></script>
+    <script type="text/javascript" src="./js/libs/highcharts-treemap.js"        ></script>
+    <script type="text/javascript" src="./js/libs/highcharts-heatmap.js"        ></script>
+    <script type="text/javascript" src="./js/libs/highcharts-accessibility.js"  ></script>
+    
+	<link rel="stylesheet" href="css/jstree-3.2.1.min.css">
+	<link rel="stylesheet" href="css/summernote-bs4.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="css/bootstrap.min.css" rel="stylesheet">  
+	<link rel="stylesheet" href="css/common.css"> 
+	<link rel="stylesheet" href="css/common_add.css"> 
+	<link rel="stylesheet" href="css/style.css"> 
+	<link rel="stylesheet" href="./ui/css/explangrid.css"> 
+    <!--	로그인 -->
+	<script src="https://static.nid.naver.com/js/naverLogin_implicit-1.0.3.js"></script>
+	<script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+	<!--	웹소캣 -->
+	<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+	
+	<script type="text/javascript">
+		$(function() {
+ 			ajaxRequest("/getSession.do", function(data) {
+ 				
+				if(data.state=='E' && data.msg == 'NO_SESSION') {
+					C_POP.alert('Session 정보가 없습니다.\n\n로그인 화면으로 이동합니다.');
+					location.replace("/");
+					return; 
+				}
+				
+				if(data.BRAND_LIST.length == 0 ) {
+					data.BRAND_LIST.push({BRAND_ID : "NOTHING", BRAND_ID : "브랜드없음"})
+				}
+				
+				/* 초기 session 값 설정 */
+				G_VAL.session.BUYER_ID	= data.BUYER_ID;
+				G_VAL.session.BUYER_NM	= data.BUYER_NM;
+				G_VAL.session.USER_ID 	= data.USER_ID;
+				G_VAL.session.LOGIN_NM 	= data.LOGIN_NM;
+				G_VAL.session.USER_NM 	= data.USER_NM;
+				G_VAL.session.BRAND_ID  = data.BRAND_LIST[0].BRAND_ID;
+				G_VAL.session.BRAND_NM  = data.BRAND_LIST[0].BRAND_NM;
+				G_VAL.session.BRAND_LIST= data.BRAND_LIST;
+				G_VAL.session.USER_TYPE = data.USER_TYPE;
+				G_VAL.session.STORE_ID	= data.STORE_ID;
+				G_VAL.current.storeId	= data.STORE_ID;
+				G_VAL.session.BRAND_MAP = arrayToMap(data.BRAND_LIST, "BRAND_ID");
+				G_VAL.session.AUTH_MAP	= arrayToMap(data.AUTH_LIST	, "MENU_ID"	);
+				G_VAL.session.GET_AUTH 	= (pageId) => Object.values(G_VAL.session.AUTH_MAP).find(item => item.PAGE_ID === pageId);
+				C_COM.init();
+				C_MENU.initMenu();
+				setHeaderInfo();
+				
+				$("#loginBuyerNm").html(G_VAL.session.BUYER_NM);
+
+				let LOGIN_NM = isEmpty(G_VAL.session.USER_NM)? G_VAL.session.LOGIN_NM :G_VAL.session.LOGIN_NM+'('+G_VAL.session.USER_NM+')'; 
+				$("#loginUserNm").html(LOGIN_NM);	
+
+				C_PM.movePage("main_dashboard");
+
+				//C_PM.movePage("main_mainPage");
+				//C_PM.movePage("sample_mainPageSample");
+  				
+				
+				setAlarmListCnt();
+				
+ 			});
+ 			
+ 			// 기본 공통 Component Import
+ 			// 공통 Script를 사용하기위함.
+
+ 			C_COMP.import("commonCompFn", "component_common_commonCompFn",{templateId : "baseComponent"}, function() {});		
+ 			C_COMP.import("compChatting", "component_common_compChatting",{templateId : "baseComponent"	}, function() {});		
+			
+		});
+		
+		function setAlarmListCnt() {
+			var parm = {
+				 queryId 		: "common.getAlarmListCnt"
+				,requestParm	: {}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				let cnt = resultData.data[0].CNT;
+				if(cnt > 0) {
+					$("#alarmListCnt").show().html(cnt);	
+				} else {
+					$("#alarmListCnt").hide();
+				}
+			});
+			
+		}
+		
+		
+		function setHeaderInfo() {
+			let brandList = G_VAL.session.BRAND_LIST;
+			var rparm = {
+				 targetId 	: "selectListBrandId"
+				,list		: brandList
+			}
+			C_COM.renderHtml("selectListBrandUl", rparm);
+			
+			$("#selectBrandNm").attr("placeholder", G_VAL.session.BRAND_NM);
+		}
+    	function changeBrand(brandId) {
+    		let brandInfo = G_VAL.session.BRAND_MAP[brandId];
+			G_VAL.session.BRAND_ID	= brandInfo.BRAND_ID;
+			G_VAL.session.BRAND_NM	= brandInfo.BRAND_NM;
+			$("#selectBrandNm").attr("placeholder", brandInfo.BRAND_NM);
+			C_PM.reloadPage();
+    	}
+		
+		let C_MENU = {
+			 
+			 currentMenuId	: 0
+			,allMenuMap		: {}
+			,mainMenuList	: []
+			,subMenuListMap	: {}
+			,subMenuList	: []
+			,currentSubMenuId : ""
+			,initMenu : function() {
+				var parm = {
+					 queryId 		: "system.getMenuList"
+					,requestParm	: {USE_YN : "Y"}
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+
+					let menuOrgList 	= resultData.data;
+					let mainMenuList 	= []
+					let subMenuListMap	= {}
+					let mainMenuIdx 	= -1;
+					let subMenuIdx		= 0;
+					$.each(menuOrgList, function() {
+						C_MENU.allMenuMap[this.MENU_ID] = this;
+						if(this.MENU_DEPTH == 0) {
+							mainMenuIdx++;
+							mainMenuList	.push(this);
+							C_MENU.allMenuMap[this.MENU_ID].mainIndex = mainMenuIdx;
+							subMenuIdx = 0;
+						} else	{
+							let pmi = this.PARENT_MENU_ID;
+							if( isValid(pmi) ) {
+								if(isEmpty(subMenuListMap[pmi])) subMenuListMap[pmi] = [];
+								subMenuListMap[pmi].push(this);
+							}
+						}
+					});
+					C_MENU.mainMenuList 	= mainMenuList;
+					C_MENU.subMenuListMap 	= subMenuListMap;
+					
+					
+					var rparm = {
+						 targetId 		: "leftMenuList"
+						,mainMenuList	: mainMenuList
+						,subMenuListMap : subMenuListMap
+					}
+					C_COM.renderHtml("mainContainer", rparm);
+					
+					var sparm = {
+						 targetId 		: "slideMenuList"
+						,mainMenuList	: mainMenuList
+						,subMenuListMap : subMenuListMap
+					}
+					C_COM.renderHtml("header", sparm);
+				});
+			 }
+			,movePage : function(menuId, sendParm) {
+
+				C_MENU.currentMenuId = menuId
+				
+				let menuInfo = C_MENU.allMenuMap[menuId];
+
+				C_PM.movePage(menuInfo.PAGE_ID, sendParm);
+				
+				closeSliderMenu();
+				
+				this.foldAllMenu("leftMenuList");
+				
+				let pMenuId = C_MENU.allMenuMap[menuId].PARENT_MENU_ID;
+				
+				$(`#collapse_${pMenuId}`).collapse('show');
+				$(`#leftMenuList a[name='a_menu']`).removeClass("explan-menuactive");
+				$(`#a_${menuId}`).addClass("explan-menuactive");
+			 }
+			,getCurrentMenuInfo : function() {
+				
+				let retObj = C_MENU.allMenuMap[C_MENU.currentMenuId];
+				
+				if(isEmpty(retObj)) retObj = {}
+				
+				return retObj;
+			 }
+			,foldAllMenu : function(targetId) {
+				// 모든 .panel-collapse 요소를 선택합니다.
+				var collapses = document.querySelectorAll(`#${targetId} .panel-collapse`);
+				collapses.forEach(function(collapse) {
+					var bsCollapse = new bootstrap.Collapse(collapse, {
+						toggle: false // 바로 열리지 않도록 설정합니다.
+					});
+					bsCollapse.hide(); // 모든 패널을 접습니다.
+				});  		
+			 }
+		} 
+		
+		function pwdChange() { 
+			C_POP.open("popup_system_pwdChangePopup", {}, function(retData){
+			});
+		}
+		
+		function logout() {
+			C_POP.confirm('로그아웃 하시겠습니까?', function() {
+				ajaxRequest("/logout.do", function(data) {
+					if(data.status == "S") {
+						C_POP.alert('로그아웃 되었습니다.');
+						location.href="/";
+					}
+				});
+			});
+		}
+		
+	</script>
+
+<script>
+    $(function() {
+        $(document).on({
+            'show.bs.modal': function() {
+                var zIndex = 1040 + (10 * $('.modal:visible').length);
+                $(this).css('z-index', zIndex);
+                setTimeout(function() {
+                    $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+                }, 0);
+            },
+            'hidden.bs.modal': function() {
+                if ($('.modal:visible').length > 0) {
+                    setTimeout(function() {
+                        $(document.body).addClass('modal-open');
+                    }, 0);
+                }
+            }
+        }, '.modal');
+    });
+</script>
+
+
+<style>
+
+</style>
+
+  <title>EXPLAN</title>
+</head>
+<body class="main-bg">
+
+  <!-- top-skin start -->
+  <header class="header-allwrap fixed-top" id="header">
+    <!-- nav area start -->
+    <nav class="gnb-allwrap">
+      <div class="gnb-inwrap gnb-sm-inwrap">
+        <!-- side-pannel logo start -->
+        <a class="gnb-sm-logo brd-fr-deco02 pl5 pr20 mr10" href="screen01.html">
+        <img src="images/brand-logo.svg" alt="" title="">
+        </a>
+        <div class="brand-logo-sm">(주)엑스플랜</div>
+
+        <!-- topskin start -->
+        <div class="gnb-wrap">
+            <div class="brand-inwrap">
+                <!-- mark start logo-lg-->
+                <div class="brand-mark-lg brd-fr-deco mr25">
+                    <a href="/start.html">
+				        <img src="images/brand-logo.svg" alt="" title="">
+                    </a>
+                </div>
+                <!-- logo start -->
+                <div class="brand-logo-lg mr40" id="loginBuyerNm"></div>
+                <div class="brand-select">
+                    <div href="" class="search_input" style="position: relative;">
+                        <div class="top_src_btn"><a href=""></a></div>
+                        <input type="text" class="input_deco" placeholder="" id="selectBrandNm">
+                    </div>
+                    <ul id="selectListBrandUl">
+                        <li class="select_content" id="selectListBrandId">
+                        </li>
+						<script type="text/x-jsrender" id="selectListBrandId_template">
+							{{for list}}
+                            <p class="select_content_option"><a href="javascript:changeBrand('{{:BRAND_ID}}');">{{:BRAND_NM}}</a></p>
+							{{/for}}
+						</script>						
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <div class="pnb-btn-wrap">
+                	<div class="brand-logo-lg mr40" id="loginUserNm"></div>
+                    <div class="brd-fr-deco01">
+                        <button type="button" class="notice-btn mr30 mt7" onClick="C_ALARM.showAlarmPopup()">
+                            <span class="notice-badge" id="alarmListCnt" style="display:none"></span>
+                        </button>
+                    </div>
+                    <button type="button" class="company-btn ml20 mr8" title="회사 소개">
+                    </button>
+                    <button type="button" class="setting-btn mr8" title="설정" onClick="pwdChange()">
+                    </button>
+                    <button type="button" class="logout-btn" title="로그아웃" onClick="logout()">
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- topskin end -->
+
+        <!-- navbar-toggler-icon start -->
+        <div class="sidebar-overlay sidebar-animate-opacity left_overlay"></div>
+        <a href="javascript:void(0)" id="myModal" class="side_btn fl bnt_open gnb-sm-toggle ml-auto"></a>
+        <!-- navbar-toggler-icon end -->
+
+        <!-- side-pannel start -->
+        <div class="sidebar collapse sidebar-animate-left left-slide-pannel-nav left-slidebar">
+          <!-- header + close button start -->
+          <div class="side-header">
+            <img src="images/sld-brand-logo.svg" class="ml20" width="130px" title="company logo">
+            <a href="javascript:void(0)" class="bnt-close close-btn fr" title="Close Sidemenu"></a>
+          </div>
+          <!-- header + close button end -->
+
+          <!-- body content start -->
+          <div class="offcanvas-body">
+            <!-- login + logout start -->
+            <div class="slide-login-wrap01">
+                <div class="brd-fr-deco01 pl5 pr10 mr10">
+                    <button type="button" class="company-btn" title="회사 소개">
+                    </button>
+                </div>
+                <div class="brd-fr-deco01 pr10 mr10">
+                    <button type="button" class="setting-btn" title="설정">
+                    </button>
+                </div>                
+                <div class="pr10 mr10">
+                    <button type="button" class="logout-btn" title="로그아웃" onClick="logout()">
+                    </button>
+                </div>
+                <button type="button" class="slide-notice-btn mr10 ml-auto">
+					<!--
+                    <span class="slide-notice-badge">
+                       9 
+                    </span>
+					-->
+                  </button>
+            </div>
+            <!-- login + logout end -->
+            
+            <!-- gnb + lnb start -->
+            <div class="panel-group" id="slideMenuList">
+            </div>
+			<script type="text/x-jsrender" id="slideMenuList_template">
+				{{for mainMenuList ~subMenuListMap=subMenuListMap}}
+				<div class="panel panel-default">
+					<div class="sld-panel-heading">
+						<div class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#collapse2_{{:MENU_ID}}" onclick="C_MENU.foldAllMenu('slideMenuList');">{{:MENU_NM}}</a>
+						</div>
+					</div>
+					<div id="collapse2_{{:MENU_ID}}" class="panel-collapse collapse collapsing">
+						<div class="panel-body">
+							{{for ~subMenuListMap[MENU_ID]}}
+                                <a href="javascript:C_MENU.movePage('{{:MENU_ID}}')">{{:MENU_NM}}</a>
+							{{/for}}
+						</div>
+					</div>
+				</div>
+				{{/for}}
+			</script>
+            <!-- gnb + lnb end -->
+            
+          </div>
+          <!-- body content end -->
+        </div>
+        <!-- side-pannel end -->
+
+      </div>
+    </nav>
+    <!-- nav area end -->
+  </header>
+  <!-- top-skip end -->
+
+  <!-- body-contents start -->
+  <section class="body-allwrap body-sub-bg mt90-md" id="mainContainer">
+    <div class="body-wrap">
+        <!-- body-contents start -->
+        <div class="gnb-lf-allwrap">
+            <div class="toolBar-area">
+                <div class="slide-btn"></div>
+            </div>
+            <div class="slide-panel" id="leftMenuList">
+            </div>
+            
+			<script type="text/x-jsrender" id="leftMenuList_template">						
+                <div class="panel-group" id="accordion">
+				{{for mainMenuList ~subMenuListMap=subMenuListMap}}
+                    <div class="panel panel-default">
+                        <div class="panel-heading" onClick="C_MENU.foldAllMenu('leftMenuList')">
+                            <div class="panel-title">
+                                <a data-toggle="collapse" data-parent="#accordion" href="#collapse_{{:MENU_ID}}">
+                                {{:MENU_NM}}
+                                </a>
+                            </div>
+                        </div>
+                        <div id="collapse_{{:MENU_ID}}" class="panel-collapse collapse collapsing">
+                            <div class="panel-body">
+							{{for ~subMenuListMap[MENU_ID]}}
+                                <a href="javascript:C_MENU.movePage('{{:MENU_ID}}')" id="a_{{:MENU_ID}}" name="a_menu">{{:MENU_NM}}</a>
+							{{/for}}
+                            </div>
+                        </div>
+                    </div>
+				{{/for}}
+                </div>
+			</script>
+        </div>
+        <!-- body-incontents start -->
+		<div class="body-inwrap pt50 pb40">
+			<body-content id="bodyBlock" class="col10">
+				<base-component id="baseComponent">
+					<!-- function을 위한 Component -->
+					<compnent id="commonCompFn"></compnent>
+					
+					<component id="compChatting"></component>
+				</base-component>
+			</body-content>
+		</div>
+		
+	
+        <!-- body-incontents end -->
+    </div>
+</section>
+<!-- body-contents end -->
+
+<!-- footer start -->
+<footer class="footer-allwrap footer-bg" id="footer">
+
+    <div class="footer-inwrap footer-md-inwrap footer-sm-inwrap pt20 pb20">
+        <div class="col3 col10-md col10-sm footer-menu-wrap">
+        <a href="" class="logo-sm">
+            <img src="images/brand-logo.png" alt="" class="" width="100px">
+        </a>
+        <div class="footer-menu mt10">
+            <a href="#">인트라넷</a>
+            <a href="#">가맹점 운영 SYSTEM</a>
+            <a href="#">경영 SYSTEM</a>
+            <a href="#">회계 SYSTEM</a>
+        </div>
+        </div>
+        <div class="col3 col5-md col10-sm footer-info">
+        <dt class="footer-tit">상호명</dt>
+        <dd class="footer-cnt">주식회사 스타에셋파트너스</dd>
+        <dt class="footer-tit">대표자명</dt>
+        <dd class="footer-cnt">이희성</dd>
+        <dt class="footer-tit">사업장 주소</dt>
+        <dd class="footer-cnt">서울 강남구 삼성동</dd>
+        </div>
+        <div class="col3 col5-md col10-sm footer-info">
+        <dt class="footer-tit">사업자 등록번호</dt>
+        <dd class="footer-cnt">123-45-67890</dd>
+        <dt class="footer-tit">통신판매업 신고번호?</dt>
+        <dd class="footer-cnt">2023-경기부천-0214 [사업자정보확인]</dd>
+        <dt class="footer-tit">개인정보보호책임자 </dt>
+        <dd class="footer-cnt">위성열</dd>
+        </div>
+    </div>
+</footer>
+<!-- footer end -->
+
+<script>
+    $(function() {
+        $(".slide-panel").show();
+        $(".slide-btn").click(function() {
+            $( this ).toggleClass( "slide-btn-toggle" );
+            $(".slide-panel").animate({
+               width : "toggle"
+            });
+        });
+    });
+    
+</script>
+
+
+
+
+<!-- 공통 템플릿  -->
+
+
+    <!-- tab content-wrap start -->
+
+	<script type="text/x-jsrender" id="tabComponent_template">	
+        <!-- tab area start -->
+        <div id="{{:tabKey}}_header" class="pop_tab_wrap01">
+		{{for list ~templateId=templateId ~targetId=targetId}}
+			{{if #index == 0 ~index=#index}}
+	            <span id="tab{{:~index}}" class="pop_tab_btn w25 pop_tab_nav_link tabon_defult pop_tab_action" onclick="C_TAB.openTab('{{:~templateId}}', '{{:~targetId}}', {{:~index}})">{{:title}}</span>
+			{{else ~index=#index}}
+	            <span id="tab{{:~index}}" class="pop_tab_btn w25 pop_tab_nav_link" onclick="C_TAB.openTab('{{:~templateId}}', '{{:~targetId}}', {{:~index}} )">{{:title}}</span>
+			{{/if}}
+		{{/for}}
+        </div>
+        <!-- tab area end -->
+
+		{{for list ~tabKey=tabKey }}
+        <div id="{{:~tabKey}}_tab{{:#index}}" class="pop_tab_nav_content">
+			<compnent id="{{:compId}}"></compnent>         
+        </div>
+		{{/for}}
+	</script>    
+    
+	<script type="text/x-jsrender" id="tabComponent_noData_template">	
+        <!-- tab area start -->
+        <div id="pop_tab_content_wrap" class="pop_tab_wrap01">
+            <span class="pop_tab_btn tabon_defult w25 pop_tab_nav_link pop_tab_action">탭정보 없음.</span>
+        </div>
+        <!-- tab area end -->
+
+        <div id="tab_nav01_content_box" class="pop_tab_nav_content">
+            <div class="pop_tab_content_box">       
+				탭정보가 없습니다.
+            </div>
+        </div>
+	</script>    
+    
+    <!-- tab content-wrap end -->
+    <!-- multibox content-wrap start -->
+	<script type="text/x-jsrender" id="multiBoxComponent_template">	
+        <div class="dropdown form-control form-control-sm mr5 col10" onClickRightIcon="alert()">
+            <button id="selectedText" onClick="$('#menu_{{:targetId}}').toggle()">선택</button>
+			<span class="explan-icon-arrow" onClick="$('#menu_{{:targetId}}').toggle()"></span>
+			<div class="dropdown-content col10" id="menu_{{:targetId}}">
+              <label><input type="text" class="form-control form-control-sm mr5" style="max-height:25px" onKeyup="C_UICOM.keyupFromMultiSelectbox('{{:targetId}}', this.value)"></label>
+			  <div class="dropdown-content-warp">
+				  <label><input type="checkbox" id="cb_all" value="all" onchange="C_UICOM.changeSelectBoxAllCheckBox('{{:targetId}}')"><span id="txt_all">전체<span></label>
+				{{for list ~targetId=targetId}}
+	              <label name="list" itemtxt="{{:txt}}"><input type="checkbox" id="cb_{{:val}}" value="{{:val}}" onchange="C_UICOM.changeSelectBoxCheckBox('{{:~targetId}}')"><span id="txt_{{:val}}">{{:txt}}<span></label>
+				{{/for}}
+			  </div>
+			  <div class="dropdown-btn-warp">
+				  <div class="dropdown-btn">
+					  <button type="button" onclick="C_UICOM.onConfirmSelectBox('{{:targetId}}');$('#menu_{{:targetId}}').hide()">확인</button>
+					  <button type="button" onclick="C_UICOM.onCancelSelectBox ('{{:targetId}}');$('#menu_{{:targetId}}').hide()">취소</button>
+				  </div>
+			  </div>							  
+			</div>
+        </div>
+	</script>    
+	<script type="text/x-jsrender" id="singleBoxByFilterComponent_template">	
+        <div class="dropdown form-control form-control-sm mr5 col10" onClickRightIcon="alert()">
+            <button id="selectedText" onClick="$('#menu_{{:targetId}}').toggle()">선택</button>
+			<span class="explan-icon-arrow" onClick="$('#menu_{{:targetId}}').toggle()"></span>
+			<div class="dropdown-content col10" id="menu_{{:targetId}}">
+              <label><input type="text" class="form-control form-control-sm mr5" style="max-height:25px" onKeyup="C_UICOM.keyupFromMultiSelectbox('{{:targetId}}', this.value)"></label>
+			  <div class="dropdown-content-warp">
+				{{for list ~targetId=targetId}}
+	              <label name="list" itemtxt="{{:txt}}" id="label_{{:val}}" onClick="C_UICOM.clickSelectBoxItem('{{:~targetId}}', '{{:val}}', '{{:txt}}'); $('#menu_{{:targetId}}').hide()"><span id="txt_{{:val}}">{{:txt}}<span></label>
+				{{/for}}
+			  </div>
+            </div>
+        </div>
+	</script>    
+    <!-- multibox content-wrap end -->
+
+
+
+    <!-- Loading Overlay -->
+    <div class="overlay" id="loadingOverlay">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+
+
+</body>
+</html>

@@ -1,0 +1,176 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@popupId> = {
+		init : function(parm) {
+			let headerList	= []
+			let columnList	= "";
+			let tableName	= parm.tableName;
+			$.each(parm.columnMap, function(key, val) {
+				let item = {COLUMN_ID : key, COLUMN_NM : val};
+				headerList.push(item);
+				if(isEmpty(columnList))	columnList  = key;
+				else					columnList += `, ${key}`;
+			});
+			var parm = {
+				 queryId 		: "common.getTableData"
+				,requestParm	: {tableName : tableName, columnList : columnList}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					let data = resultData.data;
+					var rparm = {
+						 targetId 		: "targetTable"
+						,headerList		: headerList
+						,list			: data
+					}
+					C_COM.renderHtml("<@popupId>", rparm);
+
+					C_GRID.makeGrid("targetTable");
+					
+				} else if(resultData.state == "E") {
+					dalert(resultData);
+				}					
+			});
+		 }
+		,close : function(returnData) {
+
+		 }
+	}
+	// Popup Load가 완료된후 실행 된다.
+	C_POP.onLoadPopup("<@popupId>", function(data) {
+		let parm = {
+			 tableName	: "TBL_BAS_MENU"
+			,columnMap : {
+				 "MENU_ID" 			: "메뉴ID"
+				,"MENU_NM" 			: "메뉴명"
+				,"PARENT_MENU_ID" 	: "상위메뉴명"
+				,"MENU_DEPTH" 		: "메뉴Depth"
+				,"MENU_DESC" 		: "메뉴설명"
+				,"PAGE_ID" 			: "연결 Page Id"
+				,"PARAMETER" 		: "전달 Parameter"
+				,"USE_YN" 			: "사용Y/N"
+				,"DEL_YN" 			: "삭제Y/N"
+				,"SORT_ORDER" 		: "표시순서"
+			}
+		}
+		<@popupId>.init(parm);
+		
+	});
+</script>
+
+<!-- modal-popup start -->
+<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+	<div class="full-modal-dialog modal-dialog-centered" role="document">
+		<div class="modal-content">
+			<!-- header start -->
+			<div class="modal-header srch-pop-inwrap">
+				<h5 class="modal-title col9 col8-md col7-sm" id="exampleModalLongTitle">Table Editor</h5>
+				<!-- button start -->
+				<div class="txt-r col1 col2-md col3-sm">
+					<button type="button" class="win-fullcls">
+					</button>
+					<button type="button" class="win-full">
+					</button>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span class="pop-cls" aria-hidden="true"></span>
+					</button>
+				</div>
+				<!-- button end -->
+			</div>
+			<!-- header end -->
+			<div class="modal-body">
+				<div class="body-inwrap">
+
+			        <!-- search filter box start -->
+			        <div class="srch-card" >
+			          <div class="srch-card-inwrap">
+			              <div class="col11 col10-sm srch-card-form">
+			                  <div class="col3 col5-md col10-sm mb5 display-h-end">
+			                    <label class="src-title col3">대표자</label>
+			                    <input type="text" class="form-control form-control-sm col7">
+			                  </div>
+			                  <div class="col3 col5-md col10-sm mb5 display-h-end">
+			                    <label class="src-title col3">점포위치</label>
+			                    <input type="text" class="form-control form-control-sm col7 search-form" data-toggle="modal" data-target="#myModal">
+			                  </div>
+			                  <div class="col3 col5-md col10-sm mb5 display-h-end">
+			                    <label class="src-title col3">가맹점</label>
+			                    <input type="date" class="form-control form-control-sm col7  calender-form">
+			                  </div>
+			              </div>
+			              <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+			                   <button class="srch-btn col10" type="button">검 색</button>
+			              </div>
+			          </div>
+			        </div>
+			        <!-- search filter box end -->
+
+					<!-- table area start -->
+					<div class="tb-card-allwrap col10 mt10">
+						<div class="card-inwrap">
+							<div id="tb-scroll" class="card-cnt-wrap">
+								<div class="table-allwrap ">
+									<!-- table start -->
+									<table class="table-inwrap" style="table-layout:fixed" id="targetTable">
+									</table>
+									<!-- table end -->
+									<script type="text/x-jsrender" id="targetTable_template">	
+										<colgroup>
+										{{for headerList}}
+											<col width="*">
+										{{/for}}
+										</colgroup>
+										<thead class="table-thead">
+						                    <tr>
+											{{for headerList}}
+												<th scope="col">{{:COLUMN_NM}}</th>
+											{{/for}}
+						                    </tr>
+										</thead>
+										<tbody>
+											<tr>
+											{{for headerList}}
+												<td tyle="">가맹점ID</td>
+											{{/for}}
+											</tr>
+										</tbody>
+									</script>
+									<script type="text/x-jsrender" id="targetTable_noData_template">	
+										<colgroup>
+										{{for headerList}}
+											<col width="*">
+										{{/for}}
+										</colgroup>
+										<thead class="table-thead">
+											<tr>
+											{{for headerList}}
+												<th scope="col">{{:COLUMN_NM}}</th>
+											{{/for}}
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+											{{for headerList}}
+												<td>1</td>
+											{{/for}}
+											</tr>
+										</tbody>
+									</script>                  
+									
+								</div>
+							</div>
+						</div>
+					</div>
+		
+					<!-- table area end -->
+				</div>				
+			</div>
+			<!-- footer start -->
+			<div class="modal-footer">
+				<button type="button" class="btn outline-btn mr20" data-dismiss="modal">Close</button>
+			</div>
+			<!-- footer end -->
+		</div>
+	</div>
+</div>											
+<!-- modal-popup end -->

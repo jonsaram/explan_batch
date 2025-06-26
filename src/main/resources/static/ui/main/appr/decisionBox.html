@@ -1,0 +1,105 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 loadComponent : function(parm) {
+			 
+	   		let startDate 	= $("#<@pageId> #startDate"	).val();
+			let endDate 	= $("#<@pageId> #endDate"	).val();
+			let searchWord 	= $("#<@pageId> #searchWord").val();
+			 
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "approval.getDecisionApproval"
+						 ,requestParm	: {
+		                	 startDate 	: startDate
+		                 	,endDate 	: endDate
+		                 	,searchWord : searchWord
+		                 	}
+					 }	
+					,columnMap 		: {
+						 "APPROVAL_ID" 		: { headerText : "APPROVAL_ID"	, hidden : "Y"	}
+						,"RELATION_ID" 		: { headerText : "RELATION_ID"	, hidden : "Y"	}
+						,"USER_ID" 			: { headerText : "USER_ID"		, hidden : "Y"	}
+						,"USER_NM" 			: { headerText : "USER_NM"		, hidden : "Y"	}
+						,"APPROVAL_DATE" 	: { headerText : "상신일" 		, dataType :'date' , dateFormat:'YYYY-MM-DD HH24:MI:SS'	}
+						,"RSQ_USER_ID" 		: { headerText : "RSQ_USER_ID" 	, hidden : "Y"	}
+						,"RSQ_USER_NM" 		: { headerText : "상신자" 		}
+						,"TITLE" 			: { headerText : "제목"			}
+						,"APP_USER_ID"		: { headerText : "APP_USER_ID"	, hidden : "Y"	}
+						,"APP_USER_NM" 		: { headerText : "결재자"		}
+						,"STATE" 			: { headerText : "상태"			}
+						,"COMPLETE_DATE" 	: { headerText : "결제완료일"	}
+					 }
+					,rowCntId 			: "<@pageId>_rowCnt"
+					,primaryKeyList		: ["APPROVAL_ID"						]
+					,searchColumnList	: ["GET_USER_NM(USER_ID)",  "TITLE"		]	// Table 지정인경우 적용
+					,orderColumnList 	: ["APPROVAL_DATE DESC"					]	// Table 지정인경우 적용
+					,columnConfig		: {
+						makeCellViewData	: {
+							"STATE": function(cellText, rowData) {
+								const state = rowData.STATE;
+								let stateStr =  state == "COMPLETE" ? `<span class="status-complete"	>결재완료</span>` :
+												state == "HOLD"     ? `<span class="status-approve"		>결재보류</span>` :
+												state == "ONGOING"  ? `<span class="status-ing"			>결재진행</span>` :
+												state == "REJECT"   ? `<span class="status-companion"	>결재반려</span>` :
+												state == "CANCEL"   ? `<span class="status-companion"	>상신취소</span>` :
+												"";
+
+								return stateStr;
+							}
+						}
+					}
+					,rowConfig		: {
+						onClickRow : function(rowData) {
+							<@pageId>.apprDtlPopup(rowData.APPROVAL_ID);
+						}
+						,onClickCell		: function(column) {
+							if( column == "TITLE"){
+								<@pageId>.apprDtlPopup(rowData.APPROVAL_ID);
+							}
+						 }
+					 }
+					,readOnly	: "Y"
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "term"	
+							,title			: "검색기간"
+							,whereColumn	: "APPROVAL_DATE"
+						}
+					]
+				 }
+				,noEdit : "Y"
+			}
+			C_COMP.import("<@pageId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	    ,apprDtlPopup : function(APPROVAL_ID) {    
+	        C_POP.open('popup_appr_apprDtlPopup', {APPROVAL_ID : APPROVAL_ID,size : "MAX"}, function() {
+	            //console.log("======= 부모창 retData =======");
+	            <@pageId>.loadComponent();
+	        });
+	     }
+    	,apprProcess : function(idx) {
+    		let apprInfo = <@pageId>.approvalList[idx];
+	        C_POP.open('popup_appr_apprProcessPopup', apprInfo, function() {
+	            //console.log("======= 부모창 retData =======");
+	        });
+    	 }
+	
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_editor"></compnent>    
+    <!-- table area end -->
+</page-component>

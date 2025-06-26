@@ -1,0 +1,48 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		menuInfo				: C_MENU.getCurrentMenuInfo()
+
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+		
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+		
+		var parm = {
+			 GRP_FILE_ID 	: "TMPMNG"
+			,OWNER_CD 		: "NA"
+			,mode			: "M"
+			,title			: "Temp Manage"
+			,templateId		: "<@pageId>"
+		}
+		
+		C_COMP.import("folderFileMng", "component_compMultiFilemng", parm , function(fileList) {
+			//dalert(fileList);
+		});
+
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+    
+	<component id="folderFileMng"></component>                    
+    
+    
+</page-component>

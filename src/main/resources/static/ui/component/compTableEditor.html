@@ -1,0 +1,618 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 parm					: {}	
+		,searchBoxWhereMap 		: {}
+		,optionMakeFn			: {}
+		,menuInfo				: C_MENU.getCurrentMenuInfo()
+		,addButtonCallbackFnMap : {}	
+		,openEdit 				: function() {
+			if(typeof <@compId>.parm.callbackEditButton == "function") {
+				<@compId>.parm.callbackEditButton();
+			} else {
+				
+				let gridParm = <@compId>.parm.gridParm;
+				
+				gridParm.readOnly = "N";
+				
+				let popupSize = "MAX";
+				
+				if(<@compId>.parm.editPopupMax == "N") popupSize = "NORMAL";
+				
+				let popupTitle = "";
+				
+				if(isValid(C_TAB.currentTabTitle))	popupTitle = `${C_TAB.currentTabTitle} 편집`;
+				else 								popupTitle = `${<@compId>.menuInfo.MENU_NM} 편집`;
+				
+				let parm = {
+					 gridParm 	: <@compId>.parm.gridParm	
+					,popupTitle : popupTitle
+					,size 		: popupSize
+				}
+				C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+					if(isValid(retData)) {
+						if(retData.refresh == "Y") {
+							<@compId>.reload();
+						}
+					}
+				});
+			}
+		 }
+		,search : function() {
+			if(typeof <@compId>.parm.callbackSearchButton == "function") {
+				<@compId>.parm.callbackSearchButton();
+			} else {
+				<@compId>.reload();
+			}
+		 }
+		,reload : function(updateParm) {
+			
+			if(isEmpty(updateParm)) updateParm= {};
+			
+			updateParm["searchValue"] = $("#<@compId> #searchValue").val();
+			
+			if(isEmpty(<@compId>.parm.gridParm.searchWhereMap)) <@compId>.parm.gridParm.searchWhereMap = {};
+			updateParm.searchWhereMap = <@compId>.parm.gridParm.searchWhereMap;
+
+			$.each(<@compId>.searchBoxWhereMap, function(column, val) {
+				updateParm.searchWhereMap[column] = val;
+			});
+			
+			// System 특성상 Component내의 Component정의는 상위 객체(Page 또는 Popup)의 하위 객체로 등록되기 때문에
+
+			// Component호출시 <@parentId>를 사용한다.
+			<@parentId>["<@compId>_editor"].reload(updateParm);
+			
+		 }
+		,getGridInstance : function() {
+			return <@parentId>["<@compId>_editor"].getGridInstance();
+		 }
+		,excelDown : function() {
+			C_POP.confirm('엑셀 다운로드를 하시겠습니까?', function() {
+				<@parentId>.<@compId>_editor.excelDownload();
+			})
+		 }
+		,addSingleBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "singleboxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			<@compId>.optionMakeFn[component.id] = function() {
+
+				if(isValid(component.optionListGrpCode)) {
+					component.optionList = C_COM.getCodeList(component.optionListGrpCode);
+				} else if(isValid(component.optionListBrandGrpCode)) {
+					let brandId = component.brandId;
+					if(isEmpty(brandId)) brandId = G_VAL.session.BRAND_ID;
+					component.optionList = C_COM.getBrandCodeList(brandId, component.optionListBrandGrpCode);
+				}
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+				if(isValid(component.firstItem)) {
+					selectList.unshift(component.firstItem);
+				}
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: component.id
+	   			 	,defaultVal		: component.defaultVal
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "single");
+			}
+			<@compId>.optionMakeFn[component.id]();
+    		
+    		if(isValid(component.whereColumn) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = component.defaultVal;
+    			<@compId>.parm.gridParm.searchWhereMap[component.whereColumn] = component.defaultVal; 
+    		} else {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+    		}
+
+    		let selectVal = C_UICOM.getData(component.id);
+
+			let whereColumn 	= component.whereColumn;
+			let targetColumn 	= component.targetColumn;
+			let columnMap		= <@compId>.parm.gridParm.columnMap;
+			let columnMapBackup	= <@compId>.parmBackup.gridParm.columnMap;
+
+			if(isValid(targetColumn)) {
+  				if(isValid(selectVal)) {
+  					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+  				} else {
+  					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+  				}
+			}
+    		
+   			$(`#${component.id}`).unbind("change");
+   			$(`#${component.id}`).bind("change", function() {
+   				let selectVal = C_UICOM.getData(component.id);
+   			
+   				if(isValid(targetColumn)) {
+   	   				if(isValid(selectVal)) {
+   	   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+   	   				} else {
+   	   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+   	   				}
+   				}
+   				
+   	    		if(isValid(component.whereColumn) && isValid(selectVal)) {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = selectVal;
+   	    		} else {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+   	    		}
+   			
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,addSingleBoxByFilter : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "singleboxByFilterComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			<@compId>.optionMakeFn[component.id] = function() {
+
+				if(isValid(component.optionListGrpCode)) {
+					component.optionList = C_COM.getCodeList(component.optionListGrpCode);
+				}
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+				if(isValid(component.firstItem)) {
+					selectList.unshift(component.firstItem);
+				}
+	    		var singleboxList = { 
+	   				 data 			: selectList
+	   			 	,targetId 		: component.id
+	   			 	,defaultVal		: component.defaultVal
+	   			 	,onChange		: function(data) {
+
+	   			 	 }
+	   			}
+	   			C_UICOM.makeSelectBox(singleboxList, "singleByFilter");
+			}
+			<@compId>.optionMakeFn[component.id]();
+    		
+    		if(isValid(component.whereColumn) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = component.defaultVal;
+    			<@compId>.parm.gridParm.searchWhereMap[component.whereColumn] = component.defaultVal; 
+    		} else {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+    		}
+
+    		let selectVal = C_UICOM.getData(component.id);
+
+			let whereColumn 	= component.whereColumn;
+			let targetColumn 	= component.targetColumn;
+			let columnMap		= <@compId>.parm.gridParm.columnMap;
+			let columnMapBackup	= <@compId>.parmBackup.gridParm.columnMap;
+
+			if(isValid(targetColumn)) {
+  				if(isValid(selectVal)) {
+  					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+  				} else {
+  					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+  				}
+			}
+    		
+			C_UICOM.addListnerOnChange(component.id, function() {
+   				let selectVal = C_UICOM.getData(component.id);
+   			
+   				if(isValid(targetColumn)) {
+   	   				if(isValid(selectVal)) {
+   	   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+   	   				} else {
+   	   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+   	   				}
+   				}
+   				
+   	    		if(isValid(component.whereColumn) && isValid(selectVal)) {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = selectVal;
+   	    		} else {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+   	    		}
+   			
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,addMultiBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "multiboxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+			if(isValid(component.defaultVal)) component.defaultValList = [component.defaultVal];
+			
+			<@compId>.optionMakeFn[component.id] = function() {
+				if(isValid(component.optionListGrpCode)) {
+					component.optionList = C_COM.getCodeList(component.optionListGrpCode);
+				} else if(isValid(component.optionListBrandGrpCode)) {
+					let brandId = component.brandId;
+					if(isEmpty(brandId)) brandId = G_VAL.session.BRAND_ID;
+					component.optionList = C_COM.getBrandCodeList(brandId, component.optionListBrandGrpCode);
+				}
+				let selectList = component.optionList;
+				if( typeof component.optionList == "function") selectList = component.optionList();  
+				
+	    		var multiboxList = { 
+	   				 data 				: selectList
+	   			 	,targetId 			: component.id
+	   			 	,defaultValList		: component.defaultValList
+	   			}
+	   			C_UICOM.makeSelectBox(multiboxList, "multi");
+				
+	    		<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+			}
+			<@compId>.optionMakeFn[component.id]();
+    		
+    		if(isValid(component.whereColumn) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] 				= component.defaultVal;
+    			<@compId>.parm.gridParm.searchWhereMap[component.whereColumn] 	= component.defaultVal; 
+    		} else {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+    		}
+
+			C_UICOM.addListnerOnChange(component.id, function() {
+				debugger;
+   				let selectVal = C_UICOM.getData(component.id);
+   			
+   				let whereColumn 	= component.whereColumn;
+   				let targetColumn 	= component.targetColumn;
+   				let columnMap		= <@compId>.parm.gridParm.columnMap;
+   				let columnMapBackup	= <@compId>.parmBackup.gridParm.columnMap;
+   				
+   				if(isEmpty(targetColumn)) {
+   					let tarry = whereColumn.split(".");
+   					if(tarry.length > 1) targetColumn = tarry[1];
+   				}
+   				if(isValid(selectVal)) {
+   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = "Y";
+   				} else {
+   					if(isValid(columnMap[targetColumn])) columnMap[targetColumn].hidden = columnMapBackup[targetColumn].hidden;
+   				}
+   	    		if(isValid(component.whereColumn) && isValid(selectVal)) {
+   	    			let newArry = [];
+   	    			$.each(selectVal, function() {
+   	    				newArry.push(this.val);
+   	    			});
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = newArry;
+   	    		} else {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+   	    		}
+   			
+   	    		if(typeof component.onChange == "function") component.onChange(selectVal, <@compId>);
+   			});
+		 }
+		,dateSearchBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "dateSearchBoxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+
+    		if(isValid(component.whereColumn) && isValid(component.defaultVal)) {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] 				= component.defaultVal;
+    			<@compId>.parm.gridParm.searchWhereMap[component.whereColumn] 	= component.defaultVal; 
+    		} else {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+    		}
+
+    		$(`#${component.id}`).unbind("change");
+   			$(`#${component.id}`).bind("change", function() {
+
+   				let searchBoxVal = $(`#${component.id}`).val();
+   				
+   				let whereColumn 	= component.whereColumn;
+   				let targetColumn 	= component.targetColumn;
+   				
+   	    		if(isValid(component.whereColumn) && isValid(searchBoxVal)) {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = searchBoxVal;
+   	    		} else {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+   	    		}
+   			
+   	    		if(typeof component.onChange == "function") component.onChange(searchBoxVal, <@compId>);
+   			});
+		}
+		,termSearchBox : function(component) {
+			var rparm = {
+				 targetId 		: "<@compId>_searchArea"
+				,templateId		: "termSearchBoxComponent"
+				,component		: component
+				,append			: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+			
+    		if(isValid(component.whereColumn) && isValid(component.defaultVal)) {
+    			
+    			if(isEmpty(component.defaultVal.start) && isEmpty(component.defaultVal.end)) {
+    				C_POP.alert(`defaultVal 변수는 {start : "xxx", end : "yyy" } 형태로 정의 되어야 합니다.`);
+    			} else {
+    				if(isValid(component.defaultVal.start)) {
+    					$(`#<@compId>_searchArea #${component.id}_start`).val(component.defaultVal.start);	
+    				}
+    				if(isValid(component.defaultVal.end)) {
+    					$(`#<@compId>_searchArea #${component.id}_end`	).val(component.defaultVal.end);	
+    				}
+    				
+    				component.defaultVal.type = "range";
+        			<@compId>.searchBoxWhereMap[component.whereColumn] 				= component.defaultVal;
+        			<@compId>.parm.gridParm.searchWhereMap[component.whereColumn] 	= component.defaultVal; 
+    			}
+    		} else {
+    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+    		}
+
+    		const fn = function() {
+   				let startVal 	= $(`#${component.id}_start`).val();
+   				let endVal 		= $(`#${component.id}_end`	).val();
+   				let searchBoxVal= undefined;
+   				
+   				let whereColumn 	= component.whereColumn;
+   				
+   	    		if(isValid(component.whereColumn) && ( isValid(startVal) || isValid(endVal) )) {
+   	    			searchBoxVal = { type : "range" }
+   	    			if(isValid(startVal	)) searchBoxVal.start 	= startVal;
+   	    			if(isValid(endVal	)) searchBoxVal.end 	= endVal;
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = searchBoxVal;
+   	    		} else {
+   	    			<@compId>.searchBoxWhereMap[component.whereColumn] = undefined;
+   	    		}
+   	    		if(typeof component.onChange == "function") component.onChange(searchBoxVal, <@compId>);
+    		}
+    		$(`#${component.id}_start`	).unbind("change");
+   			$(`#${component.id}_start`	).bind	("change", fn);
+    		$(`#${component.id}_end`	).unbind("change");
+   			$(`#${component.id}_end`	).bind	("change", fn);
+		}
+		,refreshOption : function(optionId, parm) {
+			let componentId = `<@compId>_${optionId}`;
+			if(typeof <@compId>.optionMakeFn[componentId] == "function") {
+				<@compId>.optionMakeFn[componentId](parm); 
+			}
+		 }
+		,buttonCallBack : function(btnId) {
+			let fn = <@compId>.addButtonCallbackFnMap[btnId];
+			if(typeof fn == "function") fn();
+		 }
+
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+
+		if(isEmpty(parm.gridParm.searchWhereMap)) parm.gridParm.searchWhereMap = {};
+		
+		<@compId>.parm = parm;
+		
+		<@compId>.parmBackup = fn_copyFullObject(parm);
+		
+		parm.gridParm.rowCntId = "<@compId>_rowCnt";
+		
+		parm.gridParm.readOnly = "Y";
+		
+		let searchCompCnt = 0;
+		
+		let classStr = "col5 col5-md col10-sm display-h-end mb5";
+
+		// 추가 버튼 처리
+		if(isValid(parm.addButtonList)) {
+			
+			$.each(parm.addButtonList, function(idx) {
+				let btnId = "btnId" + idx;
+				<@compId>.addButtonCallbackFnMap[btnId] = this.onClick;
+				parm.addButtonList[idx].btnId = btnId;
+			});
+			
+			var rparm = {
+				 targetId 	: "<@compId>_buttonDiv"
+				,list		: parm.addButtonList
+				,replace	: "Y"
+			}
+			C_COM.renderHtml("<@compId>", rparm);
+		}
+
+		if(isValid(parm.optionConfig)) {
+			if(isValid(parm.optionConfig.selectBoxForSearchConfig)) {
+				parm.optionConfig.selectBoxForSearchConfig.type = "singleSelectBox";
+				parm.optionConfig.searchComponentList = [parm.optionConfig.selectBoxForSearchConfig];
+			}
+			
+			if(isValid(parm.optionConfig.searchComponentList)) {
+				let searchComponentList = parm.optionConfig.searchComponentList;	
+				let compCnt 			= searchComponentList.length;
+				if( compCnt > 1) {
+					classStr 			= "col25 col5-md col10-sm display-h-end mb5";
+				}
+				$.each(searchComponentList, function(idx) {
+					let component 	= this;
+					component.classStr 	= classStr;
+					if(isEmpty(component.id)) 	component.id = `<@compId>_${idx}`;
+					else						component.id = `<@compId>_${component.id}`;
+					if		(component.type == "singleSelectBox"			) <@compId>.addSingleBox		(component);
+					else if	(component.type == "singleSelectBoxByFilter"	) <@compId>.addSingleBoxByFilter(component);
+					else if	(component.type == "multiSelectBox"				) <@compId>.addMultiBox			(component);
+					else if	(component.type == "date"						) {
+						component.classStr = "col25 col5-md col10-sm mb5 display-h-end";
+						<@compId>.dateSearchBox	(component);	
+					}
+					else if	(component.type == "term"			) {
+						component.classStr = "col50 col5-md col10-sm mb5 display-h-end";
+						<@compId>.termSearchBox	(component);	
+					}
+				});
+			}
+		}
+		// 제일 마지막에 기본 검색을 넣는다.
+		var rparm = {
+			 targetId 		: "<@compId>_searchArea"
+			,templateId		: "baseTextComponent"
+			,classStr		: classStr
+			,append			: "Y"
+		}
+		C_COM.renderHtml("<@compId>", rparm);
+		
+		// 상단 Title 영역
+		C_COMP.import("<@compId>_titleArea", "component_compTitleArea",{} , function() {});
+
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@compId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+		// Grid Component Import
+
+		C_COMP.import("<@compId>_editor", "component_compGrid",{gridParm : <@compId>.parm.gridParm} , function(pageList) {
+			C_COMP.callback("<@compId>", pageList);
+		});		
+		
+		if(isValid(parm.editButtonTitle)) {
+			$("#<@compId>_editBtn"	).html(parm.editButtonTitle);
+		}
+
+		// 에디터를 사용하지 않는 경우
+		if(parm.noEdit == "Y"		) $("#<@compId>_editBtn"	).hide();
+		
+		// 엑셀 다운로드 버튼을 사용하지 않는 경우
+		if(parm.noExcelDown == "Y"		) $("#<@compId>_excelDownBtn"	).hide();
+		
+
+		// 상단 Breadcrumb을 사용하지 않는 경우
+		if(parm.noBreadcrumb == "Y"	) $("#<@compId>_breadcrumb").hide();
+		
+		// 상단 Title을 사용하지 않는 경우
+		if(parm.noTitle == "Y"		) $("#<@compId>_titleArea"	).hide();
+		
+		// 상단 Search Box를 사용하지 않는 경우
+		if(parm.noSearchBox == "Y"	) $("#<@compId>_searchBox"	).hide();
+		
+		// 부제목 처리
+		if(isValid(parm.subTitle))	$("#<@compId>_subTitle").html(parm.subTitle);
+		else						$("#<@compId>_subTitle").hide();
+		
+		// Frame 높이 설정
+		if(isValid(parm.frameHeight)) {
+			const tableHeight = parm.frameHeight;
+			const frameHeight = addPx(tableHeight, 4);
+	
+			$("#<@compId>_tableDiv").css("height", tableHeight);
+			$("#<@compId>_frameDiv").css("min-height", frameHeight);
+		}
+	});
+</script>
+<component>
+    <!-- breadcrumb start -->
+	<compnent id="<@compId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@compId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+    
+	<!-- search filter box start -->
+	<div class="srch-card mt10" id="<@compId>_searchBox">
+	    <div class="srch-card-inwrap">
+	        <div class="col9 col10-sm srch-card-form" id="<@compId>_searchArea">
+	        </div>
+		    <!-- singlebox component-wrap start -->
+			<script type="text/x-jsrender" id="singleboxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <select class="form-control form-control-sm col10-sm col10 mr20" id="{{:component.id}}">
+		            </select>    
+	            </div>
+			</script>    
+		    <!-- singlebox component-wrap end -->
+		    <!-- multibox component-wrap start -->
+			<script type="text/x-jsrender" id="multiboxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <component id="{{:component.id}}" class="col10"></component>    
+	            </div>
+			</script>    
+		    <!-- multibox component-wrap end -->
+		    
+		    <!-- singleboxByFilter component-wrap start -->
+			<script type="text/x-jsrender" id="singleboxByFilterComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+		            <component id="{{:component.id}}" class="col10"></component>    
+	            </div>
+			</script>    
+		    <!-- singleboxByFilter component-wrap end -->
+
+		    <!-- basetext component-wrap start -->
+			<script type="text/x-jsrender" id="baseTextComponent_template">	
+	            <div class="{{:classStr}}">
+	                <label class="src-title01">검색어</label>
+	                <input type="text" class="form-control form-control-sm col10" id="searchValue" value="<@gridParm.searchValue>" onEnter="<@compId>.search()">
+	            </div> 
+			</script>    
+		    <!-- basetext component-wrap end -->
+
+		    <!-- date component-wrap start -->
+			<script type="text/x-jsrender" id="dateSearchBoxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+                    <input id="{{:component.id}}" type="date" class="form-control form-control-sm col10 calender-form" onEnter="<@compId>.search()">
+	            </div>
+			</script>    
+		    <!-- date component-wrap end -->
+
+		    <!-- date component-wrap start -->
+			<script type="text/x-jsrender" id="termSearchBoxComponent_template">	
+	            <div class="{{:component.classStr}}">
+	                <label class="src-title01">{{:component.title}}</label>
+                    <input id="{{:component.id}}_start" type="date" class="form-control form-control-sm col5 calender-form" onEnter="<@compId>.search()">
+                  ~ <input id="{{:component.id}}_end"	type="date" class="form-control form-control-sm col5 calender-form" onEnter="<@compId>.search()">
+	            </div>
+			</script>    
+		    <!-- date component-wrap end -->
+
+	        <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+	            <button class="srch-btn col10 mr10" type="button" onclick="<@compId>.search()">검 색</button>
+	        </div>
+	    </div>
+	</div>
+    <div class="display-between display-sm-between mt10">
+        <div class="col4-md col10-sm display-h-end mb5">
+            <div class="biz-subTitle" id="<@compId>_subTitle"></div>
+        </div>
+        <div class="display-w-end col4 col4-md col10-sm mb5">
+        	<span class="col2-sm w150px txt-r mr10">Total : <span class="txt-red" id="<@compId>_rowCnt"></span></span>
+        	<div id="<@compId>_buttonDiv"></div>
+        	<button class="flat-btn col2-sm mr5" type="button" id="<@compId>_editBtn" onclick="<@compId>.openEdit()">편 집</button>
+			<button class="flat-btn col2-sm" type="button" id="<@compId>_excelDownBtn" onclick="<@compId>.excelDown()">엑셀다운</button>
+        </div>
+		<script type="text/x-jsrender" id="<@compId>_buttonDiv_template">
+		{{for list}}
+			<button class="flat-btn col2-sm mr5" type="button" id="<@compId>_editBtn" onclick="<@compId>.buttonCallBack('{{:btnId}}')">{{:title}}</button>
+		{{/for}}
+		</script>    
+		<script type="text/x-jsrender" id="<@compId>_buttonDiv_template">
+		</script>    
+    </div>
+	<!-- search filter box end -->
+
+    <!-- table area start -->
+	<div class="tb-card-allwrap col10" id="<@compId>_frameDiv">
+		<div class="card-inwrap">
+			<div class="card-cnt-wrap">
+				<div class="table-allwrap" id="<@compId>_tableDiv">
+					<compnent id="<@compId>_editor"></compnent>
+				</div>
+			</div>
+		</div>
+	</div>    
+    <!-- table area end -->
+ 
+</component>

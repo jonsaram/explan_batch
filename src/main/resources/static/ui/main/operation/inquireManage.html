@@ -1,0 +1,279 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		  ASKER_ID 	:	''
+		 ,ROOM_ID 	: 	''
+		 ,loadComponent : function(parm) {
+			let sendParm = {
+					gridParm : {
+						 requestQuery	: {
+							  queryId		: "system.getAskerList"
+							 ,requestParm	: {}
+						 }
+						,columnMap 		: {
+							 "ASKER_ID" 		: { headerText : "담당 고객 ID"	}
+							,"ASKER_NM" 		: { headerText : "담당 고객명"	}
+							,"UPDATE_USER" 		: { headerText : "수정자"		}
+							,"UPDATE_DATE" 		: { headerText : "수정일"		}
+						 }
+						,primaryKeyList		: ["ANSWER_PERSON_ID"				]
+						,searchColumnList	: ["ASKER_ID", "GET_USER_NM(ASKER_ID)"]
+						,orderColumnList 	: ["UPDATE_DATE ASC"				]	
+						,rowConfig		:{ 
+							
+							onClickRow : function(rowData) {
+								<@pageId>.ASKER_ID = rowData.ASKER_ID;			
+								<@pageId>.getMessages();
+							}
+						}
+						,readOnly	: "Y"
+					 }
+			}
+			C_COMP.import("<@pageId>_grid1", "component_compGrid",sendParm , function() {});		
+		 }
+		,getMessages : function() {
+		   
+			var parm = {
+					 queryId 		: "system.getChatCurRoom" 
+					,requestParm	: {USER_ID : <@pageId>.ASKER_ID}
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					
+					<@pageId>.ROOM_ID = resultData.data[0].ROOM_ID;
+					var parm = {
+							 queryId 		: "system.getChatCurContent" 
+							,requestParm	: { 
+								  ROOM_ID : <@pageId>.ROOM_ID
+							}
+					}
+					C_COM.requestQuery(parm, function(resultData) {
+						if(resultData.state == "S") {
+							
+							var rparm = {
+									 targetId 		: "shareMsg"
+									,list			: resultData.data
+							}
+							C_COM.renderHtml("<@pageId>", rparm);
+							
+ 							//setTimeout( ()=>{$('#<@pageId> #shareMsg').scrollTop($('#<@pageId> #shareMsg')[0].scrollHeight);},1000);
+ 							
+ 				            // 자동 스크롤
+ 				            const chatBody = document.querySelector("#<@pageId> #shareMsg");
+ 				            chatBody.scrollTop = chatBody.scrollHeight;
+						}					
+					}); 					
+				}					
+			});			
+		}
+		,addShareMsg : function() {
+
+			let folderMsg = $("#<@pageId> #folderMsg").val();
+			
+			if(isEmpty(folderMsg)) {
+				C_POP.alert("메시지를 입력하세요.");
+				return;
+			}
+			
+            var convertedValue = folderMsg.replace(/(?:\r\n|\r|\n)/g, '<br>');
+			
+			var parm = {
+				 queryId 		: "system.insertAskContent"
+				,requestParm	: { 
+					 ROOM_ID 		: <@pageId>.ROOM_ID
+					,CONTENTS		: convertedValue
+					,USER_ID		: G_VAL.session.USER_ID
+				}
+				,noLoadingBar		: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					
+					<@pageId>.getMessages();
+					
+					$("#<@pageId> #folderMsg").val("").focus();
+					
+					<@pageId>.sendSocketMsg();
+					
+				} else if(resultData.state == "E") {
+					C_POP.alert('메시지 저장에 실패하였습니다.');
+				}					
+			});  
+		 }		
+		,modifyMsg : function(index) {}
+		
+		,delShareMsg : function(index) {}
+		
+		,sendSocketMsg : function() {
+			<@pageId>.stompClient.send("/app/answererSendMessage", {}, JSON.stringify({
+				  sender: "answerer",
+				  message: "checkYourMessage!"
+				}));
+		}
+		,connectWebSocket : function () {
+		    const socket = new SockJS("/ws-chat");
+		    <@pageId>.stompClient = Stomp.over(socket);
+
+		    <@pageId>.stompClient.connect({}, function(frame) {
+		        console.log("웹소켓 연결됨: ", frame);
+
+		        // 메시지 수신 (공용 토픽 구독)
+		        <@pageId>.stompClient.subscribe('/topic/publicAnswerer', function(response) {
+		            const message = JSON.parse(response.body);
+
+		            // 메시지 DOM에 표시
+		            const html = `<div class="msg-box">
+	                      			<div class="msg-info">
+	                    			<div>
+    	                  				<span class="msg-date" style="color:red">DDD</span>
+						  				<span class="msg-name" style="color:red">GGG</span>
+            	        			</div>
+                	    			<div>
+                          			<button class="msg-del"	 onclick="<@pageId>.delShareMsg('110')"></button>
+                          			<button class="msg-edit" onclick="<@pageId>.modifyMsgBtn('110')"></button>
+	                    			</div>
+    	              				</div>
+        	          				<li>
+										<div class="col10 msg-cnt vh-scr" style="color:red">${message}<br></div>
+	                  				</li>
+	                			</div>`;
+		            
+		            $("#<@pageId> #shareMsg").append(html);
+
+		            // 자동 스크롤
+		            const chatBody = document.querySelector("#<@pageId> #shareMsg");
+		            chatBody.scrollTop = chatBody.scrollHeight;
+		        });
+		    });
+		}
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		/* 상단 기본 세팅 시작 */
+		
+		// 상단 Title 영역
+		C_COMP.import("<@pageId>_titleArea", "component_compTitleArea",{} , function() {});
+		
+		// 상단 메뉴 Path Import
+		C_COMP.import("<@pageId>_breadcrumb", "component_compBreadcrumb",{} , function() {});
+
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+		/* 상단 기본 세팅 끝	*/
+
+		$('#<@pageId> #folderMsg').on('keydown', function (e) {
+			if (e.key === 'Enter' && e.shiftKey) {
+				return;
+			}
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				<@pageId>.addShareMsg();
+			}
+		});
+		
+		<@pageId>.connectWebSocket();
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+
+    <!-- breadcrumb start -->
+	<compnent id="<@pageId>_breadcrumb"></compnent>    
+    <!-- breadcrumb end -->
+
+    <!-- sub title + button start -->
+	<compnent id="<@pageId>_titleArea"></compnent>    
+    <!-- sub title + button end -->
+
+    <div class="display-column">
+        <div class="pop_tab_content_box tb-div-h04 fx-col2 fx-col2-md mt10">
+            <div class="col4 col10-md col10-sm">
+                <div class="col10-md col10-sm tab-card-outline h100 mb10">
+                    <div>
+                        <div class="card-tit-wrap">
+                            <div class="card-tit">관리 고객 리스트</div>
+							<div class="card-btn">
+								Filter <input type='text' onKeyup="<@pageId>.menuFilter(this.value)"/>
+							</div>
+                        </div>
+						<div class="card-cnt-wrap">
+							<div class="table-allwrap">
+								<compnent id="<@pageId>_grid1"></compnent>    
+							</div>
+						</div>
+                    </div>
+                </div>
+            </div> 
+            <div class="col6 col10-md col10-sm">
+	              <!-- message start -->
+	              <div class="msg-allwrap tb-card-allwrap col10 col10-md col10-sm col10-xs">
+	                <div class="msg-wrap">
+	                  <div class="card-tit">공유 메시지</div>
+	                </div>
+	                <div class="msg-inwrap01">
+	                  <div class="msg-list " id="shareMsg"></div>
+	                  <script type="text/x-jsrender" id="shareMsg_template">
+						{{for list}}
+		                    <div class="msg-box">
+		                      <div class="msg-info">
+	    	                    <div>
+								{{if ROLE == "ASKER" 	}}	 
+	        	                  <span class="msg-date" style="color:red">{{:CHAT_TIME}}</span>
+								  <span class="msg-name" style="color:red">{{:AKSER_NN}}</span>
+								{{/if}}
+								{{if ROLE == "ANSWERER" }}	 
+	        	                  <span class="msg-date">{{:CHAT_TIME}}</span>
+								  <span class="msg-name">{{:AKSER_NN}}</span>
+								{{/if}}
+	                	        </div>
+	                    	    <div>
+		                          <button class="msg-del"	onclick="<@pageId>.delShareMsg({{:#index}})"></button>
+		                          <button class="msg-edit"	onclick="<@pageId>.modifyMsgBtn({{:#index}})"></button>
+	    	                    </div>
+	        	              </div>
+	            	          <li>
+								{{if ROLE == "ASKER" 	}}<div class="col10 msg-cnt vh-scr" style="color:red">{{:CONTENTS}}<br></div>{{/if}}
+								{{if ROLE == "ANSWERER" }}<div class="col10 msg-cnt vh-scr">				  {{:CONTENTS}}<br></div>{{/if}}
+	    	                  </li>
+								<li id="<@pageId>_editBtn_{{:#index}}" style='display:none'>
+								<div class="msg-cnt-text-modify mb10">
+									<textarea id="" name="" rows="2" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder="edit 버튼 클릭시 수정 할 수 있는 textedit 바뀜"></textarea>
+									<div class="msg-text-modify-btn">
+										<button class="" type="button mr5"  onclick="<@pageId>.modifyMsg({{:#index}})">수정</button>
+									</div>
+								</div>
+								</li>
+	    	                </div>
+						{{/for}}
+					</script>
+					
+					<script type="text/x-jsrender" id="shareMsg_noData_template">	
+						<li class="tc">
+							<span class="txt">등록된 내용이 없습니다.</span>
+						</li>
+					</script>
+	                </div>
+	                <div class="msg-wrap">
+	                  <div class="card-tit">메시지 입력</div>
+	                  <div class="card-btn">
+	                    <input type="submit" value="등록" class="btn" onclick="<@pageId>.addShareMsg()">
+	                  </div>                  
+	                </div>
+	                <div class="msg-inwrap02">
+	                  <textarea id="folderMsg" name="folderMsg" rows="6" cols="" class="msg-textarea"></textarea> 
+	                </div>
+	              </div>
+	              <!-- message end -->
+
+            </div>
+        </div> 
+    </div>
+
+</page-component>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/js/jquery-3.4.1.slim.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
+	<script src="/js/jquery-ui-1.11.4.min.js"></script>
+	<script src="https://static.nid.naver.com/js/naverLogin_implicit-1.0.3.js"></script>
+	<script type="text/javascript">
+	var naver_id_login = new naver_id_login("Hz1rkiSTTPCVOEATPRsq", "http://localhost:8083/ui/main/system/naverLoginCallback.html");
+	console.log(naver_id_login.oauthParams.access_token);
+	naver_id_login.get_naver_userprofile("naverSignInCallback()");
+
+	function naverSignInCallback(){
+
+        var userInfo = {
+            id: naver_id_login.getProfileData('id'),
+            name: naver_id_login.getProfileData('nickname'),
+            email: naver_id_login.getProfileData('email')
+        };
+
+        if (window.opener) {
+            window.opener.postMessage(userInfo, window.location.origin);
+            window.close();
+        }
+		
+	}
+	</script>
+</head>	

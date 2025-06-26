@@ -1,0 +1,215 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 loadComponent : function(parm) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "common.getStockCheckList"
+						 ,requestParm	: {}
+					 }	
+					,columnMap 		: {
+						 "STORE_ID"	: { headerText : "가맹점ID", hidden : "Y"	}
+						,"STORE_NM"	: { headerText : "가맹점명"					}
+						,"INOV"		: { headerText : "매입오류 품목"			}
+						,"OTOV"		: { headerText : "매출오류 품목"			}
+					 }
+					,rowCntId 		: "<@pageId>_rowCnt"
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["STORE_ID"]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID	}
+					,orderColumnList 	: ["ECNT DESC"]
+					,rowConfig		: {
+						onClickRow : function(rowData) {
+							G_VAL.current.storeId = rowData.STORE_ID;
+							C_MENU.movePage("MENU1010_0500", {selectCompId : "compPerformanceTab9"});
+						}
+					 }
+					,readOnly		: "Y"
+					/*
+					,addBottomRow	: {
+						 title		  	: "총계"
+						,targetColumn 	: ["INOV"]
+						,baseType		: "AVG"
+						,mergeColumnCnt	: 1
+						,userDefineFn	: {
+							"INOV" : function(tableList) {
+								return "A/B/C"
+							}
+						 }
+					 }
+					*/
+				 }
+
+			}
+			C_COMP.import("<@pageId>_Grid", "component_compGrid",sendParm , function(tableList) {
+				<@pageId>.makeChart(tableList);
+			});
+			
+			C_COMP.import("<@pageId>_toDoList", "component_dashboard_compTodoList", {}, function(data) {
+			});
+			
+		 }
+		,makeChart : function(tableList) {
+			let categories 	= []
+			let series		= []
+			let dataList1	= []
+			let dataList2	= []
+			
+			$.each(tableList, function(idx) {
+				categories	.push(this.STORE_NM	);				
+				dataList1	.push(this.INOV		);				
+				dataList2	.push(this.OTOV		);
+				
+				if(idx >= 9) return false;
+			});
+			series.push({ name : "매입오류 품목수", data : dataList1});
+			series.push({ name : "매출오류 품목수", data : dataList2});
+			
+	        Highcharts.chart("<@pageId>_chart", {
+	            chart: {
+	                 type: 'column'
+	                ,height : "280px"
+	            },
+	            title: {
+	                text: ''
+	            },
+	            xAxis: {
+	                categories: categories
+	            },
+	            yAxis: {
+	                title: {
+	                    text: '품목개수'
+	                }
+	            },
+	            series: series
+	        });
+		 }
+		,_lineRateChart : function(container, categories, series) {
+			_lineRateChart(container, categories, series);
+		 }	
+		,_barLineChart		: function (container, categories, series  ) {
+			_barLineChart(container, categories, series );
+	     }
+		,_barLeftChart		: function (container, chartArray  ) {
+			_barLeftChart(container, chartArray);
+		 }
+		,_1bar2LineChart 	: function (container, categories, series) {
+			_1bar2LineChart(container, categories, series);
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+		<@pageId>.loadComponent();
+		
+		C_WIDGET.init(function(widgetList) {
+			
+			let baseCompIdMap	= {}
+			$.each(widgetList, function() {
+				baseCompIdMap[this.COMP_ID] = this.TAB_TITLE;
+			});
+			let baseCompIdList 	= []
+			$.each(baseCompIdMap, function(key, title) {
+				baseCompIdList.push({baseCompId : key, tabTitle : title});
+			});
+			
+			var rparm = {
+				 targetId 	: "<@pageId>_widget"
+				,list		: baseCompIdList
+				,append		: "Y"
+			}
+			C_COM.renderHtml("<@pageId>", rparm);
+
+			$.each(baseCompIdList, function() {
+				let baseCompId = this.baseCompId;
+				C_COMP.import(baseCompId, baseCompId,{} , function() {});
+				C_WIDGET.hideAllWidget(baseCompId);
+				$(`#${baseCompId} div[wgtframe=${baseCompId}]`).addClass("col10");
+				$(`#${baseCompId} div[wgtframe5=${baseCompId}]`).addClass("col5");
+			});
+		});
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+	
+</script>
+
+
+<page-component>
+
+	<!-- sub title + button start -->
+	<div class="sub-tit-allwrap mt30 mb10">
+	    <!-- title start -->
+	    <div class="sub-tit">Dashboard</div>
+	</div>
+	<!-- sub title + button end -->
+	
+	<!---------------------------------- 컴포넌트 카피 + 대체 시작 영역 -------------------------------------->
+	<!-- body-container start -->
+	<div class="col10 decoline mt20"></div>
+        <div class="sub-tit-allwrap mt10">
+   	      <!-- title start -->
+       	  <div class="sub-tit-lg">가맹점 재고 현황</div>
+       	</div>
+	<div>
+	<div class="body-inwrap01 mt20" id="<@pageId>_widget">
+	    <!-- card 03 start -->
+	    <div class="card-allwrap col33-gap col5-md col10-sm mb-md-25 mb-sm-25">
+	        <div class="card-inwrap">
+	        <div class="card-tit-wrap">
+	            <div class="card-tit">매입/매출 정보오류 품목 Top 10 Chart</div>
+	        </div>
+	        <div class="card-cnt-wrap">
+	            <div class="table-allwrap tb-div-h pt20">
+	            <!-- chart start -->
+	            <div class="card-cnt-wrap">
+					<div id="<@pageId>_chart" width="100%" height="100%"></div>	            
+				</div>
+	            <!-- chart end -->            
+	            </div>
+	        </div>
+	        </div>
+	    </div>
+	    <!-- card 03 end -->
+	    <!-- card 04 start -->
+	    <div class="card-allwrap col33-gap col5-md col10-sm mb-md-25 mb-sm-25">
+	        <div class="card-inwrap">
+		        <div class="card-tit-wrap">
+		            <div class="card-tit">매입/매출 정보오류 품목 목록</div>
+	            	<div>total : <span id="<@pageId>_rowCnt">100</span></div>
+		            
+		        </div>
+		        <div class="card-cnt-wrap">
+		            <div class="table-allwrap tb-div-h">
+		            <!-- table start -->
+		            <component id="<@pageId>_Grid"></component>
+		            <!-- table end -->            
+		            </div>
+		        </div>
+	        </div>
+	    </div>
+	    <!-- card 04 end -->
+	    <!-- card 04 start -->
+		<div class="card-allwrap col33-gap col5-md col10-sm mb-md-25 mb-sm-25">
+			<component id="<@pageId>_toDoList"></component>
+	    </div>
+	    <!-- card 04 end -->
+	</div>
+	<script type="text/x-jsrender" id="<@pageId>_widget_template">
+		{{for list}}
+		<div class="col10 decoline mt30"></div>
+	        <div class="sub-tit-allwrap mt10">
+    	      <!-- title start -->
+        	  <div class="sub-tit-lg">{{:tabTitle}}</div>
+        	</div>
+	    	<compnent id="{{:baseCompId}}"></compnent>
+		{{/for}}
+	</script>
+	
+	<!-- body-container start -->
+  
+  
+</page-component>

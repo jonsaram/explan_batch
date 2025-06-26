@@ -1,0 +1,66 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 menuDataMap : {}
+		,loadComponent : function(parm) {
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery	: {
+						  queryId		: "system.getHelpMngList"
+						 ,requestParm	: {}
+					 }
+					,tableName		: "TBL_EXP_HELP_MNG"
+					,columnMap 		: {
+						 "HELP_ID"     	: { headerText : "도움말ID"			, hidden  : "Y"		,ifNewAutoSet : function() { return getUniqueId("HELP"); }		}
+						,"HELP_TITLE"  	: { headerText : "도움말 제목"		, notNull : "Y"																		}
+						,"HELP_TYPE"   	: { headerText : "도움말 Type"		, notNull : "Y"		,columnType : "readOnly", default : "COMMON"					}
+						,"TEMPLATE_ID" 	: { headerText : "Template ID"								 															}
+						,"HELP_BUTTON"	: { headerText : "도움말 편집"	, noSave  : "Y"		,columnType : "button", buttonNm : "내용등록/수정"	,buttonFn : <@compId>.editContent	}
+					 }
+					,columnConfig 	: {
+						onChangeCell : {
+							"MENU_ID"	: {
+								 func :function(gridObj, rowIdx, colIdx, cellObj, rowData) {
+									const val = <@compId>.menuDataMap[rowData.MENU_ID].PAGE_ID
+									gridObj.setCellToColumn(cellObj, val, "TEMPLATE_ID"	);
+								 }						
+							}
+						 }
+					 }
+					,primaryKeyList		: ["HELP_ID"					]
+					,searchColumnList	: ["HELP_TITLE", "TEMPLATE_ID"	]
+					,searchWhereMap		: {"HELP_TYPE" : "COMMON"		}
+					,orderColumnList 	: ["HELP_TITLE"					]
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,editContent : function(targetCell, rowData) {
+			let parm = {
+				 selectQueryId		: "system.getHelpContentList"
+				,updateQueryId		: "system.updateHelpContent"
+				,requestParm	: {
+	            	HELP_ID 	: rowData.HELP_ID
+	             }
+			 	,targetColumnId : "HELP_CONTENT"
+			 	,gridTitle 		: "도움말 등록/편집"
+			}
+			C_POP.open("popup_common_textareaPopup",parm, function(retData) {
+				
+			});
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent(parm);
+	});
+
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

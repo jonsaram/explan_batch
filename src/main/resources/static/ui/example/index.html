@@ -1,0 +1,39 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 openBasePopup : function() {
+			C_POP.open("example_popup_basePopup", {}, function(retData){
+				dalert(retData);
+			});
+		 }
+		,openGridPopup : function() {
+			C_POP.open("example_popup_gridPopup", {}, function(retData){
+				dalert(retData);
+			});
+		}
+		,openBaseMaxPopup : function() {
+			C_POP.open("example_popup_basePopup", {size : "MAX"}, function(retData){
+				dalert(retData);
+			});
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function() {
+
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+   <!-- Page navigation end -->
+	<div class="add-file-list">
+		<li><span class="col8 "><a href="javascript:C_PM.movePage('example_basePageGrid')">Page Grid 기본</a></span></li>
+		<li><span class="col8 "><a href="javascript:C_PM.movePage('example_baseTableGrid')">Table Grid 기본</a></span></li>
+		<li><span class="col8 "><a href="javascript:C_PM.movePage('example_baseTableGridByQuery')">Table Grid XML 쿼리 이용</a></span></li>
+		<li><span class="col8 "><a href="javascript:<@pageId>.openBasePopup()">기본 Popup</a></span></li>
+		<li><span class="col8 "><a href="javascript:<@pageId>.openGridPopup()">Grid 포함 Popup</a></span></li>
+		<li><span class="col8 "><a href="javascript:<@pageId>.openBaseMaxPopup()">기본 Popup Max Size</a></span></li>
+	</div>
+</page-component>

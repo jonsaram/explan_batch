@@ -1,0 +1,112 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		BOARD_ID : 	getUniqueId("BD")
+		,close : function(returnData) {
+			if(isEmpty(returnData)) returnData = {};
+			C_POP.close(returnData);
+		}
+		,valid : function() {
+			
+			if( isEmpty($("#<@compId>_Title").val())){alert("제목을 입력해주세요.");return false}
+			let isAnyData = <@parentId>.compTextarea.isAnyData();
+			if( !	isAnyData ){alert("내용을 입력해주세요.");return false}
+			
+			return true;
+		}
+		,save : function() {
+			if( <@compId>.valid()){
+				C_POP.confirm(`등록 하시겠습니까?`, function() {
+					var parm = {
+							 queryId 		: 'board.insertBoard'
+							,requestParm	: {
+								 	BOARD_ID	: <@compId>.BOARD_ID
+									,TITLE		: $("#<@compId>_Title").val()
+									,CONTENT	: <@parentId>.compTextarea.getData()
+									,BOARD_MST_ID:'NOTICE'
+							}
+					}
+		
+					C_COM.requestQuery(parm, function(resultData) {
+						if( resultData.state == 'S'){
+							<@compId>.close(parm.requestParm);
+						}
+					});
+				});			
+			}
+		}
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		C_COMP.import("compTextarea", "component_common_compTextarea",{} , function() {});
+
+		var parm = {
+				 GRP_FILE_ID 	: <@compId>.BOARD_ID
+				,OWNER_CD 		: "MN_BOARD_MNG"
+				,mode			: "M"
+				,title			: "NA"
+				,templateId		: "<@compId>"
+		}
+			
+		C_COMP.import("<@compId>folderFileMng", "component_compMultiFilemng", parm , function(fileList) {});		
+		setTimeout(()=>{
+			$("#<@compId>_Title").focus();
+		},500);
+	})
+</script>
+<component>
+
+	<!-- sub title + button start -->
+	<div class="sub-tit-allwrap mb10">
+	    <!-- title start -->
+	    <div class="sub-tit col8 col8-md col6-sm">게시글 작성</div>
+	    <!-- button start -->
+	    <div class="col2 col2-md col4-sm display-w-end">
+	        <button class="outline-btn mr5" type="button" onclick="<@compId>.close()">취 소</button>
+	        <button class="flat-btn" 		type="button" onclick="<@compId>.save()" >등 록</button>
+	    </div> 
+	</div>
+	<!-- sub title + button end -->
+	
+	<!---------------------------------- 컴포넌트 카피 + 대체 시작 영역 -------------------------------------->                
+	
+	<!-- table area start -->
+	<div class="tb-card-allwrap01 col10 mt10">
+	    <div class="card-inwrap">
+	      <div id="tb-scroll" class="card-cnt-wrap p20">
+	          <!-- table start -->
+	          <table class="tb-wr-wrap col10 col10-xs">
+	              <colgroup>
+	                <col>
+	                <col>
+	              </colgroup>
+	              <tbody>
+	                <tr>
+	                  <th class="col1 col2-sm col10-xs">제 목</th>
+	                  <td class="col9 col8-sm col10-xs">
+	                      <input type="text" class="form-control form-control-sm col10" id="<@compId>_Title">
+	                  </td>
+	                </tr>                      
+	                <tr>
+	                  <th>내 용</th>
+	                  <td>
+	                      <component id="compTextarea"></component>
+	                  </td>
+	                </tr> 
+	                <tr>
+ 	                  <th>첨부파일</th>
+	                  <td>
+						<div class="tb-wr-addfile col0 col10-md col10-sm col10-xs">
+							<component id="<@compId>folderFileMng"></component> 
+						</div>
+	                  </td>
+	                </tr>                                                                                                        
+	              </tbody>
+	            </table>
+	          <!-- table end -->
+	      </div>
+	    </div>
+	  </div>
+	<!-- table area end -->
+	
+</component>

@@ -1,0 +1,324 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent	: function() {
+			let stockList = C_STOCK.getStockList();
+			
+			if( isEmpty(stockList) || stockList.length == 0) {
+				C_POP.alert('재고 정보가 존재하지 않습니다.');
+				return;
+			}
+
+			if("<@directCallParm.PRODUCT_CD>" != "") 	stockList = moveFirstBySearchFromList(stockList, "PRODUCT_CD", "<@directCallParm.PRODUCT_CD>");
+					
+			let firstItem = stockList[0];
+			
+			let sendParm = {
+				gridParm : {
+					 tableDataList	: stockList
+					,columnMap 		: {
+						 "PRODUCT_CD" 	: { headerText : "상품CD", hidden : "Y"				}
+						,"PRODUCT_NM" 	: { headerText : "상품명"							}
+						,"STOCK_RATE" 	: { headerText : "재고율"							}
+						,"UNIT" 		: { headerText : "단위"							}
+						,"STOCK_ANALY"	: { headerText : "재고 상태" , width : "150px"		}
+					 }
+					,primaryKeyList		: ["PRODUCT_CD"]
+					,searchColumnList	: ["PRODUCT_CD", "PRODUCT_NM"]
+					//,orderColumnList 	: ["PRODUCT_NM"]
+					,columnConfig		: {
+						makeCellViewData	: {
+							"STOCK_ANALY" 	: function(cellText, rowData) {
+								let rate = rowData.STOCK_RATE;
+								
+								let eobj = C_STOCK.evaluationCriteriaOfStock(rate);
+								
+								let retStr = `<span style="color:${eobj.COLOR_CODE}"	>${eobj.EVALUATION}</span>`;
+								
+								return retStr;
+							}
+							,"STOCK_RATE"	: function(cellText, rowData) {
+								if(isNumber(cellText)) cellText = cellText + '%'								
+								else cellText = ""
+								return cellText;
+							 }
+						}
+					 }
+					,rowConfig		: {
+						onDblClickRow : function(rowData) {
+							<@compId>.showSecondComponent(rowData.PRODUCT_CD);
+						}
+					 }
+					,rowCntId 		: "<@compId>_rowCnt1"
+				 }
+			}
+			C_COMP.import("<@compId>_stockList", "component_compGrid",sendParm , function() {});
+			
+			<@compId>.showSecondComponent(firstItem.PRODUCT_CD);
+			
+		 }
+		,showSecondComponent : function(productCd) {
+			let stockAnalysisByDay  = C_STOCK.getStockAnalysisByDay(productCd);
+			
+			let sendParm2 = {
+				gridParm : {
+					 tableDataList	: stockAnalysisByDay
+					,columnMap 		: {
+						 "YYYYMMDD" 			: { headerText : "기준일", width : "100px"						}
+						,"PRODUCT_NM" 			: { headerText : "상품명", width : "130px"	, align : "left"	}
+						,"IN_QUANTITY" 			: { headerText : "입고량"		,dataType : "number"			}
+						,"OUT_QUANTITY" 		: { headerText : "출고량"		,dataType : "number"			}
+						,"AVG_QUANTITY" 		: { headerText : "적정재고량"	,dataType : "number"			}
+						,"nujukSumQt"			: { headerText : "현재재고량"	,dataType : "number"			}
+						,"STOCK_RATE" 			: { headerText : "재고율"		,dataType : "number"			}
+						,"ADJUST_QUANTITY"		: { headerText : "재고조정"		,dataType : "number"			}
+						,"lossQt"				: { headerText : "Loss QT"		,dataType : "number"			}
+						,"lossRt"				: { headerText : "Loss Rate"	,dataType : "number"			}
+					 }
+					,primaryKeyList		: ["YYYYMMDD"]
+					,columnConfig 	: {
+						// Cell의 ViewText를 가공한다.						
+						makeCellViewData	: {
+							"lossRt"	: function(cellText, rowData) {
+								if(isNumber(cellText)) {
+									return cellText + '%';
+								} else return ""
+							 }
+							,"STOCK_RATE"	: function(cellText, rowData) {
+								if(isNumber(cellText)) {
+									return cellText + '%';
+								} else return ""
+							 }
+
+						}
+					 }
+					,rowCntId 		: "<@compId>_rowCnt2"
+				 }
+			}
+			C_COMP.import("<@compId>_stockListByDay", "component_compGrid",sendParm2 , function() {});
+			
+			<@compId>.showChart(stockAnalysisByDay);
+			
+		 }
+		,remakeData		: function(dataList) {
+			if(isEmpty(dataList)) return dataList;
+			
+			let preData = {}
+			$.each(dataList, function(idx) {
+				if(isEmpty(preData[this.PRODUCT_CD])) {
+					preData[this.PRODUCT_CD] = {	SUM_QUANTITY : 0	}					
+				}
+				dataList[idx].SUM_QUANTITY	= this.SUM_QUANTITY + preData[this.PRODUCT_CD].SUM_QUANTITY;
+				preData[this.PRODUCT_CD] = dataList[idx];
+			});
+			
+			return dataList;
+		 }
+	
+		,changeSelectBox : function(selectDom) {
+			
+			G_VAL.current.storeId = C_UICOM.getData("<@compId>_selectBox");
+
+			<@parentId>.makeStockOfDay(function() {
+				<@compId>.loadComponent();	
+			});
+			
+		 }
+		,reload : function() {
+			let updateParm = {"searchValue" : $("#<@compId> #searchValue").val() }
+			
+			<@parentId>["<@compId>_stockList"].reload(updateParm);
+		 }
+		,reloadSecondComponent : function(productCd) {
+			<@compId>.showSecondComponent(productCd);
+		 }
+		,showChart : function(stockAnalysisByDay) {
+			
+			let categories 	= [];
+			let seriesMap	= {};
+			$.each(stockAnalysisByDay, function() {
+				let item = this;
+				categories.push(item.YYYYMMDD);
+				
+				if(isEmpty(seriesMap["적정재고량"]	)) seriesMap["적정재고량"	] = [];
+				if(isEmpty(item.AVG_QUANTITY)) item.AVG_QUANTITY = 0;
+				seriesMap["적정재고량"	].push(item.AVG_QUANTITY);
+				
+				if(isEmpty(seriesMap["입고량"]		)) seriesMap["입고량"		] = [];
+				if(isEmpty(item.IN_QUANTITY)) item.IN_QUANTITY = 0;
+				seriesMap["입고량"		].push(item.IN_QUANTITY	);
+				
+				if(isEmpty(seriesMap["출고량"]		)) seriesMap["출고량"		] = [];
+				if(isEmpty(item.OUT_QUANTITY)) item.OUT_QUANTITY = 0;
+				seriesMap["출고량"		].push(item.OUT_QUANTITY);
+				
+				if(isEmpty(seriesMap["현재재고량"]	)) seriesMap["현재재고량"	] = [];
+				if(isEmpty(item.nujukSumQt)) item.nujukSumQt = 0;
+				seriesMap["현재재고량"	].push(item.nujukSumQt	);
+			});
+			
+			let series = [];
+			
+			$.each(seriesMap, function(key, list) {
+				let type = 'line';
+				if(in_array(key, ["입고량","출고량"])) type = 'column';
+				series.push({name : key, data : list, type : type});
+			});
+			
+	        Highcharts.chart("<@compId>_chart", {
+	            chart: {
+	                 height : "280px"
+	            },
+	            title: {
+	                text: ''
+	            },
+	            xAxis: {
+	                categories: categories
+	            },
+	            yAxis: {
+	                title: {
+	                    text: '수량(g)'
+	                }
+	            },
+	            series: series
+	        });
+		 }
+		
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+
+			var singleboxList = { 
+  				 data 			: selectList
+  			 	,targetId 		: "<@compId>_selectBox"
+  			}
+  			C_UICOM.makeSelectBox(singleboxList, "single");
+			
+			if(isEmpty(G_VAL.current.storeId )) {
+				G_VAL.current.storeId = selectList[0][0];
+				let parm = {
+					 brandId : G_VAL.session.BRAND_ID
+					,storeId : G_VAL.current.storeId
+				}
+				C_STOCK.makeStockOfDay(parm, function() {
+					<@compId>.loadComponent();
+				});
+			} else {
+				<@compId>.loadComponent();
+			}
+			C_UICOM.setSingleBox("<@compId>_selectBox", G_VAL.current.storeId);
+		});
+
+	});
+	
+	
+	
+	
+	
+</script>
+<component>
+
+		<!-- search filter box start -->
+		<div class="srch-card mt10">
+		    <div class="srch-card-inwrap">
+		        <div class="col8 col10-sm srch-card-form">
+		            <div class="col4 col5-md col10-sm display-h-end mb5">
+		                <label class="src-title01">가맹점명</label>
+		                <select class="form-control form-control-sm col10" id="<@compId>_selectBox" onChange="<@compId>.changeSelectBox(this)">
+		                </select>
+		            </div>
+		            <div class="col4 col5-md col10-sm display-h-end mb5">
+
+		            </div> 
+		        </div>
+		        <div class="col1 col10-sm display-h-end pl-lg-15 mb5">
+
+		        </div>
+		    </div>
+		</div>
+		<!-- search filter box end -->
+<!-- 
+        <div class="display-between display-sm-between">
+            <div class="col4-md col10-sm display-h-end mb5">
+            </div>
+            <div class="display-w-end col4 col4-md col10-sm mb5">
+              <span class="col2-sm w80px">Total : <span class="txt-red">12</span></span>
+            </div>
+        </div>
+ -->
+
+        <div class="tab-cnt-inwrap mt30"> 
+            <!-- card 01 start -->
+            <div class="tab-card-allwrap col33-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+	            <div class="card-inwrap">
+	                <!-- title start -->
+	                <div class="card-tit-wrap">
+		                <div class="card-tit">재고 상품 선택</div>
+		                <div class="normal-right-area set-down5">Total : <span class="txt-red" id="<@compId>_rowCnt1"></span></div>
+	                </div>
+	                <!-- title end -->
+	                <!-- searchBox start -->
+	                <div class="tb-card-srch col10 col10-md col10-sm col10-xs">
+	                    <label class="src-title01">검색어</label>
+	                    <input type="text" class="form-control form-control-sm mr10" id="searchValue" onEnter="<@compId>.reload()">
+	                    <button class="tb-card-srch-btn mr5" type="button" onClick="<@compId>.reload()">검 색</button>
+	                </div>
+	                <!-- searchBox end -->
+	                <!-- content area start -->
+	                <div class="card-cnt-wrap">
+		                <div class="table-allwrap tb-div-h">
+		                    <!-- table start -->
+							<compnent id="<@compId>_stockList"></compnent>	                    
+		                    <!-- table end -->            
+		                </div>
+	                </div>
+	                <!-- content area end -->
+	            </div>
+            </div>
+            <!-- card 01 end -->
+
+            <!-- card 02 start -->
+            <div class="tab-card-allwrap col66-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+	            <div class="card-inwrap">
+	                <!-- title start -->
+	                <div class="card-tit-wrap">
+	                	<div class="card-tit">일별 재고 현황</div>
+		                <div class="normal-right-area set-down5">Total : <span class="txt-red" id="<@compId>_rowCnt2"></span></div>
+	                </div>
+	                <!-- title end -->
+	                <!-- searchBox start -->
+	                <div class="tb-card-srch col10 col10-md col10-sm col10-xs">
+	                </div>
+	                <!-- searchBox end -->
+	                <!-- content area start -->
+	                <div class="card-cnt-wrap">
+		                <div class="table-allwrap tb-div-h">
+		                    <!-- table start -->
+							<compnent id="<@compId>_stockListByDay"></compnent>	                    
+		                    <!-- table end -->            
+		                </div>
+	                </div>
+	                <!-- content area end -->
+	            </div>
+            </div>
+            <!-- card 02 end -->
+
+            <!-- card 03 start -->
+            <div class="tab-card-allwrap col10 mb-lg-25 col10-md col10-sm mb-sm-25">
+	            <div class="card-inwrap">
+	                <!-- title start -->
+	                <div class="card-tit-wrap">
+		                <div class="card-tit">일별 재고 현황 Chart</div>
+	                </div>
+	                <div class="card-cnt-wrap p20">
+	                	<div id="<@compId>_chart" width="100%" height="100%"></div>
+	                </div>
+	                <!-- content area end -->
+	            </div>
+            </div>
+            <!-- card 03 end -->
+		</div>    
+    
+</component>

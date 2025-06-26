@@ -1,0 +1,40 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 menuInfo		: {}
+		,openHelpPopup 	: function() {
+
+			let helpTitle 	= <@compId>.menuInfo.MENU_NM;
+			
+			let tabTitle	= C_TAB.getCurrentTabTitle();
+			
+			if(isValid(tabTitle)) helpTitle = `${helpTitle} > ${tabTitle}`;
+			
+			const parm = {
+				helpTitle : helpTitle	
+			}
+			C_COM.showHelp(parm);
+		}
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		<@compId>.menuInfo	= C_MENU.getCurrentMenuInfo();
+		
+		if(isValid(<@compId>.menuInfo)) {
+			$("#<@compId>_title").html(<@compId>.menuInfo.MENU_NM);
+		} else {
+			$("#<@compId>_title").html("제목없음");
+		}
+
+	});
+</script>
+<component>
+    <div class="sub-tit-allwrap mb10">
+	    <!-- title start -->
+    	<div class="sub-tit" id="<@compId>_title"></div>
+		<div class="help-text">
+		<a href="javascript:<@compId>.openHelpPopup()">[도움말]</a>
+		</div>
+    </div>
+</component>

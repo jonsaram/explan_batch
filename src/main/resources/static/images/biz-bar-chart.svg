@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="58" viewBox="0 0 40 58">
+  <defs>
+    <filter id="타원_12" x="11.5" y="9.5" width="12" height="12" filterUnits="userSpaceOnUse">
+      <feOffset input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feFlood flood-color="#0023ff" flood-opacity="0.349"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="타원_14" x="17.5" y="11.5" width="12" height="12" filterUnits="userSpaceOnUse">
+      <feOffset input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur-2"/>
+      <feFlood flood-color="#0023ff" flood-opacity="0.349"/>
+      <feComposite operator="in" in2="blur-2"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="타원_15" x="24.5" y="3.5" width="12" height="12" filterUnits="userSpaceOnUse">
+      <feOffset input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur-3"/>
+      <feFlood flood-color="#0023ff" flood-opacity="0.349"/>
+      <feComposite operator="in" in2="blur-3"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="타원_13" x="4.5" y="16.5" width="12" height="12" filterUnits="userSpaceOnUse">
+      <feOffset input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur-4"/>
+      <feFlood flood-color="#0023ff" flood-opacity="0.349"/>
+      <feComposite operator="in" in2="blur-4"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="biz-bar-chart" transform="translate(6 21)">
+    <rect id="사각형_84" data-name="사각형 84" width="40" height="58" transform="translate(-6 -21)" fill="rgba(255,255,255,0)"/>
+    <g id="그룹_96" data-name="그룹 96" transform="translate(0 1)">
+      <rect id="사각형_82" data-name="사각형 82" width="24" height="24" fill="none"/>
+      <rect id="사각형_83" data-name="사각형 83" width="24" height="24" fill="none"/>
+    </g>
+    <g id="그룹_97" data-name="그룹 97" transform="translate(0 7)">
+      <path id="패스_22" data-name="패스 22" d="M6,20H6a2.006,2.006,0,0,0,2-2V11A2.006,2.006,0,0,0,6,9H6a2.006,2.006,0,0,0-2,2v7A2.006,2.006,0,0,0,6,20Z" transform="translate(0 1.751)" fill="#636380" opacity="0.77"/>
+      <path id="패스_23" data-name="패스 23" d="M16,13v5a2.006,2.006,0,0,0,2,2h0a2.006,2.006,0,0,0,2-2V13a2.006,2.006,0,0,0-2-2h0A2.006,2.006,0,0,0,16,13Z" transform="translate(0 1.751)" fill="#636380" opacity="0.77"/>
+      <path id="패스_24" data-name="패스 24" d="M12,20h0a2.006,2.006,0,0,0,2-2V6a2.006,2.006,0,0,0-2-2h0a2.006,2.006,0,0,0-2,2V18A2.006,2.006,0,0,0,12,20Z" transform="translate(0 1.751)" fill="#636380" opacity="0.77"/>
+      <path id="패스_25" data-name="패스 25" d="M12,20.112h0a2.011,2.011,0,0,0,2-2.01V-.99A2.011,2.011,0,0,0,12-3h0A2.011,2.011,0,0,0,10-.99V18.1A2.011,2.011,0,0,0,12,20.112Z" transform="translate(12 1.639)" fill="#636380" opacity="0.77"/>
+    </g>
+    <path id="패스_26" data-name="패스 26" d="M-526.518,214.79l7.413-7.525,5.412,2.274,7.473-8.209" transform="translate(531 -213)" fill="none" stroke="#b1b1c2" stroke-linecap="round" stroke-width="1"/>
+    <g transform="matrix(1, 0, 0, 1, -6, -21)" filter="url(#타원_12)">
+      <g id="타원_12-2" data-name="타원 12" transform="translate(16 14)" fill="#fff" stroke="#8e8eaf" stroke-width="1">
+        <circle cx="1.5" cy="1.5" r="1.5" stroke="none"/>
+        <circle cx="1.5" cy="1.5" r="1" fill="none"/>
+      </g>
+    </g>
+    <g transform="matrix(1, 0, 0, 1, -6, -21)" filter="url(#타원_14)">
+      <g id="타원_14-2" data-name="타원 14" transform="translate(22 16)" fill="#fff" stroke="#8e8eaf" stroke-width="1">
+        <circle cx="1.5" cy="1.5" r="1.5" stroke="none"/>
+        <circle cx="1.5" cy="1.5" r="1" fill="none"/>
+      </g>
+    </g>
+    <g transform="matrix(1, 0, 0, 1, -6, -21)" filter="url(#타원_15)">
+      <g id="타원_15-2" data-name="타원 15" transform="translate(29 8)" fill="#fff" stroke="#8e8eaf" stroke-width="1">
+        <circle cx="1.5" cy="1.5" r="1.5" stroke="none"/>
+        <circle cx="1.5" cy="1.5" r="1" fill="none"/>
+      </g>
+    </g>
+    <g transform="matrix(1, 0, 0, 1, -6, -21)" filter="url(#타원_13)">
+      <g id="타원_13-2" data-name="타원 13" transform="translate(9 21)" fill="#fff" stroke="#8e8eaf" stroke-width="1">
+        <circle cx="1.5" cy="1.5" r="1.5" stroke="none"/>
+        <circle cx="1.5" cy="1.5" r="1" fill="none"/>
+      </g>
+    </g>
+  </g>
+</svg>

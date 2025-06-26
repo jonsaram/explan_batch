@@ -1,0 +1,226 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 boardContent : ''	
+		,init:function(){
+			
+			var parm = {
+					 queryId 		: 'board.getBoard'
+					,requestParm	: {BOARD_ID: "<@BOARD_ID>"}
+			}
+			
+			C_COM.requestQuery(parm, function(resultData) {
+				if( resultData.state == 'S'){
+
+					const board = resultData.data[0];
+					<@compId>.boardContent = board.CONTENT;
+
+					$("#<@compId>_updateUser").text( board.CREATE_USER_NM);
+					$("#<@compId>_updateDate").text( board.CREATE_DATE);
+					$("#<@compId>_cnt").text( board.VIEW_CNT);
+					$("#<@compId>_reply").text( board.REPLY_CNT);
+					$("#<@compId>_Title").val( board.TITLE);
+					C_COMP.import("compTextarea", "component_common_compTextarea",{editable:false,initData: board.CONTENT} , function() {});
+				}
+			});					
+		}
+		,loadReplyMsgList : function() {
+
+			var parm = {
+				 queryId 		: "board.getReplyList"
+				,requestParm	: { RELATED_ID : "<@BOARD_ID>", RELATED_TYPE : 'NOTICE' }
+				,noLoadingBar	: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				var rparm = {
+					 targetId 		: "replyMsg"
+					,list			: resultData.data
+				}
+				
+				C_COM.renderHtml("<@compId>", rparm);
+				
+				$('#<@compId> #replyMsg').scrollTop($('#<@compId> #replyMsg')[0].scrollHeight);
+
+				<@compId>.replyMsgList = resultData.data;
+
+			});  
+			
+		 }		 
+		,addReply : function(){
+
+			let folderMsg = $("#<@compId> #folderMsg").val();
+			
+			if(isEmpty(folderMsg)) {
+				C_POP.alert("메시지를 입력하세요.");
+				return;
+			}
+			// 엔터(\n)를 <br>로 변환
+            var convertedValue = folderMsg.replace(/(?:\r\n|\r|\n)/g, '<br>');
+			
+			var parm = {
+				 queryId 		: "board.updateReply"
+				,requestParm	: { 
+					REPLY_ID 	: C_COM.makeUniqueId()
+					,CONTENT	: convertedValue
+					,RELATED_ID : "<@BOARD_ID>"
+					,RELATED_TYPE: 'NOTICE'
+				}
+				,noLoadingBar		: "Y"
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				if(resultData.state == "S") {
+					<@compId>.loadReplyMsgList();
+					$("#<@compId> #folderMsg").val("").focus();
+				} else if(resultData.state == "E") {
+					C_POP.alert('댓글 등록에 실패하였습니다.');
+				}					
+			});  
+			
+		}
+		
+		,modifyMsgBtn : function(index){
+			$("#<@compId>_editBtn_"+index).show();
+		}
+		
+		,modifyMsg : function(index) {
+			
+			let replyMsg = <@compId>.replyMsgList[index];
+				const newMsg = $("#<@compId>_editBtn_"+index+" textarea").val();
+				var parm = {
+					 queryId 		: "board.updateReplyContent"
+					,requestParm	: { 
+							REPLY_ID		: replyMsg.REPLY_ID
+						 	,CONTENT			: newMsg
+					}
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					if(resultData.state == "S") {
+						<@compId>.loadReplyMsgList();
+					} else if(resultData.state == "E") {
+						C_POP.alert('메시지 수정 실패하였습니다.');
+					}
+				});
+		 }
+		
+		,delReplyMsg : function(index) {
+			
+			let replyMsg = <@compId>.replyMsgList[index];
+			C_POP.confirm(`'${replyMsg.CONTENT}' 메시지를 삭제 하시겠습니까?`, function() {
+				var parm = {
+					 queryId 		: "board.deleteReply"
+					,requestParm	: replyMsg
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					if(resultData.state == "S") {
+						<@compId>.loadReplyMsgList();
+						$("#<@compId> #folderMsg").focus();
+					} else if(resultData.state == "E") {
+						C_POP.alert('메시지 삭제에 실패하였습니다.');
+					}					
+				});  
+			});
+		 }			
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+
+		<@compId>.init();
+		<@compId>.loadReplyMsgList();
+		
+	})
+</script>
+<component>
+
+<div class="display-between display-sm-between col0 col0-md col10-sm">
+    <!-- title start -->
+    <div class="notice-wr-info col10-sm ml--0 mb10 mt10">
+        <span class="msg-date"><b class="mr5">작성자:</b><span id="<@compId>_updateUser"></span></span>
+        <span class="msg-date"><b class="mr5">작성일:</b><span id="<@compId>_updateDate"></span></span>
+        <span class="msg-date"><b class="mr5">조회:</b><span id="<@compId>_cnt"></span></span>
+        <span class="msg-name"><b class="mr5">댓글:</b><span class="txt-red"><span id="<@compId>_reply"></span></span></span>
+    </div>
+</div>
+
+
+<!-- table area start -->
+<div class="tb-card-allwrap02 col10 mt10">
+    <div class="card-inwrap">
+    <div id="tb-scroll" class="card-cnt-wrap p20">
+        <!-- table start -->
+
+        <table class="tb-wr-wrap col10 col10-xs">
+            <colgroup>
+                <col>
+                <col>
+            </colgroup>
+            <tbody>
+                <tr>
+                <th class="col1 col2-sm col10-xs">제목</th>
+                <td class="col9 col8-sm col10-xs">
+                    <input type="text" class="form-control form-control-sm col10" id="<@compId>_Title">
+                </td>
+                </tr>                      
+                <tr>
+                <th>내 용</th>
+                <td>
+					<component id="compTextarea"></component>
+                </td>
+                </tr>
+                <tr>
+					<th>댓글</th>
+                  	<td>
+							<div class="msg-text-modify-btn">
+								<div class="card-btn mb10">
+									<input type="submit" value="댓글 등록" class="btn" onclick="<@compId>.addReply()">
+		                        </div>
+							</div>
+		                    <textarea id="folderMsg" name="folderMsg" rows="10" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder="" style="height: 70px;max-height: 70px;"></textarea>
+		                    
+							<div class="col0 col10-md col10-sm col10-xs">
+								<div id="replyMsg" ></div>
+								<script type="text/x-jsrender" id="replyMsg_template">
+								{{for list}}
+	                            <div class="msg-box">
+    	                            <div class="msg-info">
+        	                            <div>
+                	                    	<span class="msg-name">{{:CREATE_USER_NM}}</span>
+            	                        	<span class="msg-date">{{:CREATE_DATE}}</span>
+                    	                </div>
+                        	            <div>
+                            	            <button class="msg-del"	 onclick="<@compId>.delReplyMsg({{:#index}})"></button>
+                                	        <button class="msg-edit" onclick="<@compId>.modifyMsgBtn({{:#index}})"></button>
+                                    	</div>
+	                                </div>
+    	                            <li class="reply pl20 mr30 pb10">
+        	                            <div class="col10 msg-cnt vh-scr">{{:CONTENT}}</div>
+            	                    </li>
+                	            
+									<li id="<@compId>_editBtn_{{:#index}}" style='display:none'>
+										<div class="msg-cnt-text-modify mb10">
+											<textarea id="" name="" rows="2" cols="" class="msg-cnt-textarea col10 msg-cnt" placeholder="edit 버튼 클릭시 수정 할 수 있는 textedit 바뀜"></textarea>
+											<div class="msg-text-modify-btn">
+												<button class="" type="button mr5"  onclick="<@compId>.modifyMsg({{:#index}})">수정</button>
+											</div>
+										</div>
+									</li>
+								</div>
+								{{/for}}
+								</script>
+								<script type="text/x-jsrender" id="replyMsg_noData_template">	
+								<li class="tc">
+									<span class="txt">등록된 내용이 없습니다.</span>
+								</li>
+								</script>
+		                    </div>
+                  	</td>
+                </tr>                  
+            </tbody>
+            </table>
+        <!-- table end -->
+    </div>
+    </div>
+</div>
+<!-- table area end -->
+
+</component>

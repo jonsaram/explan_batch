@@ -1,0 +1,100 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+			
+			var parm = {
+				 queryId 		: "common.getStockProductList"
+				,requestParm	: { BRAND_ID : G_VAL.session.BRAND_ID }
+			}
+			let resultData = C_COM.requestQuery(parm);
+			
+			let productList = C_COM.makeCodeList(resultData.data, "PRODUCT_CD", "PRODUCT_NM");
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "storeManage.getStockInOut"
+						 ,requestParm	: {}
+					 }	
+					,columnMap 		: {
+						 "STOCK_MST_ID"		: { headerText : "재고MST ID"	,hidden : "Y"									}
+						,"PRODUCT_CD"      	: { headerText : "상품CD"														}	
+						,"PRODUCT_NM"      	: { headerText : "상품명"														}	
+						,"YEAR"      		: { headerText : "년"			,hidden : "Y"									}	
+						,"MONTH"      		: { headerText : "월"			,hidden : "Y"									}	
+						,"DAY"      		: { headerText : "일"			,hidden : "Y"									}
+						,"YYYYMMDD"      	: { headerText : "등록일"														}	
+						,"QUANTITY"      	: { headerText : "수량"			,dataType : "number", fix : "2"					}	
+						,"UNIT"      		: { headerText : "단위"															}	
+						,"INOUT"      		: { headerText : "입/출고"		,columnType : "selectbox", useCodeId : "IN_OUT"	}	
+						,"SAVE_PERIOD"      : { headerText : "적정기간"														}	
+					 }
+					,columnConfig 	: {
+						makeCellViewData	: {
+							"YYYYMMDD"	: function(cellText, rowData) {
+								return getDateFormat(cellText, 8, "-");
+							}
+						 }
+					 }
+					,primaryKeyList		: ["STOCK_INOUT_ID"]
+					,searchColumnList	: ["YYYYMMDD", "INOUT", "PRODUCT_NM"]		
+					,orderColumnList 	: ["PRODUCT_CD", "YYYYMMDD DESC"]
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+					,useRuntimeLoad		: 100
+					,readOnly			: "Y"
+				 }
+				,optionConfig		: {
+					searchComponentList : [
+						  {
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "STORE_ID"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisObj) {
+								G_VAL.current.storeId = selectVal;
+								thisObj.reload();
+							 }
+						  }
+						,{
+							 type			: "multiSelectBox"	
+							,title			: "상품명"
+							,whereColumn	: "PRODUCT_CD"
+							,optionList 	: productList
+						 }
+						,{
+							 type			: "term"	
+							,title			: "검색기간"
+							,whereColumn	: "YYYYMMDD"
+						 }
+						,{
+							 type				: "singleSelectBox"	
+							,title				: "입출고"
+							,whereColumn		: "INOUT"
+							,optionListGrpCode 	: "IN_OUT"
+							,firstItem			: ["", "전체"]
+						 }
+					]
+				 }
+				,noEdit 			: "Y"
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+			}
+			C_COMP.import("stockInoutGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);
+		});
+		
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="stockInoutGrid"></compnent>    
+    <!-- table area end -->
+</component>

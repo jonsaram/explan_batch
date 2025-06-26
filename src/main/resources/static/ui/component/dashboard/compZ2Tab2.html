@@ -1,0 +1,745 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var INIT_YEAR, CUR_YEAR, SALE_AMOUNT_GROWTH_RATE_INIT, 
+		SALE_AMOUNT_GROWTH_RATE, PROFIT_GROWTH_RATE_INIT, PROFIT_GROWTH_RATE,
+		CUR_YEAR_VALUATION, CUR_YEAR_ONESTOCKPRICE;
+	var <@compId> = {
+		 selectedCheck :{ "grpCodeList": [],"normalCodeList": [] }
+		,getItems : (loc) => {
+				const requestParm = {};
+				const updateItems = $("#"+loc+" input:not([type='radio'])");
+				
+				const valuesArray = updateItems.map(function() {
+				    return { name: this.name, value: ""+$(this).val() };
+				}).get();
+				
+				valuesArray.forEach(function(item) {
+					requestParm[item.name] = item.value;
+				});
+	
+				return requestParm;
+				
+		}
+		,createChart 		: (container, categories, series)=><@parentId>._barLineChart(container, categories, series)
+		,showObject : (obj, loc) => {
+			try{
+				var keys = Object.keys(obj);
+			    for (var i=0; i<keys.length; i++) {
+			    	var key = keys[i];
+			    	$("#<@compId>_" + key).html(obj[key]);
+			    	$(".<@compId>_" + key).html(obj[key]);
+			    }
+			} catch(e) {
+				
+			}
+		}
+		,setYearObject : (obj, loc) => {
+			try{
+				INIT_YEAR = obj['INIT_YEAR'];
+				CUR_YEAR = obj['CUR_YEAR'];
+			} catch(e) {
+				
+			}
+		}
+		,setBasisObject : (obj, loc) => {
+			try{
+				SALE_AMOUNT_GROWTH_RATE_INIT = obj['SALE_AMOUNT_GROWTH_RATE_INIT']; 
+				SALE_AMOUNT_GROWTH_RATE = obj['SALE_AMOUNT_GROWTH_RATE']; 
+				PROFIT_GROWTH_RATE_INIT = obj['PROFIT_GROWTH_RATE_INIT']; 
+				PROFIT_GROWTH_RATE = obj['PROFIT_GROWTH_RATE'];
+			} catch(e) {
+				
+			}
+		}
+		,showList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			C_COM.renderHtml("<@compId>", rpm);
+		}
+		,showSimulList : (targetId, dataList) => { 
+			const rpm = {
+					 targetId 		: targetId
+					,list			: dataList  
+				}
+			var preYear_sale_amount = 0;
+			var curYear_profilt = [];
+			var market_curYear_profit = 0;
+			var preYear_capital = 0;
+			var preYear_micheobun = 0;
+			var yearCount = 0;
+			/**************************************************
+			0:	경과기간			1:	(대표이사 나이)
+			2:	주식수, 			3:	1주당액면가	
+			4:	자산, 				5:	부채
+			6:	자본,				7:	미처분이익잉여금(결손금)
+			8:	매출액,				9:	당기순이익(순손실)
+			10:	매출액증가율, 		11:	순이익율
+			12:	영업권평가액,		13:	1주당순손익가치
+			14:	1주당순자산가치		15:	1주당주식가액
+			16:	상증법상 기업가치	17:	상증법상 기업가치상승률(전년대비)
+			==> 하위항목은 주식가치 절감효과용
+			18: 연간 배당금			19: 대표이사 퇴직금
+			20: 시장가치당기순이익(순손실)
+			21: 시장가치상승률
+			22: 시장가치 1주당순손익가치			
+			****************************************************/
+			//매출액({전년 매출액 * 당해년 매출액 증가율} + 당해년 매출액)
+			for(var i=0; i<rpm.list.length; i++){
+				for(var j=0; j<24; j++){
+					if(j==0){
+						eval("rpm.list[0].P_"+(parseInt(INIT_YEAR)+j)+"='기준년도'");
+						if(!isNaN(rpm.list[1].AMOUNT+(INIT_YEAR-CUR_YEAR))){
+							eval("rpm.list[1].P_"+(parseInt(INIT_YEAR)+j)+"='"+(rpm.list[1].AMOUNT+(INIT_YEAR-CUR_YEAR))+"세'");
+						}else{
+							eval("rpm.list[1].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+						}
+						if(rpm.list[i].ITEM_NAME=='매출액'){
+							preYear_sale_amount = rpm.list[i].AMOUNT;
+						}
+						if(rpm.list[i].ITEM_NAME=='시장가치당기순이익(순손실)'){
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[i].AMOUNT);
+							curYear_profilt[0] = rpm.list[9].AMOUNT;
+						}
+						eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[i].AMOUNT);
+					}else{
+						/* 3. 부채(부채는 매년 동일함) */
+						if(rpm.list[i].ITEM_NAME=='부채'){
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[i].AMOUNT);
+						/* 8. 매출액 증가율 */
+						}else if(rpm.list[i].ITEM_NAME=='매출액증가율'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+SALE_AMOUNT_GROWTH_RATE_INIT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+SALE_AMOUNT_GROWTH_RATE);
+							}
+						/* 9. 순이익율 */
+						}else if(rpm.list[i].ITEM_NAME=='순이익율'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+PROFIT_GROWTH_RATE_INIT);
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+PROFIT_GROWTH_RATE);
+							}
+						/* 6. 매출액 = {전년 매출액 * 당해년 매출액 증가율} + 당해년 매출액 */
+						}else if(rpm.list[i].ITEM_NAME=='매출액'){
+							if(j<10){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+Math.round((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE_INIT/100))+preYear_sale_amount));
+								preYear_sale_amount = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE_INIT/100)+preYear_sale_amount);
+								curYear_profilt[j] = Math.round(((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE_INIT/100))+preYear_sale_amount)*(PROFIT_GROWTH_RATE_INIT/100));
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+Math.round((preYear_sale_amount*(SALE_AMOUNT_GROWTH_RATE/100))+preYear_sale_amount));
+								preYear_sale_amount = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE/100)+preYear_sale_amount);
+								curYear_profilt[j] = Math.round((preYear_sale_amount*SALE_AMOUNT_GROWTH_RATE/100)+preYear_sale_amount*(PROFIT_GROWTH_RATE/100));
+							}
+						/* 9. 순이익율 */
+						}else if(rpm.list[i].ITEM_NAME=='주식수' || rpm.list[i].ITEM_NAME=='1주당액면가'){
+							eval("rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[2].AMOUNT);
+							eval("rpm.list[3].P_"+(parseInt(INIT_YEAR)+j)+"="+rpm.list[3].AMOUNT);
+						/* 0. 경과기간 */
+						}else if(rpm.list[i].ITEM_NAME=='경과기간'){
+							if(parseInt(INIT_YEAR)+j < parseInt(CUR_YEAR)){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='기준년도+"+j+"'");
+							}else if(parseInt(INIT_YEAR)+j==parseInt(CUR_YEAR)){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='당해년도'");
+								yearCount = 0;
+							}else{
+								yearCount += 1;
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='"+yearCount+"년 후'");
+							}
+						/* 1. (대표이사 나이) */
+						}else if(rpm.list[i].ITEM_NAME=='(대표이사 나이)'){
+							if(!isNaN(rpm.list[1].AMOUNT+(INIT_YEAR-CUR_YEAR))){
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"='"+(rpm.list[1].AMOUNT+(j+(INIT_YEAR-CUR_YEAR)))+"세'");
+							}else{
+								eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+							}
+						/* 20. 시장가치당기순이익(순손실) */
+						}else if(rpm.list[i].ITEM_NAME=='당기순이익(순손실)'){
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"="+0);
+						}else{
+							eval("rpm.list["+i+"].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+						}
+					}
+				}
+			}
+			/* 9. 당기순이익(순손실) = 당해년 매출액 * 당해년 순이익율 */
+			for(var j=1; j<curYear_profilt.length; j++){
+				eval("rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"="+curYear_profilt[j]);
+				if(j==1){
+					eval("rpm.list[20].P_"+(parseInt(INIT_YEAR)+j-1)+"=rpm.list[20].P_"+(parseInt(INIT_YEAR)+j-1));
+				}
+				eval("rpm.list[20].P_"+(parseInt(INIT_YEAR)+j)+"="+curYear_profilt[j]);
+				//market_curYear_profit = curYear_profilt[j];
+			}
+			/* 6. 자본 = 전해년 자본 + 당기순이익 */
+			for(var j=0; j<24; j++){
+				if(j<1){
+					preYear_capital = eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+				}else{
+					eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"="+(curYear_profilt[j]+preYear_capital));
+					preYear_capital = eval("rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+				}
+			}
+			/* 4. 자산 = 부채 + 자본 */
+			for(var j=1; j<24; j++){
+				eval("rpm.list[4].P_"+(parseInt(INIT_YEAR)+j)+"="+"rpm.list[5].P_"+(parseInt(INIT_YEAR)+j)+"+"+"rpm.list[6].P_"+(parseInt(INIT_YEAR)+j));
+			}
+			/* 7. 미처분이익잉여금(결손금) = 전해년 미처분이익잉여금(결손금) + 당해년 당기순이익 */
+			for(var j=0; j<24; j++){
+				if(j<1){
+					preYear_micheobun = eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j));
+				}else{
+					eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j)+"="+(curYear_profilt[j]+preYear_micheobun));
+					preYear_micheobun = eval("rpm.list[7].P_"+(parseInt(INIT_YEAR)+j));
+				}
+			}
+			/* 12. 영업권 평가액 = [[{((전전해년 당기순이익*1)+(전해년 당기순이익*2)+(당해년 당기순이익*3))/6}*50%]-(당해년도 자본*10%)]*3.7908 */
+			console.log("영업권 평가액 계산 ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>1){					
+					computeStr = "Math.round(((((";
+					computeStr += "rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-2));
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-1))+"*2)";
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"*3))/6)*0.5)";
+					computeStr += "-(rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"*0.1))*3.7908)";					
+					eval("rpm.list[12].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+					console.log(computeStr);
+				}else{
+					eval("rpm.list[12].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+			}
+			console.log("영업권 평가액 계산 <====================");
+			/* 13. 1주당순손익가치 = {((전전해년 당기순이익*1)+(전해년 당기순이익*2)+(당해년 당기순이익*3))/6}/(당해년 주식수*당해년1주당액면가) */
+			console.log("1주당순손익가치 계산 ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round((((";
+					computeStr += "rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-2));
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+(j-1))+"*2)";
+					computeStr += "+(rpm.list[9].P_"+(parseInt(INIT_YEAR)+j)+"*3))/6)/";
+					computeStr += "(rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"))*10000)";
+					eval("rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+					console.log(computeStr);
+				}else{
+					eval("rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+			}
+			console.log("시장가치 1주당순손익가치 계산 <====================");
+			/* 22. 시장가치 1주당순손익가치 = {((전전해년 시장가치 당기순이익*1)+(전해년 시장가치 당기순이익*2)+(당해년 시장가치 당기순이익*3))/6}/(당해년 주식수*당해년1주당액면가) */
+			console.log("시장가치 1주당순손익가치 계산 ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round((((";
+					computeStr += "rpm.list[20].P_"+(parseInt(INIT_YEAR)+(j-2));
+					computeStr += "+(rpm.list[20].P_"+(parseInt(INIT_YEAR)+(j-1))+"*2)";
+					computeStr += "+(rpm.list[20].P_"+(parseInt(INIT_YEAR)+j)+"*3))/6)/";
+					computeStr += "(rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"))*10000)";
+					eval("rpm.list[22].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+					console.log(computeStr);
+				}else{
+					eval("rpm.list[22].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+			}
+			console.log("시장가치 1주당순손익가치 계산 <====================");
+			/* 14. 1주당순자산가치 = (당해년 자본/당해년 주식수)이 0보다 크면 [(당해년 자본/ 당해년 주식수)*1000]이고 아니면 0  */
+			console.log("1주당순자산가치 ====================>");
+			for(var j=0; j<24; j++){
+				if(j>1){
+					var rtn = eval("Math.round(rpm.list[6].P_"+(parseInt(INIT_YEAR)+j)+"/+rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*1000)"); 
+					if(rtn>0){
+						eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"="+rtn);
+					}else{
+						eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"=0");
+					}
+				}else{
+					eval("rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(rtn);
+			}
+			console.log("1주당순자산가치 <====================");
+			/* 15. 1주당주식가액 = (당해년 1주당순손익가치*60%)+(당해년 1주당순자산가치*40%)  */
+			console.log("1주당주식가액 ====================>");
+			for(var j=0; j<24; j++){
+				if(j>1){
+					var rtn = eval("Math.round((rpm.list[11].P_"+(parseInt(INIT_YEAR)+j)+"*0.6)+(rpm.list[14].P_"+(parseInt(INIT_YEAR)+j)+"*0.4))"); 
+					eval("rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"="+rtn);
+				}else{
+					eval("rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(rtn);
+			}
+			console.log("1주당주식가액 <====================");
+			/* 16. 상증법상 기업가치 = [(당해년 1주당순손익가치*주식수*3)+(당해년 1주당순자산가치*주식수*2)]/5  */
+			console.log("상증법상 기업가치 ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round(((rpm.list[13].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*3)+";
+					computeStr    += "(rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*2))/5/1000)"; 
+					eval("rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(computeStr);
+			}
+			CUR_YEAR_VALUATION = eval("rpm.list[16].P_"+CUR_YEAR)/100000;
+			CUR_YEAR_ONESTOCKPRICE = eval("rpm.list[15].P_"+CUR_YEAR);
+			console.log("상증법상 기업가치 <====================");
+			/* 18. 시장 기업가치 = [(당해년 시장가치 1주당순손익가치*주식수*3)+(당해년 1주당순자산가치*주식수*2)]/5*(시장가치상승률)  */
+			console.log("상증법상 기업가치 ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>1){
+					computeStr = "Math.round(((rpm.list[22].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*3)+";
+					computeStr    += "(rpm.list[15].P_"+(parseInt(INIT_YEAR)+j)+"*rpm.list[2].P_"+(parseInt(INIT_YEAR)+j)+"*2))/5*parseFloat(rpm.list[21].P_"+INIT_YEAR+")/1000)"; 
+					eval("rpm.list[18].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[18].P_"+(parseInt(INIT_YEAR)+j)+"=''");
+				}
+				console.log(computeStr);
+			}
+			console.log("시장 기업가치 <====================");
+			/* 17. 상증법상 기업가치상승률(전년대비) = [(당해년 기업가치-전해년도 기업가치)/전해년도 기업가치]*100  */
+			console.log("상증법상 기업가치상승률(전년대비) ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>2){
+					computeStr = "Math.round(rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"=((rpm.list[16].P_"+(parseInt(INIT_YEAR)+j)+"-rpm.list[16].P_"+(parseInt(INIT_YEAR)+(j-1))+")/rpm.list[16].P_"+(parseInt(INIT_YEAR)+(j-1))+")*100*100)/100";
+					eval("rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[17].P_"+(parseInt(INIT_YEAR)+j)+"='0'");
+				}
+				console.log(computeStr);
+			}
+			console.log("상증법상 기업가치상승률(전년대비) <====================");
+			/* 19. 시장 기업가치상승률(전년대비) = [(당해년 시장 기업가치-전해년도 시장 기업가치)/전해년도 시장 기업가치]*100  */
+			console.log("시장 기업가치상승률(전년대비) ====================>");
+			for(var j=0; j<24; j++){
+				var computeStr = "";
+				if(j>2){
+					computeStr = "Math.round(rpm.list[19].P_"+(parseInt(INIT_YEAR)+j)+"=((rpm.list[18].P_"+(parseInt(INIT_YEAR)+j)+"-rpm.list[18].P_"+(parseInt(INIT_YEAR)+(j-1))+")/rpm.list[18].P_"+(parseInt(INIT_YEAR)+(j-1))+")*100*100)/100";
+					eval("rpm.list[19].P_"+(parseInt(INIT_YEAR)+j)+"="+computeStr);
+				}else{
+					eval("rpm.list[19].P_"+(parseInt(INIT_YEAR)+j)+"='0'");
+				}
+				console.log(computeStr);
+			}
+			console.log("시장 기업가치상승률(전년대비) <====================");
+			
+			console.log(rpm.list);
+			console.log(curYear_profilt);
+
+			<@compId>.setChart(rpm.list);
+		}
+		,selectQueryGroup : function(pmt, callback) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getBasis01"
+						,requestParm		: pmt
+					},
+					{
+						 queryId 			: "valuation.getSimulForYearInfo"
+						,requestParm		: pmt
+					}
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.setBasisObject(resultData.data['financialanalysis.getBasis01'][0],'');
+				<@compId>.showObject(resultData.data['financialanalysis.getBasis01'][0],'');
+				<@compId>.setYearObject(resultData.data['valuation.getSimulForYearInfo'][0],'');
+				
+				//const returnData = Object.entries(resultData.data) ;
+				//const maskedData = <@compId>.setCoverMask( returnData );
+				//resultData.data  = Object.fromEntries(maskedData);
+				//<@compId>.showList("<@compId>_getFinAnalStockholder", resultData.data['financialanalysis.getFinAnalStockholder']);
+				//debugger;
+				//if(resultData.data['financialanalysis.getFinAnalStockholder'].length > 0){
+				//	$("#<@compId>_getFinAnalStockholder_baseDate").text(resultData.data['financialanalysis.getFinAnalStockholder'][0].BASE_DATE);
+				//}
+				
+				if(typeof callback == "function") callback();
+				
+			});
+		 }
+		,selectQueryGroup2 : function(pmt, callback) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "valuation.getValueSimulForStdYear"
+						,requestParm		: pmt
+					},
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				<@compId>.showSimulList("<@compId>_getValueSimulForStdYear", resultData.data['valuation.getValueSimulForStdYear']);
+				
+				
+				$("#<@compId>_getCurYear").html(CUR_YEAR);
+
+				$("#<@compId>_getCurYearValuation").html(CUR_YEAR_VALUATION);
+				
+				$(".<@compId>_getCurYearValuation").html(CUR_YEAR_VALUATION);
+				
+				$("#<@compId>_getCurYearOneStockPrice").html(CUR_YEAR_ONESTOCKPRICE);
+				
+				if(typeof callback == "function") callback();
+			});
+		 }
+		,selectQueryGroup3 : function(pmt, callback) {
+			var parm = {
+				queryGroup : [
+					{
+						 queryId 			: "financialanalysis.getFinAnalStockholder"
+						,requestParm	: pmt
+					}
+				]
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				const returnData = Object.entries(resultData.data) ;
+				const maskedData = <@compId>.setCoverMask( returnData );
+				resultData.data  = Object.fromEntries(maskedData);
+
+				resultData.data['financialanalysis.getFinAnalStockholder'].forEach(function(item){
+					if(item.SHARE_RATIO !== undefined && item.SHARE_RATIO !== null){
+						item.VALUE_OF_SHARES_HELD = CUR_YEAR_VALUATION*item.SHARE_RATIO/100;						
+					}else{
+						item.VALUE_OF_SHARES_HELD = '';
+					}
+				});
+
+				if(resultData.data['financialanalysis.getFinAnalStockholder'].length > 0){
+					$("#<@compId>_getFinAnalStockholder_baseDate").text(resultData.data['financialanalysis.getFinAnalStockholder'][0].BASE_DATE);
+				}
+				if(typeof callback == "function") callback();
+				<@compId>.showList("<@compId>_getFinAnalStockholder", resultData.data['financialanalysis.getFinAnalStockholder']);				
+			});
+		 }
+		,setChart : (list) =>{
+			const _yearValuationStockArray = [];	// 년도별
+			const getPricePerStock = [];			// 년도별 1주당 주식가액
+			const getTotalStockValuation = [];		// 년도별 상증법상 기업가치
+			const getTotalMarketStockValuation = [];// 년도별 시장 기업가치
+			
+			var stepCount = 0;
+			var keys = Object.keys(list[0]);
+			for(var i=0; i<keys.length; i++){
+				if(keys[i].indexOf("P_")>-1){
+					if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+						stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+						_yearValuationStockArray.push(keys[i].substring(2,keys[i].length));
+					}
+					stepCount += 1;
+				}
+			}
+			stepCount = 0;
+			keys = Object.keys(list[15]);
+			for(var i=0; i<keys.length; i++){
+				if(keys[i].indexOf("P_")>-1){
+					if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+						stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+						var valueStr = eval("list[15]."+keys[i]);
+						getPricePerStock.push(valueStr);				
+					}
+					stepCount += 1;
+				}
+			}
+			
+			stepCount = 0;
+			keys = Object.keys(list[16]);
+			for(var i=0; i<keys.length; i++){
+				if(keys[i].indexOf("P_")>-1){
+					if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+						stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+						var valueStr = eval("list[16]."+keys[i]);
+						getTotalStockValuation.push(valueStr/100000);				
+					}
+					stepCount += 1;
+				}
+			}
+			
+			stepCount = 0;
+			keys = Object.keys(list[18]);
+			for(var i=0; i<keys.length; i++){
+				if(keys[i].indexOf("P_")>-1){
+					if(keys[i]==("P_"+CUR_YEAR) || stepCount==0 || stepCount==6 || stepCount==8 ||
+						stepCount==10 || stepCount==13 || stepCount==18 || stepCount==23 || stepCount==26){
+						var valueStr = eval("list[18]."+keys[i]);
+						getTotalMarketStockValuation.push(valueStr/100000);				
+					}
+					stepCount += 1;
+				}
+			}
+			//년도별 기업가치 예상 추이
+			<@compId>.createChart( "<@compId>_valuationStock_chart" 
+							, _yearValuationStockArray , [{  name: '상증법상 기업가치',type: 'column', yAxis: 1,	data: getTotalStockValuation, tooltip: {valueSuffix:'만원'}
+											},{  name: '시장 기업가치',type: 'column', yAxis: 1,	data: getTotalMarketStockValuation, tooltip: {valueSuffix:'만원'}
+											},{  name: '1주당 주식가액',type: 'line',	data: getPricePerStock, tooltip: {valueSuffix:'만원'}}											 
+											]);
+		}
+		,goPage : (compId,rowId) => {
+	
+			const $tds = $(`[name='<@compId>_tr_${rowId}']`)
+			const jsonObject = {};
+	
+			jsonObject['BOARD_MST_ID'] = $("#BOARD_MST_ID").val();
+			
+			$tds.children("td").each(function() {
+				
+			    const id = this.id;
+			    const value = $(this).text().trim();
+				if( id )
+			    	jsonObject[id] = value;
+			});
+	
+			C_PM.movePage( compId.trim(), jsonObject );
+			
+		}
+		,setHandler : () => {
+		}		
+		,setEachColumnValue : (loc, arr ,grp) => {
+		}
+		,fnRadioCheckValue : (loc, name , pValue) => {
+		}
+		,setCoverMask : (data) =>{
+	
+			const names = ["STOCKHOLDER_NM" , "OWNER_NM"]; // 마스킹할 이름 ARRAY
+			const jumins = [];
+			const saupNos = [];
+			data.forEach( dd => {
+				
+				let rData = dd[1];
+				rData.forEach( da =>{
+	
+					names.forEach( name =>{if( da && !isEmpty(da[name]) )da[name] = <@compId>.getMask('name',da[name]);})
+					jumins.forEach( jumin =>{if( da && !isEmpty(da[jumin]) )da[jumin] = <@compId>.getMask('jumins',da[jumins]);})
+					saupNos.forEach( saupNo =>{if( da && !isEmpty(da[saupNo]) )da[saupNo] = <@compId>.getMask('saupNo',da[saupNo]);})
+					
+				})
+				
+			})
+			
+			return data;
+		}
+	
+		,getMask :(gubun,str)=> {
+	
+			switch (gubun) {
+				case "name":	// 이름 : 첫 번째 글자만 남기고 나머지 글자를 '*'로 마스킹
+					if (str && str.length > 0) {
+		                return str[0] + '*'.repeat(str.length - 1);
+		            }
+		            break;
+	
+				case "jumin":	// 주민번호 : 앞 6자리까지 표시하고 이후는 '*'로 마스킹
+					if (str && str.length >= 7) {
+						return str.slice(0, 6) + '-*******';
+		            }
+		            break;
+	
+		        case "saupNo":	// 사업자번호 : 앞 3자리와 뒤 2자리만 표시하고 중간은 '*'로 마스킹
+					if (str && str.length >= 10) {
+						return str.slice(0, 3) + '-**-****';
+					}
+					break;
+		        default:
+		            // 해당되지 않는 경우 원본 반환
+		            return str;
+		    }
+	
+		    return str;
+		 }
+		,generalCompareEdit : () => {
+			let parm = {
+				 gridParm 	: {
+					 tableName		: "TBL_EXP_FIN_ANAL_STOCKHOLDER"
+					,columnMap 		: {
+						 "BUYER_ID" 			: { headerText : "BUYER_ID"	}  // ifNewAutoSet = "random" 인경우 값이 숨겨져 있기 때문에 새로운 Row Insert시 값 랜덤값 Setting
+						,"SEQ" 					: { headerText : "연번"	}
+						,"STOCKHOLDER_NM" 		: { headerText : "주요주주"	}
+						,"STOCK_CNT" 			: { headerText : "주식수"	}
+						,"SHARE_RATIO" 			: { headerText : "지분율"	}
+						,"STOCK_KIND" 			: { headerText : "주식종류"	}
+						,"OWNER_RELATIONSHIP" 	: { headerText : "경영실권자와의 관계"	}
+						,"COMPANY_RELATIONSHIP" : { headerText : "회사와의 관계"	}
+						,"BORROWED_NM_YN" 		: { headerText : "차명주주 여부"	}
+					 }
+					 // Header가 두줄인경우, 같은이름으로 Grouping한다.
+					,columnConfig 	: {
+					 }
+					 /*
+					,rowConfig		: {
+						onClickRow : function(rowObj) {
+							dalert(rowObj);
+						}
+					 }
+					,gridConfig : {
+						width : ""	
+					 }
+					 */
+					,primaryKeyList		: ["BUYER_ID", "SEQ"]
+					,searchColumnList	: ["BUYER_ID", "SEQ"]		// Table 지정인경우 적용
+					//,orderColumnList 	: ["GROUP_1 ASC", "GROUP_2 ASC"]				// Table 지정인경우 적용
+					//,checkbox			: "show"
+					//,ordernum			: "hide"
+					//,readOnly			: "Y"
+					//,gridWidth		: "2000px"
+					,filterWhere		: `BUYER_ID = '${G_VAL.session.BUYER_ID}'`
+				 }
+				,popupTitle : `주주 및 임원`
+				,size 		: "MAX"
+			}
+			C_POP.open("popup_common_tableEditPopup", parm, function(retData){
+				if(isValid(retData)) {
+					if(retData.refresh == "Y") {
+						<@compId>.reload();
+					}
+				}
+			});
+		 },
+	}
+
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		data.BUYER_ID = G_VAL.session.BUYER_ID;
+		<@compId>.selectQueryGroup(data, function() {
+			data.INIT_YEAR = INIT_YEAR;
+			data.CUR_YEAR =  CUR_YEAR;
+			<@compId>.selectQueryGroup2(data, function(){
+				<@compId>.selectQueryGroup3(data);
+			});
+		});
+		
+		// 20250211 
+		// code by 위성열
+		// Main Widget 처리
+		C_WIDGET.getWidgetList(<@compId>.compTemplateId, function(widgetList) {
+			C_WIDGET.setWidgetState("<@compId>", widgetList);
+		});
+		
+	});
+</script>
+<!-- 비상장주식 가치평가​ area start -->
+   <div class="pop_tab_content_box fx-col2 fx-col2-md">
+       <div class="col8 col10-md col10-sm" wgtframe="<@compTemplateId>">
+           <div class="mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1" id="<@compTemplateId>_grp1_title">
+               <div class="biz-subTitle">
+                   비상장주식 가치평가
+                   <div class="ml20">
+                       <label class="star-wrap">
+                           <input type="checkbox" id="<@compTemplateId>_grp1_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp1')"/>
+                           <span class="star"></span>
+                       </label>
+                   </div>
+               </div>
+           </div>
+           <div class="display-row-between display-row-nowrap-md gap10" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">
+               <div class="display-row-between tab-card-outline col4 col10-md col10-sm">
+                   <div class="col5 col10-md col10-sm p20 deco-line-rt">
+                       <p class="mb30 p20 txt-center deco-line">
+                           <img src="images/company01.svg" alt="" width="60px" style="opacity: 0.6;">
+                       </p>
+                       <p class="fs14 txt-center fs-w mb20">기업 가치</p>
+                       <p class="fs14 txt-center txt-cyan"><span id="<@compId>_getCurYearValuation" class="fs40"></span>억원</p>
+                   </div>
+                   <div class="col5 col10-md col10-sm p20">
+                       <p class="mb30 p20 txt-center deco-line">
+                           <img src="images/stock01.png" alt="" width="60px" style="opacity: 0.6;">
+                       </p>
+                       <p class="fs14 txt-center fs-w mb20">1주당 주식가액</p>
+                       <p class="fs14 txt-center txt-cyan"><span id="<@compId>_getCurYearOneStockPrice" class="fs40"></span>원</p>
+                   </div>
+               </div>
+               <div class="tab-card-outline col6 col10-md col10-sm">
+                   <div class="table-allwrap tb-div-h05">
+                       <!-- table start -->
+                       <table class="table-inwrap">
+                           <colgroup>
+                               <col width="">
+                               <col width="">
+                               <col width="">
+                               <col width="">
+                           </colgroup>
+                           <thead class="table-thead">
+                               <tr>
+                                   <th>주주명</th>
+                                   <th>지분율</th>
+                                   <th>보유지분가치</th>
+                                   <th>관계</th>
+                               </tr>
+                           </thead>
+						   <tbody id="<@compId>_getFinAnalStockholder">
+						   </tbody>
+						   <script type="text/x-jsrender" id="<@compId>_getFinAnalStockholder_template">
+							{{for list}}
+							<tr>
+								<td>{{:STOCKHOLDER_NM}}</td>
+								<td>{{:SHARE_RATIO}}%</td>
+								<td>{{:VALUE_OF_SHARES_HELD}}</td>
+								<td>{{:OWNER_RELATIONSHIP}}</td>
+							</tr>
+							{{/for}}
+						   </script>
+						   <script type="text/x-jsrender" id="<@compId>_getFinAnalStockholder_noData_template">
+							<tr>	
+								<td colspan=4>자료가 없습니다.</td>	
+							</tr>
+						   </script>
+						   </tbody>
+                       </table>
+                       <!-- table end -->            
+                   </div>
+               </div>
+           </div>
+           <div class="caption reference mt10" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp1">평가 기준일 : <span id="<@compId>_getCurYear"></span>-12-31</div>
+           <div class="mt30 mb5 display-between" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2" id="<@compTemplateId>_grp2_title">
+               <div class="biz-subTitle">
+                   연도별 기업 가치 예상 추이
+                   <div class="ml20">
+                       <label class="star-wrap">
+                           <input type="checkbox" id="<@compTemplateId>_grp2_cb" onclick="C_WIDGET.updateWidgetState('<@tabTitle>', this.checked, <@compId>.compId, '<@compTemplateId>_grp2')"/>
+                           <span class="star"></span>
+                       </label>
+                   </div>
+               </div>
+           </div>     
+           <div class="tab-card-outline mb10" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">
+               <div class="table-allwrap tb-div-h03">
+                   <div class="card-cnt-wrap p20">
+						<figure class="highcharts-figure2 mt45">
+					    	<div class="chart8" id="<@compId>_valuationStock_chart" style="width:100%; height:360px;display:block;"></div>
+						</figure>
+                   </div>
+               </div>
+           </div>
+           <div class="caption reference mt10" wgtgrp="<@compTemplateId>" domgrpid="<@compTemplateId>_grp2">위 비상장 주식 가치 평가는 재무제표를 기준으로 상증세법상 보충적 평가 방법에 의해 약식 평가한 것입니다.</div>
+       </div>                          
+       <div class="col2 col10-md col10-sm tab-card-outline w240" wgtgrp="<@compTemplateId>">
+           <div class="add-file-wrap">
+               <div class="biz-subTitle">Check Point</div>
+           </div>
+           <div class="checkpoint-wrap">
+               <h4 class="checkpoint-subTitle">자본금</h4>
+               <div class="mb30 p20 txt-center deco-line">
+                   <img src="images/money02-img01.svg" alt="" width="40px">
+                   <div class="txt-center fs20 fs-w mt20"><span id="<@compId>_CAPITAL"></span>천원</div>
+               </div>
+               <h4 class="checkpoint-subTitle">주식수</h4>
+               <div class="mb30 p20 txt-center deco-line">
+                   <img src="images/stock-img02.svg" alt="" width="40px">
+                   <div class="txt-center fs20 fs-w mt20"><span id="<@compId>_STOCK"></span></div>
+               </div> 
+               <h4 class="checkpoint-subTitle">1주의 금액(액면가)</h4>
+               <div class="p20 txt-center">
+                   <img src="images/money02-img02.svg" alt="" width="40px">
+                   <div class="txt-center fs20 fs-w mt20"><span id="<@compId>_ONE_STOCK_PRICE"></span>원</div>
+               </div> 
+           </div>
+       </div> 
+   </div>
+<!-- 비상장주식 가치평가​ area end -->
+</component>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="sample">
+
+	<cache />
+
+	<update id="allowParallel" parameterType="map">
+		ALTER SESSION DISABLE PARALLEL DML
+	</update>
+	
+	
+	
+	<!-- MVT 및 Model의 실제 Data (관련 Table => T_MDL_MODEL_SAVE, T_MDL_MODEL_SAVE_MVT_ITEM) -->
+	<sql id="getSample_body">
+		SELECT 
+			ITEM_ID, ITEM1, ITEM2, ITEM3
+		FROM TBL_EXP_SAMPLE 
+		WHERE 1 = 1
+		<include refid="common.gridOptionWhere"/>
+		<include refid="common.gridOptionOrder"/>
+
+	</sql>
+	<select id="getSample" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* Sample.getSample  */
+		<include refid="getSample_body"/>
+	</select>
+	<select id="getSample_totalCnt" resultType="Integer" flushCache="true"  useCache="false">
+		/* Project.getSample_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getSample_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getSample_paging" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/* Project.getSample_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getSample_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+
+
+
+	<update id="updateSample" parameterType="map">
+		UPDATE TBL_EXP_SAMPLE SET ITEM1=444
+	</update>
+
+<!-- 
+
+	<sql id="getSampleList_body">
+		,
+		,
+		,
+	</sql>
+
+
+	<select id="getSampleList" resultType="java.util.HashMap">
+		/* Sample.getSampleList  */
+		<include refid="getSampleList_body"/>
+	</select>
+	<select id="getSampleList_totalCnt" resultType="Integer">
+		/* Project.getSampleList_totalCnt  */
+		<include refid="common.totalWrapStart"/>
+		<include refid="getSampleList_body"/>
+		<include refid="common.totalWrapEnd"/>
+	</select>
+	<select id="getSampleList_paging" resultType="java.util.HashMap">
+		/* Project.getSampleList_paging  */
+		<include refid="common.pagingWrapStart"/>
+		<include refid="getSampleList_body"/>
+		<include refid="common.pagingWrapEnd"/>
+	</select>
+ -->
+
+    
+</mapper>
+
+
+

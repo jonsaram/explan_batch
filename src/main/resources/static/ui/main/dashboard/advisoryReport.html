@@ -1,0 +1,86 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 loadComponent : function(parm) {
+
+			var ynCdList = C_COM.getCodeList("YES_OR_NO");
+			
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "custDashboard.getCustConsultingList"
+						 ,requestParm	: {}
+					 }	
+					//,tableName		: "STAR.TBL_EXP_BUYER_CONSULTING"
+					,tableName		: "TBL_EXP_BUYER_CONSULTING"
+					,columnMap 		: {
+						 "BUYER_CONSULTING_ID" 	: { headerText : "BUYER_CONSULTING_ID" 	, hidden : "Y"	}
+						,"BUYER_ID"      		: { headerText : "BUYER_ID"				, hidden : "Y"	}
+						,"CONSULTING_ID"       	: { headerText : "CONSULTING_ID" 		, hidden : "Y"	}
+						,"CONTRACT_ID" 			: { headerText : "CONTRACT_ID"    		, hidden : "Y"	}
+						,"CONTENT"   			: { headerText : "CONTENT"				, hidden : "Y"	}
+						,"USER_ID" 				: { headerText : "USER_ID"				, hidden : "Y"	}
+						,"REPORTER_NM" 			: { headerText : "REPORTER_NM"			, hidden : "Y"	}
+						,"BUYER_NM" 			: { headerText : "고객명"				, columnType : "popup"} 
+						,"CONSULTING_NM"    	: { headerText : "상품명"								}
+						,"USER_NM"    			: { headerText : "영업담당자"							}
+						,"UPDATE_DATE"    		: { headerText : "계약일"								}
+						,"TOTAL_COST"    		: { headerText : "계약금액"				,dataType   : "number"}
+						,"REPORT_YEAR_MONTH"    : { headerText : "보고년월"								}
+						/* ,"APPROVAL_STATE_NM"   	: { headerText : "진행상태"								} */
+						,"PREVIEW" 				: { headerText : "Preview"	, width :"100px", noSave : "Y", columnType : "button", buttonNm : "Preview"	, buttonFn : <@pageId>.onPreview 	}
+					 }
+					,columnConfig 		: {
+ 						 selectBoxCodeList 	: {
+						 	 "DEL_YN" : ynCdList
+						 }
+					 }
+					,rowConfig		: {
+						onDblClickRow : function(rowObj) {
+							C_POP.open("popup_dashboard_advisoryPopup", {param:rowObj}, function(retData){
+							// well Comeback
+							});
+						}
+					 }
+					,primaryKeyList		: ["BUYER_CONSULTING_ID", "BUYER_ID"]
+					,searchColumnList	: ["CONSULTING_NM","REPORT_YEAR_MONTH","TOTAL_COST", "(SELECT GET_USER_NM(USER_ID) FROM C##STAR.TBL_EXP_APPROVAL WHERE APPROVAL_ID = CS.BUYER_CONSULTING_ID FETCH FIRST 1 ROWS ONLY)"]			// Table 지정인경우 적용
+					,searchWhereMap		: {"C.BUYER_ID" : G_VAL.session.BUYER_ID }
+					,orderColumnList 	: ["BUYER_NM ASC", "CONSULTING_NM ASC"] // ORDER BY에 사용
+					,readOnly			: "Y"
+				}
+				,noEdit : "Y"
+			}
+			C_COMP.import("<@pageId>_tableGrid", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,onPreview : function(targetCell, rowData){
+
+            var parm = {
+                    queryId        : "Filemng.getFileList"
+                   ,requestParm    : {
+                        GRP_FILE_ID    	:  rowData.BUYER_CONSULTING_ID
+                        ,OWNER_CD 		: 'APPROVAL'
+                   }
+               }
+               C_COM.requestQuery(parm, function(resultData) {
+            	   
+            	   if( !isEmpty(resultData.data ) && resultData.data.length > 0){
+						const fileId = resultData.data[0].FILE_ID;
+			            window.open("previewFile.do?FILE_ID="+fileId+"&CONVERT_YN=Y", "_blank");
+            	   }
+               });
+		}
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		<@pageId>.loadComponent(parm);
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="<@pageId>_tableGrid"></compnent>    
+    <!-- table area end -->
+</page-component>

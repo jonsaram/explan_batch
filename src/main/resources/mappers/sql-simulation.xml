@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="simulation">
+
+	<cache />
+
+	<select id="getMarginList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	simulation.getMarginList
+			마진 시뮬레이션
+		*/
+		WITH BML AS (
+		<foreach item="item" index="index" collection="brandMenuList" separator=" UNION ALL ">
+		    SELECT #{item.BRAND_MENU_CD} AS BRAND_MENU_CD, #{item.SELLING_PRICE} AS SELLING_PRICE, #{item.RATE_CONFIG} AS RATE_CONFIG, #{item.PRICE_CONFIG} AS PRICE_CONFIG FROM DUAL
+		</foreach>
+		)
+		,MTL AS (
+		<foreach item="item" index="index" collection="ingredientList" separator=" UNION ALL ">
+		    SELECT #{item.INGREDIENT_CD} AS INGREDIENT_CD, ${item.PRICE_CONFIG} AS CONVERSION_UNIT_PRICE FROM DUAL
+		</foreach>
+		 )
+		,SM_INGREDIENT_MST AS (
+		    SELECT 
+		         NVL(B.INGREDIENT_CD         , A.INGREDIENT_CD            ) AS INGREDIENT_CD
+		        ,NVL(B.CONVERSION_UNIT_PRICE , A.CONVERSION_UNIT_PRICE    ) AS CONVERSION_UNIT_PRICE
+		    FROM 
+		         VIEW_INGREDIENT_MST			A
+		        ,MTL                            B
+		    WHERE 1=1
+		        AND	A.INGREDIENT_CD 		= B.INGREDIENT_CD(+)
+		 ) 
+		, UP AS (
+		    SELECT 
+		         A.BRAND_ID      	
+		        ,A.BRAND_MENU_CD
+		        ,A.MENU_NM AS BRAND_MENU_NM
+		        ,A.SELLING_PRICE 	
+		        ,ROUND(SUM(C.QUANTITY * D.CONVERSION_UNIT_PRICE * B.QUANTITY))                  			 AS CONVERSION_UNIT_PRICE
+		        ,ROUND(SUM(C.QUANTITY * D.CONVERSION_UNIT_PRICE * B.QUANTITY) / A.SELLING_PRICE * 1000) / 10 AS UNIT_PRICE_RATE
+		        ,ROUND(SUM(C.QUANTITY * E.CONVERSION_UNIT_PRICE * B.QUANTITY))                               AS CONVERSION_UNIT_PRICE_SM
+		        ,ROUND(SUM(C.QUANTITY * E.CONVERSION_UNIT_PRICE * B.QUANTITY) / A.SELLING_PRICE * 1000) / 10 AS UNIT_PRICE_RATE_SM
+		    FROM 
+		         TBL_EXP_BRAND_MENU_MASTER		A
+		        ,TBL_EXP_MENU_RECIPE			B
+		        ,TBL_EXP_RECIPE_INGREDIENT		C
+		        ,VIEW_INGREDIENT_MST			D
+		        ,SM_INGREDIENT_MST		        E
+		    WHERE 1=1
+		        AND A.BRAND_MENU_ID		= B.BRAND_MENU_ID(+)
+		        AND B.RECIPE_CD			= C.RECIPE_CD(+)
+		        AND	C.INGREDIENT_CD 	= D.INGREDIENT_CD(+)
+		        AND	C.INGREDIENT_CD 	= E.INGREDIENT_CD(+)
+		        AND A.BRAND_ID = 'obong'
+		    GROUP BY 
+		         A.BRAND_ID      	
+		        ,A.BRAND_MENU_CD
+		        ,A.MENU_NM
+		        ,A.SELLING_PRICE 	
+		)
+		, SL AS (
+		    SELECT 
+		         YEAR
+		        ,MONTH
+		        ,C.BRAND_MENU_CD
+		        ,C.MENU_NM
+		        ,SUM(SALES									) AS SALES
+		        ,SUM(SALES * NVL(D.RATE_CONFIG, 0) / 100	) AS SM_SALES
+		    FROM 
+		         ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST A
+		        ,TBL_EXP_STORE_MENU_MST       B
+		        ,TBL_EXP_BRAND_MENU_MASTER    C
+		        ,BML						  D
+		    WHERE 1=1
+		        AND A.STORE_ID      = B.STORE_ID
+		        AND A.MENU_CD       = B.MENU_CD
+		        AND B.BRAND_MENU_CD = C.BRAND_MENU_CD(+)
+		        AND C.BRAND_MENU_CD = D.BRAND_MENU_CD
+		        AND A.BRAND_ID = #{barndId}
+		    <if test='storeId != null and !"".equals(storeId)'>
+		        AND A.STORE_ID = #{storeId}
+		    </if>
+		    <if test='startDate != null and !"".equals(startDate)'>
+		        AND A.YYYYMMDD <![CDATA[>=]]> #{startDate}
+		    </if>
+		    <if test='endDate != null and !"".equals(endDate)'>
+		        AND A.YYYYMMDD <![CDATA[<=]]> #{endDate}
+		    </if>
+		    GROUP BY 
+		        YEAR, MONTH, C.BRAND_MENU_CD, C.MENU_NM
+		    ORDER BY 
+		        YEAR, MONTH
+		)
+		SELECT 
+		     YEAR
+		    ,MONTH
+		    ,SUM(SALES) 					AS SALES
+		    ,SUM(MCOST) 					AS MCOST
+		    ,SUM(MCOST_SM				)	AS MCOST_SM
+		    ,SUM(SALES 		- MCOST		)	AS MARGIN
+		    ,SUM(SM_SALES	- MCOST_SM	) 	AS MARGIN_SM
+		FROM (
+		    SELECT 
+		         YEAR
+		        ,MONTH
+		        ,UP.BRAND_MENU_CD
+		        ,UP.BRAND_MENU_NM
+		        ,SALES
+		        ,SM_SALES
+		        ,ROUND(SALES 	* UP.UNIT_PRICE_RATE    / 100) AS MCOST
+		        ,ROUND(SM_SALES * UP.UNIT_PRICE_RATE_SM / 100) AS MCOST_SM
+		    FROM 
+		         UP
+		        ,SL
+		    WHERE 
+		        UP.BRAND_MENU_CD = SL.BRAND_MENU_CD
+		)        
+		GROUP BY
+		     YEAR
+		    ,MONTH
+		ORDER BY YEAR, MONTH    
+	</select>
+	
+	<select id="getMarginMenuList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+		/*	simulation.getMarginMenuList
+			마진 시뮬레이션 ( By Menu )
+		*/
+		WITH BML AS (
+		<foreach item="item" index="index" collection="brandMenuList" separator=" UNION ALL ">
+		    SELECT #{item.BRAND_MENU_CD} AS BRAND_MENU_CD, #{item.SELLING_PRICE} AS SELLING_PRICE, #{item.RATE_CONFIG} AS RATE_CONFIG, #{item.PRICE_CONFIG} AS PRICE_CONFIG FROM DUAL
+		</foreach>
+		)
+		,MTL AS (
+		<foreach item="item" index="index" collection="ingredientList" separator=" UNION ALL ">
+		    SELECT #{item.INGREDIENT_CD} AS INGREDIENT_CD, ${item.PRICE_CONFIG} AS CONVERSION_UNIT_PRICE FROM DUAL
+		</foreach>
+		)
+		, SM_INGREDIENT_MASTER AS (
+		    SELECT 
+		         NVL(B.INGREDIENT_CD         , A.INGREDIENT_CD            ) AS INGREDIENT_CD
+		        ,NVL(B.CONVERSION_UNIT_PRICE, A.CONVERSION_UNIT_PRICE   ) AS CONVERSION_UNIT_PRICE
+		    FROM 
+		         VIEW_INGREDIENT_MST  A
+		        ,MTL                            B
+		    WHERE 1=1
+		        AND	A.INGREDIENT_CD 		= B.INGREDIENT_CD(+)
+		)
+		, UP AS (
+		    SELECT 
+		         A.BRAND_ID      	
+		        ,A.BRAND_MENU_CD
+		        ,A.MENU_NM AS BRAND_MENU_NM
+		        ,A.SELLING_PRICE 	
+		        ,ROUND(SUM(C.QUANTITY * D.CONVERSION_UNIT_PRICE * B.QUANTITY))                  			 AS CONVERSION_UNIT_PRICE
+		        ,ROUND(SUM(C.QUANTITY * D.CONVERSION_UNIT_PRICE * B.QUANTITY) / A.SELLING_PRICE * 1000) / 10 AS UNIT_PRICE_RATE
+		        ,ROUND(SUM(C.QUANTITY * E.CONVERSION_UNIT_PRICE * B.QUANTITY))                               AS CONVERSION_UNIT_PRICE_SM
+		        ,ROUND(SUM(C.QUANTITY * E.CONVERSION_UNIT_PRICE * B.QUANTITY) / A.SELLING_PRICE * 1000) / 10 AS UNIT_PRICE_RATE_SM
+		    FROM 
+		         TBL_EXP_BRAND_MENU_MASTER		A
+		        ,TBL_EXP_MENU_RECIPE			B
+		        ,TBL_EXP_RECIPE_INGREDIENT		C
+		        ,VIEW_INGREDIENT_MST			D
+		        ,SM_INGREDIENT_MASTER	        E
+		    WHERE 1=1
+		        AND A.BRAND_MENU_ID		= B.BRAND_MENU_ID(+)
+		        AND B.RECIPE_CD			= C.RECIPE_CD(+)
+		        AND	C.INGREDIENT_CD 	= D.INGREDIENT_CD(+)
+		        AND	C.INGREDIENT_CD 	= E.INGREDIENT_CD(+)
+		        AND A.BRAND_ID = #{barndId}
+		    GROUP BY 
+		         A.BRAND_ID      	
+		        ,A.BRAND_MENU_CD
+		        ,A.MENU_NM
+		        ,A.SELLING_PRICE 	
+		)
+		, SL AS (
+		    SELECT 
+		         C.BRAND_MENU_CD
+		        ,C.MENU_NM
+		        ,SUM(SALES									) AS SALES
+		        ,SUM(SALES * NVL(D.RATE_CONFIG, 0) / 100	) AS SM_SALES
+		    FROM 
+		         ${dbHdr}${posHdr}TBL_EXP_STORE_MENU_SALES_MST A
+		        ,TBL_EXP_STORE_MENU_MST       B
+		        ,TBL_EXP_BRAND_MENU_MASTER    C
+		        ,BML						  D
+		    WHERE 1=1
+		        AND A.STORE_ID      = B.STORE_ID
+		        AND A.MENU_CD       = B.MENU_CD
+		        AND B.BRAND_MENU_CD = C.BRAND_MENU_CD(+)
+		        AND C.BRAND_MENU_CD = D.BRAND_MENU_CD
+		        AND A.BRAND_ID = #{barndId}
+		    <if test='storeId != null and !"".equals(storeId)'>
+		        AND A.STORE_ID = #{storeId}
+		    </if>
+		    <if test='startDate != null and !"".equals(startDate)'>
+		        AND A.YYYYMMDD <![CDATA[>=]]> #{startDate}
+		    </if>
+		    <if test='endDate != null and !"".equals(endDate)'>
+		        AND A.YYYYMMDD <![CDATA[<=]]> #{endDate}
+		    </if>
+		    GROUP BY 
+		        C.BRAND_MENU_CD, C.MENU_NM
+		    ORDER BY 
+		        C.MENU_NM
+		)
+		SELECT 
+		     BRAND_MENU_CD					AS MENU_CD
+		    ,BRAND_MENU_NM					AS MENU_NM
+		    ,SUM(SALES) 					AS SALES
+		    ,SUM(MCOST) 					AS MCOST
+		    ,SUM(MCOST_SM				)	AS MCOST_SM
+		    ,SUM(SALES 		- MCOST		)	AS MARGIN
+		    ,SUM(SM_SALES	- MCOST_SM	) 	AS MARGIN_SM
+		FROM (
+		    SELECT 
+		         UP.BRAND_MENU_CD
+		        ,UP.BRAND_MENU_NM
+		        ,SALES
+		        ,SM_SALES
+		        ,ROUND(SALES 	* UP.UNIT_PRICE_RATE    / 100) AS MCOST
+		        ,ROUND(SM_SALES * UP.UNIT_PRICE_RATE_SM / 100) AS MCOST_SM
+		    FROM 
+		         UP
+		        ,SL
+		    WHERE 
+		        UP.BRAND_MENU_CD = SL.BRAND_MENU_CD
+		)        
+		GROUP BY
+		     BRAND_MENU_CD
+		    ,BRAND_MENU_NM
+		ORDER BY BRAND_MENU_NM  
+	</select>	
+</mapper>

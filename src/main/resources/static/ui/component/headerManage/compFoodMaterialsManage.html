@@ -1,0 +1,91 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm1) {
+		
+		let parm = {
+			gridParm : {
+				 requestQuery	: {
+					  queryId		: "headerManage.getMaterialsMasterList"
+					 ,requestParm	: {}
+				 }
+				,tableName		: "TBL_EXP_FOOD_MATERIALS_MASTER"
+				,columnMap 		: {
+					 "MATERIALS_MASTER_ID" 			: { headerText : "MATERIALS_ID"	, hidden : "Y", ifNewAutoSet : "random"							}
+					,"BRAND_ID"            			: { headerText : "BRAND_ID"     , hidden : "Y", "default" 	: G_VAL.session.BRAND_ID			}
+					,"MATERIALS_CD"        			: { headerText : "자재CD"  		, width	 : "200px"												}
+					,"MATERIALS_NM"        			: { headerText : "자재명"  		, width	 : "250px", align : "left"								}
+					,"PRODUCT_CLASS"       			: { headerText : "자재구분"		, columnType : "selectbox", useCodeId : "PRODUCT_CLASS"			}
+					,"UNIT"                			: { headerText : "단위(g/ea)"																	}
+					,"CONVERSION_UNIT_PRICE"		: { headerText : "단가(원)"	 	, dataType : "number", fix : "1"								}
+					,"MANUFACTURER"        			: { headerText : "제조사/원산지", smallSizeHideColumn : "Y", align : "left", columnType : "selectbox", useBrandCodeId : "MANUFACTURER" }
+					,"NOTE"                			: { headerText : "비고"         , smallSizeHideColumn : "Y", align : "left"				}
+					,"DEL_YN"                		: { headerText : "사용여부"     , smallSizeHideColumn : "Y", columnType : "selectbox", useCodeId : "REVERSE_YN" }
+				 }
+				,columnConfig 	: {
+	                onDblClickCell        : function(columnId, rowData) {
+	                    if( in_array(columnId, ["CONVERSION_UNIT_PRICE"] )) {
+	                    	commonCompFn.openEditUnitPriceConfig({ materialsCd : rowData.MATERIALS_CD }, function() {
+	                    		<@parentId>["<@compId>_tableGrid"].reload();
+	                    	});
+	                    }
+	                }
+				 }
+				,primaryKeyList		: ["MATERIALS_MASTER_ID"]
+				,uniqueKeyList		: ["MATERIALS_CD"]
+				,searchColumnList	: ["MATERIALS_CD", "MATERIALS_NM"]
+				,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID }
+				,orderColumnList 	: ["B.SORT_ORDER", "MATERIALS_CD"]
+				//,checkbox			: "show"
+				//,ordernum			: "hide"
+				,readOnly			: "Y"
+			 }
+			,optionConfig		: {
+				searchComponentList : [
+					{
+						 type				: "multiSelectBox"	
+						,title				: "자재구분"
+						,whereColumn		: "PRODUCT_CLASS"
+						,optionListGrpCode	: "PRODUCT_CLASS"
+					}
+				]
+			 }
+			,addButtonList : [
+				/*
+				{
+					 title 		: "자재명관리"
+					,onClick	: function() {
+						<@compId>.openEditMultiTable();
+					 }  
+				}
+				*/
+				{
+					 title 		: "단가설정관리"
+					,onClick	: function() {
+						commonCompFn.openEditUnitPriceConfig();
+					 }  
+				}
+			 ]
+			,noTitle 			: "Y"
+			,noBreadcrumb		: "Y"
+			
+			,noTitle 			: "Y"
+			,noBreadcrumb		: "Y"
+		}
+		C_COMP.import("<@compId>_tableGrid", "component_compTableEditor",parm , function() {});
+		
+	});
+
+</script>
+
+
+<component>
+
+    <!-- table area start -->
+	<compnent id="<@compId>_tableGrid"></compnent>    
+    <!-- table area end -->
+
+</component>

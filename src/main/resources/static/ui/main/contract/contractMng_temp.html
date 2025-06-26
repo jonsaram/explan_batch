@@ -1,0 +1,502 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+var <@pageId> = {
+		 paMap : G_VAL.PAGE_AUTH_MAP["<@pageId>"]
+		,checkedItems : []
+ 		,excelParam : {}
+ 		,searchedRows : []
+ 		,SEARCH_COLUMN : []
+		,pageInit : () =>{
+
+			const processState = C_COM.getCodeList("PROCESS_STATE");
+			const exPreContract = processState.map( item => { return item[0] !='PRE_CONTRACT' && item[0] !='ON_CONTRACTING_APPR' ? item :'' }).filter(d=> !isEmpty(d));
+			
+			C_UICOM.makeSelectBox({ 
+					data 			: exPreContract
+				 	,targetId 		: "<@pageId>_selectProcessStatus" 
+			}, "multi");
+
+			
+			_setSearchListCnt("<@pageId>_pagingChunk" );
+			
+		}
+		,searchList : () => {
+			
+			const searchVal = $("#<@pageId>_nmSearch").val();
+			
+ 			if( isEmpty(searchVal) ){
+				<@pageId>.SEARCH_COLUMN = [];
+			}
+ 			const SEARCH_TEXT = ["USER_ID","USER_NM","EMAIL","PHONE"];
+ 			
+			const requestParm = { 
+				IS_MULTI_SEARCH : 'Y'				
+				,BUYER_NM 	: searchVal
+				,BUYER_ID	: searchVal
+				,USER_NM	: searchVal
+				
+				/* CALL_TYPE 이 USER 이면 biz 메뉴의 page */
+				,PA_ROLE	: isEmpty("<@CALL_TYPE>") ? <@pageId>.paMap.ROLE_ID : null
+				,CALL_TYPE	: "<@CALL_TYPE>"
+				,PROCESS_STATES : C_UICOM.getData("<@pageId>_selectProcessStatus") 
+			};
+			
+			var parm = {
+					 queryId 		: "contract.getContractList"
+					,requestParm	: requestParm
+			}
+			<@pageId>.excelParam = parm;
+			
+			const listRange = C_UICOM.getData("<@pageId>_pagingChunk");
+			C_PAGING.create({
+	 			 pageId				: "<@pageId>"
+	 			,listDomId			: "<@pageId>_contractList"
+	 			,pagingDomId		: "<@pageId>_pageDiv"
+	 			,totalCntDomId		: "<@pageId>_totalCnt"
+	 			,queryId			: "contract.getContractList"
+				,listRange			: Number(listRange)
+				,pageRange			: 10
+	 			,parmFn				: function() {
+	 				let parm = requestParm
+	 				return 	parm;
+	 			 }
+				,onPageClickCallback: function(data) {
+
+				 }
+				,makeListFn			: function(list) {
+					<@pageId>.searchedRows = list;	
+					<@pageId>.setHandler();
+				 }
+	 		});			
+			
+		}
+		,updateItem : (param) => {
+
+			const requestParm 	= param ? param : {} ;
+			let	  requestParmCM = [];
+			
+			if( requestParm["CONTRACT_MEMBER"] ) 
+			{
+				requestParmCM = requestParm["CONTRACT_MEMBER"];  
+				delete requestParm["CONTRACT_MEMBER"]; 
+			};
+			
+			requestParm["SP_CSTM_ID"] = G_VAL.SP_CSTM_ID;
+			if( !requestParm["CONTRACT_ID"] || requestParm["CONTRACT_ID"] == ''){
+				requestParm["CONTRACT_ID"] = C_COM.makeUniqueId();
+				
+				requestParmCM.forEach( obj => obj.CONTRACT_ID = requestParm["CONTRACT_ID"]);
+			}
+			
+			var parm ={
+						queryId 		: "contract.updateContract"
+						,requestParm	: requestParm
+			}
+
+			C_COM.requestQuery(parm, function(resultData) {
+
+				if( resultData.state == "S"){
+
+					C_COM.requestQuery({
+						 queryId 		: "contract.deleteContractMember"
+						,requestParm	: {CONTRACT_ID : requestParm["CONTRACT_ID"]}
+					}, function(resultData) {
+
+						const lastCnt = requestParmCM.length;
+						requestParmCM.forEach( (member,index) => {
+							
+							C_COM.requestQuery({
+								 queryId 		: "contract.updateContractMember"
+								,requestParm	: member
+							}, function(resultData) {
+
+								if( resultData.state == "S" && lastCnt == index+1){
+									
+									<@pageId>.searchList();
+								
+								} 
+							});	
+							
+						})
+						
+					});
+				
+				}else{
+					C_POP.alert(resultData.msg)
+				}
+			});				
+		} 
+		,deleteItem : (delKey) => {
+			
+			var parm = {
+					 queryId 		: "contract.deleteContract"
+					,requestParmList: delKey
+			}
+			C_COM.requestQuery(parm, function(resultData) {
+				
+				var parm = {
+						 queryId 		: "contract.deleteContractMember"
+						,requestParmList: delKey
+				}
+				C_COM.requestQuery(parm, function(resultData) {
+					
+					if( resultData.state == 'S'){
+						
+						<@pageId>.searchList();
+
+					}				
+				});					
+			});				
+		}
+		,deleteRow : (idx) =>{
+			
+	    	C_POP.confirm('선택하신 계약정보를 삭제 하시겠습니까?', function() {
+	    		
+				let row = <@pageId>.searchedRows[idx];			
+	    		const CONTRACT_ID	= row["CONTRACT_ID"];
+	    		<@pageId>.deleteItem([{CONTRACT_ID:CONTRACT_ID}])
+	    	});
+		}
+		,modify : (index) =>{
+			
+			const selectedRow = <@pageId>.searchedRows[index];
+			
+			if( selectedRow["PROCESS_STATE"] == "CONTRACTING"){
+
+				var parm ={
+						queryId 		: "contract.updateContractMemberFromTeam"
+						,requestParm	: {CONTRACT_ID :selectedRow["CONTRACT_ID"] }
+				}
+	
+				C_COM.requestQuery(parm, function(resultData) {
+	
+					if( resultData.state == "S"){
+						
+						<@pageId>.openPopup(selectedRow);
+						
+					}
+				});
+				
+			}else{
+				
+				<@pageId>.openPopup(selectedRow);
+				
+			}			
+			
+		}
+		,setHandler : () => {
+
+			_chkHandler("<@pageId>",<@pageId>);
+		    
+		    $("#<@pageId>_insertBtn").click(function(){
+		    	
+				<@pageId>.openPopup();
+
+		    })
+		    
+		    $("#<@pageId>_deleteBtn").off().on('click',() => {
+		    	
+		    	let deleteArr = [];
+		    	C_POP.confirm('선택하신 계약정보를 삭제 하시겠습니까?', function() {
+
+		    		<@pageId>.checkedItems.forEach( index =>{
+		    			
+						const checkedRow = <@pageId>.searchedData[idx];
+						const CONTRACT_ID =  checkedRow["CONTRACT_ID"];
+						deleteArr.push( {CONTRACT_ID:CONTRACT_ID});
+
+			    	});
+			    	
+		    		if( deleteArr.length > 0)
+		    		<@pageId>.deleteItem(deleteArr);
+		    	});
+		    	
+		    })
+		    
+		    $("#<@pageId>_excelDownloadBtn").click(function(){
+
+ 		    	const $hds = $("#<@pageId>_headingColName th").not(":contains('결재')");
+		    	const $tds = $("[name='<@pageId>_tr_0'] td");
+		    	_excelDownload($hds,$tds, <@pageId>.excelParam ,"계약 리스트");  
+		    	
+		    })
+		    
+			$("#<@pageId>_searchBtn").off().on('click', () =>{
+		    	<@pageId>.searchList();
+		    })
+		    
+		    $("#<@pageId>_pagingChunk"	).off().on('change',() =><@pageId>.searchList());
+		    
+		}
+		,nameSearch : (e) => {
+			 if (e.key === "Enter" ||$(e.currentTarget)?.hasClass("icon_search")) {
+					<@pageId>.searchList();
+			}
+		}
+		,openPopup : (selectedRow) => {
+
+			selectedRow = selectedRow || {};	
+			let mode = isEmpty(selectedRow) ? "I" :"U";
+			C_POP.open('popup_contract_contractUpdatePopup', {param:selectedRow, mode:mode , processState : selectedRow["PROCESS_STATE"]
+														   , processStateNm : selectedRow["PROCESS_STATE_NM"]}
+				, function(retData) {
+				
+					if(isValid(retData)){
+						
+						<@pageId>.updateItem(retData);
+						
+					}else {
+						
+						<@pageId>.searchList();
+						
+					}
+			});
+			
+		} 
+		,approval : (idx) =>{
+
+			const selectedRow	= <@pageId>.searchedRows[idx];
+			
+			debugger;
+			
+			if( "<@CALL_TYPE>" == "USER"){
+				
+				const USER_ID = <@pageId>.paMap.USER_ID ; 
+				const contractUser = selectedRow.USER_ID;
+				const consultingUser = selectedRow.CONSULTANT_USER_ID;
+				
+				if( USER_ID != contractUser && USER_ID != consultingUser){
+					
+					C_POP.alert("계약 담당자이거나 실행 컨설턴트인 경우만 결재 상신 할 수 있습니다. ");
+					return;
+				}
+				
+				if( selectedRow["PROCESS_STATE"] == 'CONTRACTED' &&  USER_ID != consultingUser){
+					C_POP.alert("실행 컨설턴트인 경우만 실행완료 결재 상신 할 수 있습니다. ");
+					return;
+				}	
+			}
+			
+			if( isEmpty(selectedRow["CONTRACT_DATE"]) || isEmpty(selectedRow["TOTAL_COST"]) ){
+				
+				C_POP.alert("계약일, 계약금액 등 계약 체결을 위한\n필수 항목 입력 후 결재 할 수 있습니다.");
+				return;
+			}	
+
+			let afterState	= "";
+			let title 		= "";
+			let appTitle	= "";
+			let buyerNm 	= selectedRow.BUYER_NM;
+			let consultingNm = selectedRow.CONSULTING_NM;
+			if( selectedRow["PROCESS_STATE"] == 'CONTRACTING' ){title	= `${buyerNm} ${consultingNm} 계약 체결 완료 결재 요청`;afterState	= "CONTRACTED";}
+			if( selectedRow["PROCESS_STATE"] == 'CONTRACTED' ){title	= `${buyerNm} ${consultingNm} 실행 완료 결재 요청`;afterState	= "COMPLETED";}
+			appTitle	= title.replace(" 결재 요청","");
+			
+			const totalCost = addComma(selectedRow.TOTAL_COST);
+			let appContent   = `<B>* 고객명			:</B> ${selectedRow.BUYER}\n\n`;
+			appContent 		+= `<B>* 계약담당자 	:</B> ${selectedRow.USER}\n\n`;
+			appContent 		+= `<B>* 상품명 		:</B> ${selectedRow.CONSULTING_NM}(${selectedRow.CONSULTING_TYPE_NM})\n\n`;
+			appContent 		+= `<B>* 상담일 		:</B> ${selectedRow.CONTACT_DATE}\n\n`;
+			appContent 		+= `<B>* 계약일 		:</B> ${selectedRow.CONTRACT_DATE}\n\n`;
+			appContent 		+= `<B>* 만료일 		:</B> ${selectedRow.EXPIRE_DATE}\n\n`;
+			appContent 		+= `<B>* 계약금액 		:</B> ${totalCost}원\n\n`;
+			appContent 		+= `<B>* 계약구분 		:</B> ${selectedRow.CONSULTING_TYPE_NM}\n\n`;
+			appContent 		+= `\n\n위와 같이<B>[${appTitle}]</B>에 대한 결재를 요청 합니다.\n\n`;
+			
+			const CONTRACT_ID	= selectedRow["CONTRACT_ID"];
+
+			let requestParm = {
+		        	 RELATION_ID 	: CONTRACT_ID
+		        	,AFTER_SERVICE	: `ApprovalAfterService.updateContractProcess`
+		        	,AFTER_PARM		: `{"PROCESS_STATE" : "${afterState}" }`
+		        	,TITLE			: title
+		        	,CONTENTS		: appContent
+			}
+	        C_POP.open('popup_appr_apprReqPopup', requestParm, function(retData) {
+				if(retData.state == "S") {
+
+					var parm = {
+						 queryId 		: "contract.updateProject"
+						,requestParm	: {
+							 CONTRACT_ID 	: CONTRACT_ID
+				        	,PROCESS_STATE	: `ON_${afterState}_APPR`
+						}
+					}
+					C_COM.requestQuery(parm, function(resultData) {
+						if(resultData.state == "S") {
+							<@pageId>.searchList();
+						} else {
+							C_POP.alert('결재상신 상태값 갱신 중 문제가 발생 했습니다.');
+						}
+					});  
+				}
+	        });
+			
+		 }
+		,openBigCard	: function(index) {
+			let projectInfo = <@pageId>.searchedRows[index];
+			C_POP.open('popup_biz_adviceStatusPopup', projectInfo, function(retData) {
+
+			});
+		 }
+		
+}
+
+// Page Load가 완료된후 실행 된다.
+C_PM.onLoadPage("<@pageId>", function(parm) {
+
+	<@pageId>.pageInit();
+	<@pageId>.searchList();
+
+});
+// History back으로 이동해왔을 경우 이루틴이 실행된다.
+C_HM.onReturn("<@pageId>", function(pageId, data) {
+	<@pageId>.searchList();
+});
+</script>
+<div class="cont_wrap">
+
+		<div class="cont_top">
+			<h2><i class="icon_bullet"></i>계약관리</h2>
+		</div>
+	
+		<section class="sec_wrap list" style="height:calc(100% - 43px);">
+			<!-- search area -->
+			<div class="search_area mt0">
+				<!-- 멀티 선택 -->
+				<div class="fl" style="display: flex; align-items: center;">
+					<div style="margin-right: 8px; font-weight: 800; color: #27187F;">고객번호, 고객명, 담당자 조회 :</div>
+				
+					<div class="search_inputWrap fl" style='width:150px;'>
+						<input type="search" id="<@pageId>_nmSearch" onkeydown="<@pageId>.nameSearch(event)">
+						<button class="search_btn"><i class="icon_search"  onclick="<@pageId>.nameSearch(event)"></i></button>
+					</div>
+				    
+				    <div style="margin-right: 8px; font-weight: 800; color: #27187F; margin-left:7px;">결재 상태 조회 :</div>
+					<div id="<@pageId>_selectProcessStatus" class="select_box" style="width:200px; margin-left: 2px;"></div>
+				    
+					<button type="button" class="btn select fr" id="<@pageId>_searchBtn" style='margin-left:8px;'>조회</button>
+					<button type="button" class="btn fr" id="<@pageId>_deleteBtn"><i class="icon_trash"></i>삭제</button>
+				</div>
+				
+				<div class="search_right">
+				    <button type="button" class="btn fl" id="<@pageId>_excelDownloadBtn"><i class="icon_download"></i> 계약 리스트 다운로드</button>
+				    <strong class="total">Total: <span class="pointColr" id="<@pageId>_totalCnt"></span></strong>
+				    <div id="<@pageId>_pagingChunk" style="margin-left: 5px;width:130px"></div>
+				</div>
+			</div>
+			<!-- 테이블 -->
+			<div class="tbl01 col tbl_scroll" style="max-height:506px;">
+				<div class="tbl01 col tbl_head">
+					<table>
+						<caption>계약 리스트</caption>
+						<colgroup>
+								<col style="width:35px;"/>
+								<col style="width:40px;"/>
+								<col style="width:70px;">
+								<col style="width:120px;"/>
+								<col style="width:90px;"/>
+								<col style="width:80px;"/>
+								<col style="width:80px;"/>
+								<col style="width:90px;"/>
+								<col style="width:75px;"/>
+								<col style="width:75px;"/>
+								<col style="width:90px;"/>
+								<col style="width:130px;"/>
+								<col style="width:80px;"/>
+								<col style="width:40px;" />
+								<col style="width:40px;" />
+						</colgroup>
+						<thead>
+							<tr id="<@pageId>_headingColName">
+								<th scope="col"><input type="checkbox"  id="<@pageId>_ckAll"></th>
+								<th scope="col">NO.</th>
+								<th scope="col">고객번호</th>
+								<th scope="col">고객명</th>
+								<th scope="col">진행상태</th>
+								<th scope="col">상담일</th>
+								<th scope="col">담당자</th>
+								<th scope="col">계약구분</th>
+								<th scope="col">계약일</th>
+								<th scope="col">만료일</th>
+								<th scope="col" class='tr'>계약금액</th>
+								<th scope="col">컨설팅명</th>
+								<th scope="col">결재</th>
+								<th scope="col"><i class="icon_pen"></i></th>
+								<th scope="col"><i class="icon_trash"></i></th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+				<div class="tbl01 col tbl_body_scroll">
+					<table>
+						<colgroup>
+								<col style="width:35px;"/>
+								<col style="width:40px;"/>
+								<col style="width:70px;">
+								<col style="width:120px;"/>
+								<col style="width:90px;"/>
+								<col style="width:80px;"/>
+								<col style="width:80px;"/>
+								<col style="width:90px;"/>
+								<col style="width:75px;"/>
+								<col style="width:75px;"/>
+								<col style="width:90px;"/>
+								<col style="width:130px;"/>
+								<col style="width:80px;"/>
+								<col style="width:40px;" />
+								<col style="width:40px;" />
+						</colgroup>
+						<tbody  id="<@pageId>_contractList">
+						</tbody>
+						<script type="text/x-jsrender" id="<@pageId>_contractList_template">						
+						{{for list}}
+							<tr name="<@pageId>_tr_{{:#index}}" onDblClick="<@pageId>.openBigCard({{:#index}})">
+								<td {{:CONTRACT_ID}}><input type='checkbox' id="<@pageId>_ck_{{:#index}}" value='{{:CONTRACT_ID}}'></td>
+			 					<td id='ROWIDX'				class='tc' >{{:ROWIDX}}</td>
+			 					<td id='BUYER_ID' title='{{:BUYER_ID}}'	class='tl' >{{:BUYER_ID}}</td>
+			 					<td id='BUYER_NM' title='{{:BUYER_NM}}'			class='tl' >{{:BUYER_NM}}</a></td>
+			 					<td id='PROCESS_STATE_NM'	title='{{:PROCESS_STATE_NM}}'	>{{:PROCESS_STATE_NM}}</td>
+			 					<td id='CONTACT_DATE'		title='{{:CONTACT_DATE}}'		>{{:CONTACT_DATE}}</td>
+								<td id='USER_NM' 			title='{{:USER_NM}}'			>{{:USER_NM}}</td>
+								<td id='CONSULTING_TYPE_NM'	title='{{:CONSULTING_TYPE_NM}}'	class='tl'>{{:CONSULTING_TYPE_NM}}</td>
+								<td id='CONTRACT_DATE'		>{{:CONTRACT_DATE}}</td>
+								<td id='EXPIRE_DATE'		>{{:EXPIRE_DATE}}</td>
+								<td id='TOTAL_COST'	 title='{{numb:TOTAL_COST}}'	class='tr'>{{numb:TOTAL_COST}}</td>
+								<td id='CONSULTING_NM'	 title='{{:CONSULTING_NM}}'	class='tc'>{{:CONSULTING_NM}}</td>
+								<td class='tc'>
+								{{if APP_STATE_NM=="N/A" ~index=#index}} 
+									{{if PROCESS_STATE == "CONTRACTING"}}
+									<button type="button" title="계약 체결 완료 결재" class="btn tc" onclick="<@pageId>.approval({{:#getIndex()}})">체결 결재</button>
+									{{/if}}
+									{{if PROCESS_STATE == "CONTRACTED"}}
+									<button type="button" title="계약 실행 완료 결재"  class="btn tc" onclick="<@pageId>.approval({{:#getIndex()}})">완료 결재</button>
+									{{/if}}
+								{{else}}
+									{{:APP_STATE_NM}}	
+								{{/if}}
+								</td>
+			 					<td>
+									<button><i onclick="javascript:<@pageId>.modify('{{:#index}}')" class="icon_pen"  ></i></button></td>
+								<td>
+									{{if PROCESS_STATE != "COMPLETED"}}
+									<button><i onclick="javascript:<@pageId>.deleteRow('{{:#getIndex()}}')" class="icon_trash"></i></button>
+									{{/if}}
+								</td>
+							</tr>
+						{{/for}}
+						</script>
+						<script type="text/x-jsrender" id="<@pageId>_contractList_noData_template">	
+							<tr>	
+								<td colspan=15>자료가 없습니다.</td>	
+							</tr>
+						</script>
+					</table>
+				</div>
+			</div>
+			<!-- paging -->
+			<div class="paging" id="<@pageId>_pageDiv">
+			</div>
+		</section>
+	</div>
+</div>

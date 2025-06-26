@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="dashboardCertification">
+
+    <cache />
+    <!--  -->
+    <select id="getCrtInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /*  dashboardCertification.getCrtInfo */
+        SELECT BUYER_ID    
+              ,GRP_CODE_ID 
+              ,CODE_ID     
+              ,GET_CODE_NM( #{comCodeId} ,CODE_ID) AS CODE_ID_NM
+              ,INFO_DATA
+              ,GET_CODE_NM( #{comCode} ,INFO_DATA) AS INFO_DATA_NM
+        FROM   TBL_EXP_BUYER_CRT_INFO
+        WHERE  1 = 1
+        <if test=" buyerId != null and buyerId != '' " >
+            AND    BUYER_ID = #{buyerId}
+        </if>
+        <if test=" grpCodeId != null and grpCodeId != '' " >
+            AND    GRP_CODE_ID = #{grpCodeId}
+        </if>
+    </select>
+
+    <update id="setCrtInfo" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  dashboardCertification.setCrtInfo */
+            MERGE INTO TBL_EXP_BUYER_CRT_INFO tgt
+            USING (
+                    SELECT  #{SP_CSTM_ID}  AS SP_CSTM_ID,
+                            #{BUYER_ID}    AS BUYER_ID,      
+                            #{GRP_CODE_ID} AS GRP_CODE_ID,      
+                            #{CODE_ID}     AS CODE_ID, 
+                            #{INFO_DATA}   AS INFO_DATA  
+                    FROM DUAL
+                  ) src
+            ON (    tgt.BUYER_ID    = src.BUYER_ID
+                AND tgt.GRP_CODE_ID = src.GRP_CODE_ID
+                AND tgt.CODE_ID     = src.CODE_ID
+               )
+            WHEN MATCHED THEN
+                UPDATE SET INFO_DATA   = src.INFO_DATA
+                          ,UPDATE_USER = #{sessionVo.userId}
+                          ,UPDATE_DATE = GET_KRDT(SYSDATE)
+            WHEN NOT MATCHED THEN
+                INSERT (
+                     SP_CSTM_ID
+                    ,BUYER_ID
+                    ,GRP_CODE_ID
+                    ,CODE_ID
+                    ,INFO_DATA
+                    ,UPDATE_USER
+                    ,UPDATE_DATE
+                ) VALUES (
+                    src.SP_CSTM_ID
+                    ,src.BUYER_ID
+                    ,src.GRP_CODE_ID
+                    ,src.CODE_ID
+                    ,src.INFO_DATA
+                    ,#{sessionVo.userId}
+                    ,GET_KRDT(SYSDATE)
+                )
+    </update>
+    
+</mapper>

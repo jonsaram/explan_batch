@@ -1,0 +1,78 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 selectList	: []
+		,stockList	: []
+		,loadComponent : function(selectList) {
+			let sendParm = {
+				gridParm : {
+					 tableName		: "TBL_EXP_COST_MST"
+					,columnMap 		: {
+						 "BRAND_ID" 	: { headerText : "BrandID"	, hidden : "Y", default : G_VAL.session.BRAND_ID			}
+						,"STORE_ID" 	: { headerText : "가맹점"	, columnType : "selectbox", selectBoxCodeList : selectList
+							,initSetData : function(cellText, rowData) {
+								if(isEmpty(rowData.STORE_ID)) 	return G_VAL.current.storeId;
+								else							return rowData.STORE_ID;
+							}
+						 }
+						,"YYYYMM" 		: { headerText : "해당월"						}
+						,"COST_CLASS" 	: { headerText : "비용분류"	, columnType : "selectbox", useCodeId : "COST_CLASS", readOnly : "Y" , noSave : "Y", initSetData : function(cellText, rowData) {
+								const costClass = C_COM.getCodeAttr("COST_TYPE", rowData.COST_TYPE);
+								return costClass.ATTR1;
+							} 
+						 }
+						,"COST_TYPE" 	: { headerText : "비용종류"		, columnType : "selectbox", useCodeId : "COST_TYPE" }
+						,"COST_VAL" 	: { headerText : "비용(만원)"	,dataType : "number"}
+					 }
+					,primaryKeyList		: ["BRAND_ID"	, "STORE_ID", "COST_TYPE", "YYYYMM"]
+					,searchColumnList	: ["COST_TYPE"	, "YYYYMM"	]
+					,orderColumnList 	: ["YYYYMM"					]
+					,columnConfig 	: {
+						makeCellViewData	: {
+							"YYYYMM"	: function(cellText, rowData) {
+								return getDateFormat(rowData.YYYYMM);
+							}
+						}
+					}
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				,optionConfig		: {
+					searchComponentList : [
+						{
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "STORE_ID"
+							,targetColumn	: "STORE_ID"
+							,optionList 	: <@compId>.selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisObj) {
+								G_VAL.current.storeId = selectVal;
+								<@parentId>.<@compId>_editor.reload();
+							 }
+						}
+					]
+				 }
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(parm) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			let newList = [];
+			$.each(selectList, function(idx) {
+				if(idx == 1) newList.push(["common", "기본설정"]);
+				newList.push(this);
+			});
+			<@compId>.selectList = newList;
+			<@compId>.loadComponent(newList);	
+		},true);
+	});
+	</script>
+
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area -->
+</component>

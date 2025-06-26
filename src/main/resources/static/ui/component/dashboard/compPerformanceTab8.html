@@ -1,0 +1,131 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(parm) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "common.getStockCheckList"
+						 ,requestParm	: {}
+					 }	
+					,columnMap 		: {
+						 "STORE_ID"	: { headerText : "가맹점ID", hidden : "Y"	}
+						,"STORE_NM"	: { headerText : "가맹점명"					}
+						,"INOV"		: { headerText : "매입오류 품목"			}
+						,"OTOV"		: { headerText : "매출오류 품목"			}
+					 }
+					,rowCntId 		: "<@compId>_rowCnt"
+					,columnConfig 	: {
+					 }
+					,primaryKeyList		: ["STORE_ID"]
+					,searchWhereMap		: {"A.BRAND_ID" : G_VAL.session.BRAND_ID	}
+					,orderColumnList 	: ["ECNT DESC"]
+					,rowConfig		: {
+						onClickRow : function(rowData) {
+							G_VAL.current.storeId = rowData.STORE_ID;
+							C_MENU.movePage("MENU103400");
+						}
+					 }
+					,readOnly	: "Y"
+				 }
+
+			}
+			C_COMP.import("<@compId>_Grid", "component_compGrid",sendParm , function(tableList) {
+				<@compId>.makeChart(tableList);
+			});
+		 }
+		,makeChart : function(tableList) {
+			let categories 	= []
+			let series		= []
+			let dataList1	= []
+			let dataList2	= []
+			
+			$.each(tableList, function(idx) {
+				categories	.push(this.STORE_NM	);				
+				dataList1	.push(this.INOV		);				
+				dataList2	.push(this.OTOV		);
+				
+				if(idx >= 9) return false;
+			});
+			series.push({ name : "매입오류 품목수", data : dataList1});
+			series.push({ name : "매출오류 품목수", data : dataList2});
+			
+	        Highcharts.chart("<@compId>_chart", {
+	            chart: {
+	                 type: 'column'
+	                ,height : "280px"
+	            },
+	            title: {
+	                text: ''
+	            },
+	            xAxis: {
+	                categories: categories
+	            },
+	            yAxis: {
+	                title: {
+	                    text: '품목개수'
+	                }
+	            },
+	            series: series
+	        });
+		 }
+		,_lineRateChart : function(container, categories, series) {
+			_lineRateChart(container, categories, series);
+		 }	
+		,_barLineChart		: function (container, categories, series  ) {
+			_barLineChart(container, categories, series );
+	     }
+		,_barLeftChart		: function (container, chartArray  ) {
+			_barLeftChart(container, chartArray);
+		 }
+		,_1bar2LineChart 	: function (container, categories, series) {
+			_1bar2LineChart(container, categories, series);
+		 }
+    }
+    // Component Load가 완료된후 실행 된다.
+    C_COMP.onLoadComp("<@compId>", function(parm) {
+		<@compId>.loadComponent();
+    });
+</script>
+<component>
+
+    <div class="display-between display-sm-between mt10">
+        <!-- card 01 start -->
+        <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+	        <div class="card-inwrap">
+		        <div class="card-tit-wrap">
+		            <div class="card-tit">매입/매출 정보오류 품목 Top 10 Chart</div>
+		        </div>
+		        <div class="card-cnt-wrap">
+		            <div class="table-allwrap pt20" style="height:365px">
+			            <!-- chart start -->
+			            <div class="card-cnt-wrap">
+							<div id="<@compId>_chart" width="100%" height="100%"></div>	            
+						</div>
+			            <!-- chart end -->            
+		            </div>
+		        </div>
+	        </div>
+	    </div>
+	    <!-- card 03 end -->
+	    <!-- card 04 start -->
+        <div class="tab-card-allwrap col5-gap mb-lg-25 col10-md col10-sm mb-sm-25">
+	        <div class="card-inwrap">
+		        <div class="card-tit-wrap">
+		            <div class="card-tit">매입/매출 정보오류 품목 목록</div>
+	            	<div>total : <span id="<@compId>_rowCnt">100</span></div>
+		            
+		        </div>
+		        <div class="card-cnt-wrap">
+		            <div class="table-allwrap" style="height:365px">
+		            <!-- table start -->
+		            <component id="<@compId>_Grid"></component>
+		            <!-- table end -->            
+		            </div>
+		        </div>
+	        </div>
+	    </div>
+	    <!-- card 04 end -->
+  </div>
+
+</component>

@@ -1,0 +1,2730 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="schedule">
+
+    <cache />
+    <!-- 팀원조회 -->
+    <select id="getTeamMember" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamMember */
+        SELECT USER_ID
+              ,GET_USER_NM(USER_ID) AS USER_NM
+        FROM   (
+                SELECT DISTINCT USER_ID 
+                FROM   TBL_EXP_TEAM_MEMBER
+                WHERE  1 = 1
+                AND    CONTRACT_ID IN (
+                            SELECT CONTRACT_ID 
+                            FROM   TBL_EXP_TEAM_MEMBER
+                            WHERE  1 = 1
+                            AND    USER_ID    = #{sessionVo.userId}
+                       )
+               )
+        WHERE  1 = 1           
+        AND    USER_ID != #{sessionVo.userId}
+    </select>
+    
+    <!-- 중복 일정체크  이응규 -->
+    <select id="scheduleDuplicationCheck" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.scheduleDuplicationCheck */
+        WITH SCHEDULE AS (
+            SELECT SCHEDULE_ID
+                  ,TO_CHAR(SCHEDULE_DATE ,'YYYY-MM-DD') AS SCHEDULE_DATE
+                  ,TO_DATE(TO_CHAR(SCHEDULE_DATE ,'YYYY-MM-DD')||LPAD(START_TIME_HOUR, 2, '0')||':'||START_TIME_MINUTE||':00', 'YYYY-MM-DD HH24:MI:SS') AS START_DATE
+                  ,TO_DATE(TO_CHAR(SCHEDULE_DATE ,'YYYY-MM-DD')||LPAD(END_TIME_HOUR, 2, '0')||':'||END_TIME_MINUTE||':00', 'YYYY-MM-DD HH24:MI:SS') AS END_DATE
+            FROM   TBL_EXP_SCHEDULE
+            WHERE  1 = 1
+            AND    USER_ID    = #{sessionVo.userId}
+            ORDER BY SCHEDULE_DATE
+        )
+        SELECT SCHEDULE.SCHEDULE_ID
+              ,SCHEDULE.SCHEDULE_DATE
+              ,SCHEDULE.START_DATE
+              ,SCHEDULE.END_DATE
+        FROM  (
+                SELECT TO_DATE(#{startDate}, 'YYYY-MM-DD HH24:MI:SS') AS START_DATE
+                      ,TO_DATE(#{endDate},   'YYYY-MM-DD HH24:MI:SS') AS END_DATE
+                FROM   DUAL
+              ) CHECK_DATA
+             ,SCHEDULE
+        WHERE 1 = 1
+        AND    (
+                   CHECK_DATA.START_DATE  BETWEEN SCHEDULE.START_DATE  AND  SCHEDULE.END_DATE 
+                OR CHECK_DATA.END_DATE    BETWEEN SCHEDULE.START_DATE  AND  SCHEDULE.END_DATE
+               )
+        OR     (
+                   SCHEDULE.START_DATE  BETWEEN CHECK_DATA.START_DATE  AND  CHECK_DATA.END_DATE 
+                OR SCHEDULE.END_DATE    BETWEEN CHECK_DATA.START_DATE  AND  CHECK_DATA.END_DATE
+               )        
+        ORDER BY SCHEDULE.START_DATE
+    </select>
+    
+    <update id="updateSchedule" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  schedule.updateSchedule */
+        UPDATE TBL_EXP_SCHEDULE        
+        SET    TITLE                   = #{title, jdbcType=VARCHAR}
+              ,WORK_TYPE               = #{workType} 
+              ,LOOP_TYPE               = #{loopType} 
+              ,LOOP_TYPE_DTL_CD        = #{loopTypeDtlCd, jdbcType=VARCHAR} 
+              ,LOOP_TYPE_DTL_VAL       = #{loopTypeDtlVal, jdbcType=VARCHAR}  
+              ,SCHEDULE_LOOP_END_DATE  = (TO_DATE(#{loopLimitDate}, 'yyyy-mm-dd'))
+              ,TIME_TYPE               = 'TIME_TYPE'
+              ,SCHEDULE_START_DATE     = (TO_DATE(#{scheduleStartDate}, 'yyyy-mm-dd'))
+              ,START_TIME_HOUR         = #{startTimeH}
+              ,START_TIME_MINUTE       = #{startTimeM}
+              ,SCHEDULE_END_DATE       = (TO_DATE(#{scheduleEndDate}, 'yyyy-mm-dd'))
+              ,END_TIME_HOUR           = #{endTimeH}
+              ,END_TIME_MINUTE         = #{endTimeM}
+              ,POSITION                = #{position, jdbcType=VARCHAR}
+              ,SECRET_YN               = #{secretYn, jdbcType=VARCHAR}
+              ,DESCRIPTION             = #{description, jdbcType=VARCHAR}
+              ,CONTRACT_ID             = #{contractId, jdbcType=VARCHAR}
+              ,UPDATE_USER             = #{sessionVo.userId}
+              ,UPDATE_DATE             = GET_KRDT(SYSDATE)
+        WHERE 1 = 1
+        AND    SCHEDULE_ID = #{scheduleId}
+        AND    USER_ID     = #{sessionVo.userId}
+    </update>
+    
+    <delete id="deleteSchedule" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  schedule.deleteSchedule */
+        DELETE FROM TBL_EXP_SCHEDULE 
+        WHERE 1 = 1
+        <if test=" scheduleId != null and scheduleId != '' " >
+            AND   SCHEDULE_ID = #{scheduleId} 
+        </if>
+    </delete>
+    
+    <delete id="deleteScheduleShare" parameterType="java.util.HashMap"  flushCache="true" >
+        /*  schedule.deleteScheduleShare */
+        DELETE FROM TBL_EXP_SCHEDULE_SHARE 
+        WHERE  1 = 1
+        <if test=" scheduleId != null and scheduleId != '' ">
+            AND    SCHEDULE_ID = #{scheduleId}
+        </if>
+        <if test=" userId != null and userId != '' ">
+            AND    USER_ID     = #{userId}
+        </if>
+    </delete>
+    
+    <!-- 일정삭제 로그 입력  이응규 -->
+    <insert id="insertScheduleDel" parameterType="map" >
+        /* schedule.insertScheduleDel */
+        INSERT INTO TBL_EXP_SCHEDULE_DEL ( 
+                SCHEDULE_ID
+               ,GOOGLE_CALENDAR_EVENT_ID
+               ,CREATE_USER
+               ,CREATE_DATE
+        )
+        SELECT  SCHEDULE_ID
+               ,GOOGLE_CALENDAR_EVENT_ID
+               ,#{delUserId}   
+               ,SYSDATE
+        FROM    TBL_EXP_SCHEDULE
+        WHERE  1 = 1
+        <if test=" scheduleId != null and scheduleId != '' " >
+            AND   SCHEDULE_ID = #{scheduleId} 
+        </if>
+    </insert>
+    
+    <!-- 일정 입력  이응규 -->
+    <insert id="insertSchedule" parameterType="map" >
+        /* schedule.insertSchedule */
+        INSERT INTO TBL_EXP_SCHEDULE (
+              SCHEDULE_ID            
+             ,LOOP_TYPE              
+             ,LOOP_TYPE_DTL_CD       
+             ,LOOP_TYPE_DTL_VAL      
+             ,SCHEDULE_LOOP_END_DATE 
+             ,TITLE                  
+             ,WORK_TYPE             
+             ,TIME_TYPE              
+             ,SCHEDULE_START_DATE    
+             ,START_TIME_HOUR        
+             ,START_TIME_MINUTE      
+             ,SCHEDULE_END_DATE      
+             ,END_TIME_HOUR          
+             ,END_TIME_MINUTE        
+             ,CONTRACT_ID            
+             ,POSITION               
+             ,SECRET_YN              
+             ,DESCRIPTION            
+             ,USER_ID                
+             ,CREATE_USER            
+             ,CREATE_DATE         
+        )
+        VALUES(
+              #{scheduleId}                                      
+             ,#{loopType}                                        
+             ,#{loopTypeDtlCd}                                   
+             ,#{loopTypeDtlVal}         
+             ,(TO_DATE(#{loopLimitDate}, 'yyyy-mm-dd'))
+             ,#{title}                                           
+             ,#{workType}                                        
+             ,#{timeType}                                        
+             ,(TO_DATE(#{scheduleStartDate}, 'yyyy-mm-dd'))
+             ,#{startTimeH}                                      
+             ,#{startTimeM}                                      
+             ,(TO_DATE(#{scheduleEndDate}, 'yyyy-mm-dd'))
+             ,#{endTimeH}                                        
+             ,#{endTimeM}                                      
+             ,#{contractId}                                      
+             ,#{position}                                        
+             ,#{secretYn}                                        
+             ,#{description}                                     
+             ,#{sessionVo.userId}                                
+             ,#{sessionVo.userId}                                
+             ,GET_KRDT(SYSDATE)  
+        )
+    </insert>
+    
+    <!-- 일정공유 입력  이응규 -->
+    <insert id="insertScheduleShare" parameterType="map" >
+        /* schedule.insertScheduleShare */
+        INSERT INTO TBL_EXP_SCHEDULE_SHARE (
+             SCHEDULE_ID     
+            ,USER_ID  
+           )
+        VALUES(
+             #{scheduleId}
+            ,#{userId}
+           )    
+    </insert>
+    
+
+    <select id="getScheduleList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getScheduleList */
+        SELECT A.SCHEDULE_ID            
+              ,A.LOOP_TYPE              
+              ,A.LOOP_TYPE_DTL_CD       
+              ,A.LOOP_TYPE_DTL_VAL      
+              ,A.SCHEDULE_LOOP_END_DATE 
+              ,A.TITLE                  
+              ,A.WORK_TYPE              
+              ,A.ALL_APPLY_YN        
+              ,A.SCHEDULE_START_DATE 
+              ,A.SCHEDULE_END_DATE  
+              ,A.TIME_TYPE              
+              ,A.START_TIME_HOUR        
+              ,A.START_TIME_MINUTE      
+              ,A.END_TIME_HOUR          
+              ,A.END_TIME_MINUTE        
+              ,A.CONTRACT_ID            
+              ,A.POSITION               
+              ,A.SECRET_YN              
+              ,A.DESCRIPTION            
+              ,A.USER_ID
+              ,A.GOOGLE_CALENDAR_EVENT_ID
+              ,CASE WHEN A.BUYER_NM IS NOT NULL THEN A.BUYER_NM ||'/'||A.CONSULTING_NM
+                    ELSE NULL
+                    END AS  CONTRACT_NM
+              ,A.UPDATE_USER            
+              ,A.UPDATE_DATE            
+              ,A.CREATE_USER
+              ,A.CREATE_DATE
+        FROM   (
+                SELECT  A.SCHEDULE_ID            
+                       ,A.LOOP_TYPE              
+                       ,A.LOOP_TYPE_DTL_CD       
+                       ,A.LOOP_TYPE_DTL_VAL      
+                       ,TO_CHAR(A.SCHEDULE_LOOP_END_DATE,'YYYY-MM-DD')  AS SCHEDULE_LOOP_END_DATE 
+                       ,A.TITLE                  
+                       ,A.WORK_TYPE              
+                       ,A.ALL_APPLY_YN        
+                       ,TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE 
+                       ,TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE  
+                       ,A.TIME_TYPE              
+                       ,A.START_TIME_HOUR        
+                       ,A.START_TIME_MINUTE      
+                       ,A.END_TIME_HOUR          
+                       ,A.END_TIME_MINUTE        
+                       ,A.CONTRACT_ID            
+                       ,A.POSITION               
+                       ,A.SECRET_YN              
+                       ,A.DESCRIPTION            
+                       ,A.USER_ID
+                       ,A.GOOGLE_CALENDAR_EVENT_ID
+                       ,(SELECT BUYER_NM FROM TBL_EXP_BUYER WHERE BUYER_ID = B.BUYER_ID) AS BUYER_NM
+                       ,(SELECT CONSULTING_NM FROM TBL_EXP_CONSULTING WHERE CONSULTING_ID = B.CONSULTING_ID) AS CONSULTING_NM
+                       ,A.UPDATE_USER            
+                       ,A.UPDATE_DATE            
+                       ,A.CREATE_USER
+                       ,A.CREATE_DATE
+                FROM   TBL_EXP_SCHEDULE A
+                       LEFT OUTER JOIN TBL_EXP_CONTRACT B
+                         ON  1 = 1
+                         AND A.CONTRACT_ID = B.CONTRACT_ID
+                WHERE  1 = 1
+                <if test=" scheduleId != null and scheduleId != '' " >
+                    AND    A.SCHEDULE_ID = #{scheduleId}
+                </if>
+                <if test=" title != null and title != '' " >
+                    AND    TRIM(A.TITLE) LIKE '%' || TRIM(#{title})||'%'
+                </if>
+        ) A
+        WHERE 1 = 1
+    </select>
+    
+    <select id="getScheduleDtl" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getScheduleDtl */
+        SELECT A.SCHEDULE_ID     
+              ,A.TITLE           
+              ,A.WORK_TYPE   
+              ,GET_CODE_NM('SCHEDULE_WORK_TYPE', A.WORK_TYPE) AS WORK_TYPE_NM
+              ,A.ALL_APPLY_YN    
+              ,A.SCHEDULE_START_DATE  
+              ,TO_CHAR(A.SCHEDULE_START_DATE ,'YYYY-MM-DD') AS SCHEDULE_START_YMD
+              ,A.TIME_TYPE
+              ,A.START_TIME_HOUR
+              ,GET_CODE_NM('TIME_HOUR_24', A.START_TIME_HOUR) AS START_TIME_HOUR_NM
+              ,A.START_TIME_MINUTE
+              ,GET_CODE_NM('TIME_MINUTE_30', A.START_TIME_MINUTE) AS START_TIME_MINUTE_NM
+              ,TO_CHAR(A.SCHEDULE_END_DATE ,'YYYY-MM-DD') AS SCHEDULE_END_YMD
+              ,A.END_TIME_HOUR    
+              ,GET_CODE_NM('TIME_HOUR_24', A.END_TIME_HOUR) AS END_TIME_HOUR_NM
+              ,A.END_TIME_MINUTE  
+              ,GET_CODE_NM('TIME_MINUTE_30', A.END_TIME_MINUTE) AS END_TIME_MINUTE_NM
+              ,GET_CODE_NM('SCHEDULE_LOOP_TYPE', A.LOOP_TYPE) AS LOOP_TYPE_NM
+              ,B.BUYER_NM ||'/'||B.CONSULTING_NM AS CONTRACT
+              ,A.POSITION         
+              ,A.SECRET_YN        
+              ,GET_CODE_NM('SCHEDULE_SECRET_YN', A.SECRET_YN) AS SECRET_YN_NM
+              ,A.DESCRIPTION      
+              ,A.USER_ID         
+              ,GET_USER_NM(A.USER_ID) AS USER_NM  
+        FROM   TBL_EXP_SCHEDULE A
+               LEFT OUTER JOIN (
+                       SELECT A.CONTRACT_ID
+                              ,B.BUYER_NM 
+                              ,C.CONSULTING_NM
+                       FROM   TBL_EXP_CONTRACT A
+                              JOIN TBL_EXP_BUYER B
+                                ON  1 = 1
+                                AND A.BUYER_ID = B.BUYER_ID 
+                              JOIN TBL_EXP_CONSULTING C
+                                ON  1 = 1
+                                AND A.CONSULTING_ID = C.CONSULTING_ID
+                       WHERE  1 = 1
+               ) B
+                 ON  1 = 1
+                 AND A.CONTRACT_ID = B.CONTRACT_ID
+        WHERE  1 = 1
+        <if test=" scheduleId != null and scheduleId != '' " >
+            AND    A.SCHEDULE_ID = #{scheduleId}
+        </if>
+        <if test=" scheduleDate != null and scheduleDate != '' " >
+            AND    TO_CHAR(A.SCHEDULE_START_DATE ,'YYYY-MM-DD') = #{scheduleDate}
+        </if>
+        <if test=" userId != null and userId != '' " >
+            AND    A.USER_ID    = #{userId.userId}
+        </if>
+                 
+    </select>
+    
+    <select id="getScheduleShareList" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getScheduleShareList */
+        SELECT  A.USER_ID
+               ,B.USER_NM
+               ,A.SCHEDULE_ID
+               ,B.DEL_YN     
+               ,B.E_MAIL     
+               ,B.GRADE      
+               ,B.PHONE_NUM  
+               ,B.STATE      
+               ,B.UPDATE_DATE
+               ,B.UPDATE_USER
+               ,B.USER_DESC  
+               ,B.USE_YN
+        FROM    TBL_EXP_SCHEDULE_SHARE A
+                JOIN TBL_EXP_USER B
+                    ON  1 = 1
+                    AND A.USER_ID = B.USER_ID
+        WHERE   1 = 1
+        <if test=" scheduleId != null and scheduleId != '' " >
+            AND    SCHEDULE_ID = #{scheduleId}
+        </if>
+    </select>
+
+    <select id="getScheduleListInContract" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        SELECT 
+             SCHEDULE_ID
+            ,TITLE
+            ,WORK_TYPE
+            ,ALL_APPLY_YN
+            ,TO_CHAR(SCHEDULE_START_DATE ,'MM-DD HH24:MI') AS SCHEDULE_DATE
+            ,TIME_TYPE
+            ,START_TIME_HOUR
+            ,START_TIME_MINUTE
+            ,END_TIME_HOUR
+            ,END_TIME_MINUTE
+            ,POSITION
+            ,SECRET_YN
+            ,DESCRIPTION
+            ,USER_ID
+            ,CONTRACT_ID
+        FROM TBL_EXP_SCHEDULE
+        WHERE   
+            CONTRACT_ID = #{CONTRACT_ID}
+    </select>
+
+    <!-- 반복안함 -->
+    <select id="getNotRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getNotRepeat */
+        WITH TABLE_DATE AS ( 
+            SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'YYYY-MM-DD') DTE
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DAY') DAY
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DY') DY
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'D') D
+            FROM   DUAL 
+            CONNECT BY LEVEL <![CDATA[<=]]> TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+        )
+        SELECT  A.SCHEDULE_ID     
+               ,D.DTE     AS SCHEDULE_DATE 
+               ,TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE 
+               ,TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE 
+               ,LPAD(A.START_TIME_HOUR , 2, '0')      AS START_TIME_HOUR
+               ,A.START_TIME_MINUTE 
+               ,LPAD(A.END_TIME_HOUR , 2, '0')        AS END_TIME_HOUR  
+               ,A.END_TIME_MINUTE 
+               ,A.TITLE                   
+               ,'N' AS SHARE_YN
+               ,B.ATTR1  AS WORK_COLOR     
+               ,B.ATTR2  AS TEXT_COLOR
+        FROM   TBL_EXP_SCHEDULE A
+               JOIN (
+                    SELECT A.GRP_CODE_ID
+                          ,B.CODE_ID
+                          ,B.ATTR1
+                          ,B.ATTR2
+                    FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                           JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                               ON  1 = 1
+                               AND B.DEL_YN = 'N'
+                               AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                    WHERE  1 = 1
+                    AND    A.DEL_YN = 'N'
+                    AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+               ) B
+                   ON  1 = 1
+                   AND A.WORK_TYPE = B.CODE_ID
+               JOIN TABLE_DATE D
+                   ON  1 = 1
+                   AND TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') = D.DTE
+        WHERE  1 = 1
+        AND    A.USER_ID    = #{sessionVo.userId}
+        AND    A.LOOP_TYPE = 'NOT_REPEAT' /*반복안함*/
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+        </if>
+        
+    </select>
+    
+    <!-- 반복안함 - 팀 -->
+    <select id="getTeamNotRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamNotRepeat */
+        WITH TABLE_DATE AS ( 
+            SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL -1 , 'YYYY-MM-DD') DTE
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL -1 , 'DAY') DAY
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL -1 , 'DY') DY
+                  ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL -1 , 'D') D
+            FROM   DUAL 
+            CONNECT BY LEVEL  <![CDATA[<=]]>  TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+        )
+        SELECT  A.SCHEDULE_ID     
+               ,D.DTE     AS SCHEDULE_DATE 
+               ,TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE 
+               ,TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE 
+               ,LPAD(A.START_TIME_HOUR , 2, '0')            AS START_TIME_HOUR
+               ,A.START_TIME_MINUTE 
+               ,LPAD(A.END_TIME_HOUR , 2, '0')              AS END_TIME_HOUR  
+               ,A.END_TIME_MINUTE 
+               ,TITLE AS TITLE_ORG
+               ,'['||GET_USER_NM(A.USER_ID)||']'||A.TITLE    AS TITLE
+               ,A.CONTRACT_ID
+               ,A.USER_ID
+               ,A.DESCRIPTION
+               ,GET_USER_NM(A.USER_ID) AS USER_NM 
+               ,A.POSITION
+               ,A.WORK_TYPE
+               ,GET_CODE_NM('SCHEDULE_WORK_TYPE', A.WORK_TYPE) AS WORK_TYPE_NM
+               ,'N' AS SHARE_YN
+               ,B.ATTR1  AS WORK_COLOR     
+               ,B.ATTR2  AS TEXT_COLOR
+        FROM   TBL_EXP_SCHEDULE A
+               JOIN (
+                    SELECT A.GRP_CODE_ID
+                          ,B.CODE_ID
+                          ,B.ATTR1
+                          ,B.ATTR2
+                    FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                           JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                               ON  1 = 1
+                               AND B.DEL_YN = 'N'
+                               AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                    WHERE  1 = 1
+                    AND    A.DEL_YN = 'N'
+                    AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+               ) B
+                   ON  1 = 1
+                   AND A.WORK_TYPE = B.CODE_ID
+               JOIN (          
+                        SELECT DISTINCT CONTRACT_ID 
+                        FROM   TBL_EXP_TEAM_MEMBER
+                        WHERE  1 = 1
+                        AND    USER_ID    = #{sessionVo.userId}
+               ) C
+                 ON  1 = 1
+                 AND A.CONTRACT_ID = C.CONTRACT_ID
+               JOIN TABLE_DATE D
+                   ON  1 = 1
+                   AND TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') = D.DTE
+        WHERE  1 = 1
+        AND    A.LOOP_TYPE = 'NOT_REPEAT' /*반복안함*/
+        AND    A.SECRET_YN = 'Y' /*공개여부*/
+        AND    D.DTE <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_LOOP_END_DATE ,'YYYY-MM-DD')
+        AND    A.USER_ID    != #{sessionVo.userId}
+        <if test='userListYn == "Y"' >
+            AND    A.USER_ID    IN 
+            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                    #{userId}
+            </foreach>
+        </if>
+        <if test='periodYn == "Y"' >
+            AND   (
+                    ( #{startDate} <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') AND  TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') <![CDATA[<=]]> #{endDate} ) OR  
+                    ( TO_CHAR(A.SCHEDULE_START_DATE,'YYYY-MM-DD') <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD'))  OR  
+                    ( #{startDate} <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD') AND TO_CHAR(A.SCHEDULE_END_DATE,'YYYY-MM-DD') <![CDATA[<=]]> #{endDate} )  
+                  )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select>
+    <!-- 매일반복 -->
+    <select id="getDayRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getDayRepeat */
+        WITH TABLE_SCHEDULE AS ( 
+                            SELECT SCHEDULE_ID           
+                                  ,LOOP_TYPE             
+                                  ,LOOP_TYPE_DTL_CD      
+                                  ,LOOP_TYPE_DTL_VAL     
+                                  ,SCHEDULE_LOOP_END_DATE
+                                  ,TITLE                 
+                                  ,WORK_TYPE             
+                                  ,ALL_APPLY_YN          
+                                  ,SCHEDULE_START_DATE   
+                                  ,TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE_STR
+                                  ,SCHEDULE_END_DATE 
+                                  ,SCHEDULE_END_DATE- SCHEDULE_START_DATE AS DATE_DIFFER
+                                  ,TIME_TYPE             
+                                  ,START_TIME_HOUR       
+                                  ,START_TIME_MINUTE     
+                                  ,END_TIME_HOUR         
+                                  ,END_TIME_MINUTE       
+                                  ,CONTRACT_ID           
+                                  ,POSITION              
+                                  ,SECRET_YN             
+                                  ,DESCRIPTION           
+                                  ,USER_ID 
+                            FROM   TBL_EXP_SCHEDULE
+                            WHERE  1 = 1
+                            AND    LOOP_TYPE = 'DAY'
+                            <if test=" contractId != null and contractId != '' " >
+                                AND   CONTRACT_ID = #{contractId}
+                            </if>
+                            ORDER BY CREATE_DATE DESC
+                        )
+            ,TABLE_DATE AS (
+                           SELECT DTE
+                                 ,DY
+                                 ,D
+                           FROM   (
+                                      SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'YYYY-MM-DD') DTE
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'DAY') DAY
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'DY') DY
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'D') D
+                                      FROM   DUAL 
+                                      CONNECT BY LEVEL <![CDATA[<=]]> TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+                                  )
+                           ORDER BY DTE
+                            )
+        SELECT A.SCHEDULE_ID
+              ,B.DTE                AS SCHEDULE_DATE
+              ,B.DTE                AS SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,B.DTE                AS SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.TITLE
+               ,'N'                 AS SHARE_YN
+              ,C.ATTR1              AS WORK_COLOR
+              ,C.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_SCHEDULE A
+               JOIN TABLE_DATE B
+                 ON  1 = 1
+                 AND A.SCHEDULE_START_DATE_STR  <![CDATA[<=]]>  B.DTE
+               JOIN (
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                   ) C
+                   ON  1 = 1
+                   AND A.WORK_TYPE = C.CODE_ID
+        WHERE  1 = 1
+        AND A.USER_ID     = #{sessionVo.userId}
+        AND B.DTE <![CDATA[<=]]>  TO_CHAR(SCHEDULE_LOOP_END_DATE,'YYYY-MM-DD')
+    </select>
+
+    <!-- 매일반복-팀 -->
+    <select id="getTeamDayRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamDayRepeat */
+        WITH TABLE_SCHEDULE AS ( 
+                            SELECT SCHEDULE_ID           
+                                  ,LOOP_TYPE             
+                                  ,LOOP_TYPE_DTL_CD      
+                                  ,LOOP_TYPE_DTL_VAL     
+                                  ,SCHEDULE_LOOP_END_DATE
+                                  ,TITLE                 
+                                  ,WORK_TYPE             
+                                  ,ALL_APPLY_YN          
+                                  ,SCHEDULE_START_DATE   
+                                  ,TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE_STR
+                                  ,SCHEDULE_END_DATE 
+                                  ,SCHEDULE_END_DATE- SCHEDULE_START_DATE AS DATE_DIFFER
+                                  ,TIME_TYPE             
+                                  ,START_TIME_HOUR       
+                                  ,START_TIME_MINUTE     
+                                  ,END_TIME_HOUR         
+                                  ,END_TIME_MINUTE       
+                                  ,CONTRACT_ID           
+                                  ,POSITION              
+                                  ,SECRET_YN             
+                                  ,DESCRIPTION           
+                                  ,USER_ID 
+                            FROM   TBL_EXP_SCHEDULE
+                            WHERE  1 = 1
+                            AND    SECRET_YN = 'Y' /*공개여부*/
+                            <if test='userListYn == "Y"' >
+                                AND    USER_ID IN 
+                                <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                        #{userId}
+                                </foreach>
+                            </if>
+                            AND    LOOP_TYPE = 'DAY'
+                            ORDER BY CREATE_DATE DESC
+                        )
+            ,TABLE_DATE AS (
+                           SELECT DTE
+                                 ,DY
+                                 ,D
+                           FROM   (
+                                      SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'YYYY-MM-DD') DTE
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'DAY') DAY
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'DY') DY
+                                            ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD')-1 + LEVEL , 'D') D
+                                      FROM   DUAL 
+                                      CONNECT BY LEVEL  <![CDATA[<=]]>  TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+                                  )
+                           ORDER BY DTE
+                            )
+        SELECT A.SCHEDULE_ID   
+              ,B.DTE                AS SCHEDULE_DATE
+              ,B.DTE                AS SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,B.DTE                AS SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.TITLE AS TITLE_ORG
+              ,'['||GET_USER_NM(A.USER_ID)||']'||A.TITLE    AS TITLE 
+              ,A.CONTRACT_ID
+              ,A.USER_ID
+              ,GET_USER_NM(A.USER_ID) AS USER_NM
+              ,'N'                  AS SHARE_YN
+              ,A.POSITION
+              ,A.DESCRIPTION
+              ,A.WORK_TYPE
+              ,GET_CODE_NM('SCHEDULE_WORK_TYPE', A.WORK_TYPE) AS WORK_TYPE_NM
+              ,C.ATTR1              AS WORK_COLOR
+              ,C.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_SCHEDULE A
+               JOIN TABLE_DATE B
+                 ON  1 = 1
+                 AND A.SCHEDULE_START_DATE_STR   <![CDATA[<=]]>   B.DTE
+               JOIN (
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                   ) C
+                   ON  1 = 1
+                   AND A.WORK_TYPE = C.CODE_ID
+               JOIN (
+                        SELECT DISTINCT CONTRACT_ID 
+                        FROM   TBL_EXP_TEAM_MEMBER
+                        WHERE  1 = 1
+                        AND    USER_ID    = #{sessionVo.userId}
+               ) D
+                 ON  1 = 1
+                 AND A.CONTRACT_ID = D.CONTRACT_ID      
+        WHERE  1 = 1
+        AND    B.DTE <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_LOOP_END_DATE, 'YYYY-MM-DD')
+        <if test='periodYn == "Y"' >
+            AND   (
+                    ( #{startDate} <![CDATA[<=]]> B.DTE AND  B.DTE <![CDATA[<=]]> #{endDate} ) OR  
+                    ( B.DTE <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> B.DTE)  OR  
+                    ( #{startDate} <![CDATA[<=]]> B.DTE AND B.DTE <![CDATA[<=]]> #{endDate} )  
+                  )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select>
+
+    <select id="getWeekRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getWeekRepeat */
+        WITH BASE_TABEL AS( 
+            SELECT DTE
+                  ,DY
+                  ,D
+            FROM   (
+                    SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'YYYY-MM-DD') DTE
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DAY') DAY
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DY') DY
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'D') D
+                    FROM   DUAL 
+                    CONNECT BY LEVEL <![CDATA[<=]]> TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+            )
+            ORDER BY DTE
+        ),
+        TABLE_SCHEDULE AS (
+            SELECT  SCHEDULE_ID
+                   ,TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE   
+                   ,TO_CHAR(SCHEDULE_START_DATE, 'd')         AS WEEK_START
+                   ,TO_CHAR(SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE   
+                   ,TO_CHAR(SCHEDULE_END_DATE, 'd')           AS WEEK_END
+            FROM   TBL_EXP_SCHEDULE
+            WHERE  1 = 1
+            AND    USER_ID    = #{sessionVo.userId}
+            AND    LOOP_TYPE  = 'WEEK'     
+            <if test=" contractId != null and contractId != '' " >
+                AND   CONTRACT_ID = #{contractId}
+            </if>          
+        )
+        SELECT A.GROUP_ID
+              ,A.SCHEDULE_ID
+              ,A.SCHEDULE_DATE
+              ,A.SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,A.SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.SCHEDULE_LOOP_END_DATE
+              ,A.TITLE
+              ,A.SHARE_YN
+              ,A.WORK_COLOR
+              ,A.TEXT_COLOR 
+        FROM   (
+                /*=============================================================================*/        
+                SELECT  A.GROUP_ID
+                      , SUBSTR(A.GROUP_ID, 1, INSTR(A.GROUP_ID, '#') - 1) AS SCHEDULE_ID
+                      , SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 1) + 1, INSTR(A.GROUP_ID, '#', 1, 2) - INSTR(A.GROUP_ID, '#', 1, 1) - 1) AS SCHEDULE_DATE
+                      , TO_CHAR(
+                               TO_DATE(SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 1) + 1, INSTR(A.GROUP_ID, '#', 1, 2) - INSTR(A.GROUP_ID, '#', 1, 1) - 1), 'YYYY-MM-DD HH24:MI:SS') 
+                               + (TO_NUMBER( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 3) + 1)) * 7)-7, 'YYYY-MM-DD'
+                              ) AS SCHEDULE_START_DATE
+                      , B.START_TIME_HOUR
+                      , B.START_TIME_MINUTE
+                      , TO_CHAR(
+                                TO_DATE( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 2) + 1, INSTR(A.GROUP_ID, '#', 1, 3) - INSTR(A.GROUP_ID, '#', 1, 2) - 1) , 'YYYY-MM-DD HH24:MI:SS') 
+                                + (TO_NUMBER( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 3) + 1)) * 7)-7, 'YYYY-MM-DD'
+                               ) AS SCHEDULE_END_DATE
+                      , B.END_TIME_HOUR
+                      , B.END_TIME_MINUTE
+                      , B.SCHEDULE_LOOP_END_DATE
+                      , B.TITLE
+                      , A.SHARE_YN           AS SHARE_YN
+                      , C.ATTR1              AS WORK_COLOR
+                      , C.ATTR2              AS TEXT_COLOR
+                FROM   (
+                        
+                        SELECT A.GROUP_ID
+                              ,'N'             AS SHARE_YN
+                              ,MAX(A.DY_START) AS DY_START
+                              ,MAX(A.D_START)  AS D_START
+                              ,MAX(A.DY_END)   AS DY_END
+                              ,MAX(A.D_END)    AS D_END
+                        FROM   (
+                                    /*======= 사용자 일정    사용자 일정    사용자 일정    =======*/ 
+                                    SELECT A.GROUP_ID||'#'||A.GRP_CNT AS GROUP_ID
+                                          ,A.DY_START
+                                          ,A.D_START
+                                          ,A.DY_END
+                                          ,A.D_END
+                                    FROM   (
+        
+                                            SELECT A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE AS GROUP_ID
+                                                  ,ROW_NUMBER() OVER(PARTITION BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE ORDER BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE) AS GRP_CNT
+                                                  ,BASE_TABEL.DY AS DY_START 
+                                                  ,BASE_TABEL.D  AS D_START
+                                                  ,NULL          AS DY_END 
+                                                  ,NULL          AS D_END
+                                            FROM   BASE_TABEL
+                                                  ,TABLE_SCHEDULE A
+                                            WHERE  1 = 1
+                                            AND    BASE_TABEL.D = A.WEEK_START
+                                    ) A  
+                                    UNION ALL 
+                                    SELECT A.GROUP_ID||'#'||A.GRP_CNT AS GROUP_ID
+                                          ,A.DY_START
+                                          ,A.D_START
+                                          ,A.DY_END
+                                          ,A.D_END
+                                    FROM   (
+        
+                                            SELECT A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE AS GROUP_ID
+                                                  ,ROW_NUMBER() OVER(PARTITION BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE ORDER BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE) AS GRP_CNT
+                                                  ,NULL            AS DY_START 
+                                                  ,NULL            AS D_START
+                                                  ,BASE_TABEL.DY   AS DY_END 
+                                                  ,BASE_TABEL.D    AS D_END
+                                            FROM   BASE_TABEL
+                                                  ,TABLE_SCHEDULE A
+                                            WHERE  1 = 1
+                                            AND    BASE_TABEL.D = A.WEEK_END
+                                    ) A 
+                                    /*####### 사용자 일정    사용자 일정    사용자 일정    #######*/ 
+                               ) A
+                        GROUP BY A.GROUP_ID
+                       ) A
+                       JOIN TBL_EXP_SCHEDULE B
+                           ON  1 = 1
+                           AND B.LOOP_TYPE  = 'WEEK'
+                           AND SUBSTR(A.GROUP_ID, 1, INSTR(A.GROUP_ID, '#') - 1) = B.SCHEDULE_ID    
+                       JOIN (
+                              SELECT A.GRP_CODE_ID
+                                    ,B.CODE_ID
+                                    ,B.ATTR1
+                                    ,B.ATTR2
+                              FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                                     JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                         ON  1 = 1
+                                         AND B.DEL_YN = 'N'
+                                         AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                              WHERE  1 = 1
+                              AND    A.DEL_YN = 'N'
+                              AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                           ) C
+                           ON  1 = 1
+                           AND B.WORK_TYPE = C.CODE_ID
+                /*=============================================================================*/
+        ) A
+        WHERE  1 = 1
+        AND    TO_DATE(SCHEDULE_START_DATE)  <![CDATA[<=]]> TO_CHAR(SCHEDULE_LOOP_END_DATE,'YYYY-MM-DD')
+    </select>
+    
+    
+    <select id="getTeamWeekRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamWeekRepeat */
+        WITH BASE_TABEL AS( 
+            SELECT DTE
+                  ,DY
+                  ,D
+            FROM   (
+                    SELECT TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'YYYY-MM-DD') DTE
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DAY') DAY
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'DY') DY
+                          ,TO_CHAR( TO_DATE(#{minusDate},'YYYY-MM-DD') + LEVEL , 'D') D
+                    FROM   DUAL 
+                    CONNECT BY LEVEL <![CDATA[<=]]> TO_DATE(#{plusDate},'YYYY-MM-DD') - TO_DATE(#{minusDate},'YYYY-MM-DD')
+            )
+            ORDER BY DTE
+        ),
+        TABLE_SCHEDULE AS (
+            SELECT  SCHEDULE_ID
+                   ,TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE   
+                   ,TO_CHAR(SCHEDULE_START_DATE, 'd')         AS WEEK_START
+                   ,TO_CHAR(SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE   
+                   ,TO_CHAR(SCHEDULE_END_DATE, 'd')           AS WEEK_END
+            FROM   TBL_EXP_SCHEDULE
+            WHERE  1 = 1
+            AND    SECRET_YN = 'Y' /*공개여부*/
+            <if test='userListYn == "Y"' >
+                AND    USER_ID IN 
+                       <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                           #{userId}
+                       </foreach>
+            </if>
+            AND    LOOP_TYPE  = 'WEEK'               
+        )
+        SELECT A.SCHEDULE_ID
+              ,A.SCHEDULE_DATE
+              ,A.SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,A.SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.TITLE   AS TITLE_ORG
+              ,A.TITLE1  AS TITLE
+              ,A.CONTRACT_ID
+              ,A.USER_ID
+              ,A.DESCRIPTION
+              ,GET_USER_NM(A.USER_ID) AS USER_NM   
+              ,A.POSITION
+              ,A.WORK_TYPE
+              ,A.WORK_TYPE_NM
+              ,A.SHARE_YN
+              ,A.WORK_COLOR
+              ,A.TEXT_COLOR
+        FROM   (
+                /*=====================================================================*/       
+                SELECT  A.GROUP_ID
+                      , SUBSTR(A.GROUP_ID, 1, INSTR(A.GROUP_ID, '#') - 1) AS SCHEDULE_ID
+                      , B.SCHEDULE_LOOP_END_DATE
+                      , SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 1) + 1, INSTR(A.GROUP_ID, '#', 1, 2) - INSTR(A.GROUP_ID, '#', 1, 1) - 1) AS SCHEDULE_DATE
+                      , TO_CHAR(
+                               TO_DATE(SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 1) + 1, INSTR(A.GROUP_ID, '#', 1, 2) - INSTR(A.GROUP_ID, '#', 1, 1) - 1), 'YYYY-MM-DD HH24:MI:SS') 
+                               + (TO_NUMBER( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 3) + 1)) * 7)-7, 'YYYY-MM-DD'
+                              ) AS SCHEDULE_START_DATE
+                      , B.START_TIME_HOUR
+                      , B.START_TIME_MINUTE
+                      , TO_CHAR(
+                                TO_DATE( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 2) + 1, INSTR(A.GROUP_ID, '#', 1, 3) - INSTR(A.GROUP_ID, '#', 1, 2) - 1) , 'YYYY-MM-DD HH24:MI:SS') 
+                                + (TO_NUMBER( SUBSTR(A.GROUP_ID, INSTR(A.GROUP_ID, '#', 1, 3) + 1)) * 7)-7, 'YYYY-MM-DD'
+                               ) AS SCHEDULE_END_DATE
+                      , B.END_TIME_HOUR
+                      , B.END_TIME_MINUTE
+                      , B.TITLE
+                      , '['||GET_USER_NM(B.USER_ID)||']'||B.TITLE    AS TITLE1 
+                      , B.CONTRACT_ID
+                      , B.USER_ID 
+                      , B.DESCRIPTION
+                      , B.POSITION
+                      , B.WORK_TYPE
+                      , GET_CODE_NM('SCHEDULE_WORK_TYPE', B.WORK_TYPE) AS WORK_TYPE_NM
+                      , A.SHARE_YN           AS SHARE_YN
+                      , C.ATTR1              AS WORK_COLOR
+                      , C.ATTR2              AS TEXT_COLOR
+                FROM   (
+                        SELECT A.GROUP_ID
+                              ,'N'             AS SHARE_YN
+                              ,MAX(A.DY_START) AS DY_START
+                              ,MAX(A.D_START)  AS D_START
+                              ,MAX(A.DY_END)   AS DY_END
+                              ,MAX(A.D_END)    AS D_END
+                        FROM   (
+                                    /*======= 사용자 일정    사용자 일정    사용자 일정    =======*/ 
+                                    SELECT A.GROUP_ID||'#'||A.GRP_CNT AS GROUP_ID
+                                          ,A.DY_START
+                                          ,A.D_START
+                                          ,A.DY_END
+                                          ,A.D_END
+                                    FROM   (
+
+                                            SELECT A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE AS GROUP_ID
+                                                  ,ROW_NUMBER() OVER(PARTITION BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE ORDER BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE) AS GRP_CNT
+                                                  ,BASE_TABEL.DY AS DY_START 
+                                                  ,BASE_TABEL.D  AS D_START
+                                                  ,NULL          AS DY_END 
+                                                  ,NULL          AS D_END
+                                            FROM   BASE_TABEL
+                                                  ,TABLE_SCHEDULE A
+                                            WHERE  1 = 1
+                                            AND    BASE_TABEL.D = A.WEEK_START
+                                    ) A  
+                                    UNION ALL 
+                                    SELECT A.GROUP_ID||'#'||A.GRP_CNT AS GROUP_ID
+                                          ,A.DY_START
+                                          ,A.D_START
+                                          ,A.DY_END
+                                          ,A.D_END
+                                    FROM   (
+
+                                            SELECT A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE AS GROUP_ID
+                                                  ,ROW_NUMBER() OVER(PARTITION BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE ORDER BY A.SCHEDULE_ID||'#'||A.SCHEDULE_START_DATE||'#'||A.SCHEDULE_END_DATE) AS GRP_CNT
+                                                  ,NULL            AS DY_START 
+                                                  ,NULL            AS D_START
+                                                  ,BASE_TABEL.DY   AS DY_END 
+                                                  ,BASE_TABEL.D    AS D_END
+                                            FROM   BASE_TABEL
+                                                  ,TABLE_SCHEDULE A
+                                            WHERE  1 = 1
+                                            AND    BASE_TABEL.D = A.WEEK_END
+                                    ) A 
+                                    /*####### 사용자 일정    사용자 일정    사용자 일정    #######*/ 
+                               ) A
+                        GROUP BY A.GROUP_ID 
+                       ) A
+                       JOIN TBL_EXP_SCHEDULE B
+                           ON  1 = 1
+                           AND B.LOOP_TYPE  = 'WEEK'
+                           <if test='userListYn == "Y"' >
+                               AND B.USER_ID IN 
+                               <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                   #{userId}
+                               </foreach>
+                           </if>
+                           AND SUBSTR(A.GROUP_ID, 1, INSTR(A.GROUP_ID, '#') - 1) = B.SCHEDULE_ID    
+                       JOIN (
+                              SELECT A.GRP_CODE_ID
+                                    ,B.CODE_ID
+                                    ,B.ATTR1
+                                    ,B.ATTR2
+                              FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                                     JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                         ON  1 = 1
+                                         AND B.DEL_YN = 'N'
+                                         AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                              WHERE  1 = 1
+                              AND    A.DEL_YN = 'N'
+                              AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                           ) C
+                           ON  1 = 1
+                           AND B.WORK_TYPE = C.CODE_ID
+                       JOIN (         
+                            SELECT DISTINCT CONTRACT_ID 
+                            FROM   TBL_EXP_TEAM_MEMBER
+                            WHERE  1 = 1
+                            AND    USER_ID    = #{sessionVo.userId}
+                       ) D
+                         ON  1 = 1
+                         AND B.CONTRACT_ID = D.CONTRACT_ID
+                WHERE 1 = 1
+                /*=====================================================================*/
+               ) A
+        WHERE 1 = 1
+        AND   A.SCHEDULE_START_DATE <![CDATA[<=]]> A.SCHEDULE_LOOP_END_DATE
+        <if test='periodYn == "Y"' >
+        AND   (
+                ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_START_DATE AND  A.SCHEDULE_START_DATE <![CDATA[<=]]> #{endDate} ) OR  
+                ( A.SCHEDULE_START_DATE <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE)  OR  
+                ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE AND A.SCHEDULE_END_DATE <![CDATA[<=]]> #{endDate} )  
+              )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select> 
+    
+
+    <select id="getMonthRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getMonthRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.USER_ID = #{sessionVo.userId}
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   CONTRACT_ID = #{contractId}
+                        </if>
+                        )
+        ,TABLE_BASE AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'YYYY-MM-DD'), 9, 2) AS SCHEDULE_START_DAY
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N'  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.USER_ID = #{sessionVo.userId}
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD IS NULL
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   CONTRACT_ID = #{contractId}
+                        </if>
+                )
+        SELECT SCHEDULE_ID
+              ,TITLE
+              ,SCHEDULE_DATE 
+              ,SCHEDULE_START_DATE
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,SCHEDULE_END_DATE
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SCHEDULE_LOOP_END_DATE
+              ,SHARE_YN
+              ,WORK_COLOR
+              ,TEXT_COLOR
+        FROM   (
+                /*================================================================*/
+                SELECT SCHEDULE_ID
+                      ,TITLE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                      ,START_TIME_HOUR
+                      ,START_TIME_MINUTE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,END_TIME_HOUR
+                      ,END_TIME_MINUTE
+                      ,SCHEDULE_LOOP_END_DATE
+                      ,SHARE_YN
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   TABLE_END_DAY
+                       LEFT OUTER JOIN (
+                              SELECT A.GRP_CODE_ID
+                                    ,B.CODE_ID
+                                    ,B.ATTR1
+                                    ,B.ATTR2
+                              FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                                     JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                         ON  1 = 1
+                                         AND B.DEL_YN = 'N'
+                                         AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                              WHERE  1 = 1
+                              AND    A.DEL_YN = 'N'
+                              AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                           ) B
+                           ON  1 = 1
+                           AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID  
+                UNION ALL
+                SELECT SCHEDULE_ID
+                      ,TITLE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+                      ,START_TIME_HOUR
+                      ,START_TIME_MINUTE
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,END_TIME_HOUR
+                      ,END_TIME_MINUTE
+                      ,SCHEDULE_LOOP_END_DATE
+                      ,SHARE_YN
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   TABLE_BASE
+                       LEFT OUTER JOIN (
+                              SELECT A.GRP_CODE_ID
+                                    ,B.CODE_ID
+                                    ,B.ATTR1
+                                    ,B.ATTR2
+                              FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                                     JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                         ON  1 = 1
+                                         AND B.DEL_YN = 'N'
+                                         AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                              WHERE  1 = 1
+                              AND    A.DEL_YN = 'N'
+                              AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                           ) B
+                           ON  1 = 1
+                           AND TABLE_BASE.WORK_TYPE = B.CODE_ID
+                /*================================================================*/
+        ) A
+        WHERE  1 = 1
+        AND    A.SCHEDULE_START_DATE <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_LOOP_END_DATE, 'YYYY-MM-DD')
+    </select>
+    
+        <select id="getMonthRepeatSelectDay" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getMonthRepeatSelectDay */
+        WITH TABLE_SELECT_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N' AS SHARE_YN
+                              ,SUBSTR(TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),9,2) AS MONTH_LAST_DAY
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.USER_ID = #{sessionVo.userId}
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   CONTRACT_ID = #{contractId}
+                        </if>
+        )  
+        
+                SELECT A.SCHEDULE_ID
+                      ,A.TITLE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||A.LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD'), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                      ,A.START_TIME_HOUR
+                      ,A.START_TIME_MINUTE
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||A.LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD') + A.DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,A.END_TIME_HOUR
+                      ,A.END_TIME_MINUTE
+                      ,A.SCHEDULE_LOOP_END_DATE
+                      ,A.SHARE_YN
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   (
+                          SELECT SCHEDULE_ID
+                                ,TITLE
+                                ,MONTH_LAST_DAY
+                                ,SUBSTR(#{startDate},11,2)||LOOP_TYPE_DTL_VAL AS SUB_DAY
+                                ,DATE_DIFFER
+                                ,LOOP_TYPE_DTL_VAL
+                                ,START_TIME_HOUR
+                                ,START_TIME_MINUTE
+                                ,END_TIME_HOUR
+                                ,END_TIME_MINUTE
+                                ,SCHEDULE_LOOP_END_DATE
+                                ,SHARE_YN
+                                ,WORK_TYPE
+                          FROM   TABLE_SELECT_DAY
+                          WHERE  1 = 1
+                          AND    LOOP_TYPE_DTL_VAL <![CDATA[<=]]> MONTH_LAST_DAY
+                           ) A
+                       LEFT OUTER JOIN (
+                              SELECT A.GRP_CODE_ID
+                                    ,B.CODE_ID
+                                    ,B.ATTR1
+                                    ,B.ATTR2
+                              FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                                     JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                         ON  1 = 1
+                                         AND B.DEL_YN = 'N'
+                                         AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                              WHERE  1 = 1
+                              AND    A.DEL_YN = 'N'
+                              AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+                           ) B
+                           ON  1 = 1
+                           AND A.WORK_TYPE = B.CODE_ID  
+                WHERE  1 = 1
+        </select>
+        <select id="getTeamMonthRepeatSelectDay" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamMonthRepeatSelectDay */
+        WITH TABLE_SELECT_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N' AS SHARE_YN
+                              ,SUBSTR(TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),9,2) AS MONTH_LAST_DAY
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.SECRET_YN = 'Y' /*공개여부*/
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID  IN
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+        )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+        SELECT A.SCHEDULE_ID
+              ,A.TITLE  AS TITLE_ORG
+              ,A.TITLE1 AS TITLE
+              ,A.CONTRACT_ID 
+              ,A.USER_ID
+              ,GET_USER_NM(A.USER_ID) AS USER_NM
+              ,A.SCHEDULE_LOOP_END_DATE
+              ,A.SCHEDULE_DATE 
+              ,A.SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,A.SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.SHARE_YN
+              ,A.POSITION
+              ,A.WORK_TYPE
+              ,A.DESCRIPTION
+              ,GET_CODE_NM('SCHEDULE_WORK_TYPE', A.WORK_TYPE) AS WORK_TYPE_NM
+              ,A.WORK_COLOR
+              ,A.TEXT_COLOR
+        FROM   (
+                SELECT SCHEDULE_ID
+                      ,TITLE
+                      ,CONTRACT_ID
+                      ,USER_ID
+                      ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE1
+                      ,SCHEDULE_LOOP_END_DATE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(
+                                CASE 
+                                    WHEN TO_NUMBER(REPLACE(SUBSTR(#{startDate}, 0, 8), '-', '') || LOOP_TYPE_DTL_VAL) > TO_NUMBER(MONTH_LAST_DAY) 
+                                         THEN TO_DATE(SUBSTR(#{startDate}, 0, 8) || MONTH_LAST_DAY, 'YYYY-MM-DD')
+                                    ELSE TO_DATE(SUBSTR(#{startDate}, 0, 8) || LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD')
+                                END, 'YYYY-MM-DD'
+                                ) AS SCHEDULE_START_DATE
+                      ,START_TIME_HOUR
+                      ,START_TIME_MINUTE
+                      ,TO_CHAR(
+                            CASE 
+                                WHEN TO_NUMBER(REPLACE(SUBSTR(#{startDate}, 0, 8), '-', '') || LOOP_TYPE_DTL_VAL) > TO_NUMBER(MONTH_LAST_DAY) 
+                                THEN TO_DATE(SUBSTR(#{startDate}, 0, 8) || MONTH_LAST_DAY, 'YYYY-MM-DD') + DATE_DIFFER
+                                ELSE TO_DATE(SUBSTR(#{startDate}, 0, 8) || LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD') + DATE_DIFFER
+                            END, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,END_TIME_HOUR
+                      ,END_TIME_MINUTE
+                      ,SHARE_YN
+                      ,POSITION
+                      ,WORK_TYPE
+                      ,DESCRIPTION
+                      ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   TABLE_SELECT_DAY 
+                       LEFT OUTER JOIN TABLE_CODE B
+                           ON  1 = 1
+                           AND TABLE_SELECT_DAY.WORK_TYPE = B.CODE_ID  
+                WHERE  1 = 1 
+                AND    TABLE_SELECT_DAY.LOOP_TYPE_DTL_VAL <![CDATA[<=]]> TABLE_SELECT_DAY.MONTH_LAST_DAY
+        ) A      
+        JOIN (          
+                SELECT DISTINCT CONTRACT_ID 
+                FROM   TBL_EXP_TEAM_MEMBER
+                WHERE  1 = 1
+                AND    USER_ID    = #{sessionVo.userId}
+        ) B
+          ON  1 = 1
+          AND A.CONTRACT_ID = B.CONTRACT_ID      
+        WHERE 1 = 1
+        AND   TO_DATE(A.SCHEDULE_START_DATE, 'YYYY-MM-DD') <![CDATA[<=]]> SCHEDULE_LOOP_END_DATE
+        <if test='periodYn == "Y"' >
+            AND   (
+                    ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_START_DATE AND  A.SCHEDULE_START_DATE <![CDATA[<=]]> #{endDate} ) OR  
+                    ( A.SCHEDULE_START_DATE <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE)  OR  
+                    ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE AND A.SCHEDULE_END_DATE <![CDATA[<=]]> #{endDate} )  
+                  )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select>
+        
+    <select id="getTeamMonthRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamMonthRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'Y'    AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.SECRET_YN = 'Y' /*공개여부*/
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID  IN
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        )
+        ,TABLE_BASE AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'YYYY-MM-DD'), 9, 2) AS SCHEDULE_START_DAY
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N'  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID  IN
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'MONTH'
+                        AND    A.LOOP_TYPE_DTL_CD IS NULL
+                )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+        SELECT A.SCHEDULE_ID
+              ,A.TITLE  AS TITLE_ORG
+              ,A.TITLE1 AS TITLE
+              ,A.CONTRACT_ID 
+              ,A.USER_ID
+              ,GET_USER_NM(A.USER_ID) AS USER_NM
+              ,A.SCHEDULE_LOOP_END_DATE
+              ,A.SCHEDULE_DATE 
+              ,A.SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,A.SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.SHARE_YN
+              ,A.POSITION
+              ,A.WORK_TYPE
+              ,A.DESCRIPTION
+              ,GET_CODE_NM('SCHEDULE_WORK_TYPE', A.WORK_TYPE) AS WORK_TYPE_NM
+              ,A.WORK_COLOR
+              ,A.TEXT_COLOR
+        FROM   (
+                /*===============================================================================*/
+                SELECT SCHEDULE_ID
+                      ,TITLE
+                      ,CONTRACT_ID
+                      ,USER_ID
+                      ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE1
+                      ,SCHEDULE_LOOP_END_DATE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                      ,START_TIME_HOUR
+                      ,START_TIME_MINUTE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,END_TIME_HOUR
+                      ,END_TIME_MINUTE
+                      ,SHARE_YN
+                      ,POSITION
+                      ,WORK_TYPE
+                      ,DESCRIPTION
+                      ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   TABLE_END_DAY
+                       LEFT OUTER JOIN TABLE_CODE B
+                           ON  1 = 1
+                           AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID
+                UNION ALL
+                SELECT SCHEDULE_ID
+                      ,TITLE
+                      ,CONTRACT_ID
+                      ,USER_ID
+                      ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE1
+                      ,SCHEDULE_LOOP_END_DATE
+                      ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+                      ,START_TIME_HOUR
+                      ,START_TIME_MINUTE
+                      ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                      ,END_TIME_HOUR
+                      ,END_TIME_MINUTE
+                      ,SHARE_YN
+                      ,POSITION
+                      ,WORK_TYPE
+                      ,DESCRIPTION
+                      ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                      ,B.ATTR1              AS WORK_COLOR
+                      ,B.ATTR2              AS TEXT_COLOR
+                FROM   TABLE_BASE
+                       LEFT OUTER JOIN TABLE_CODE B
+                           ON  1 = 1
+                           AND TABLE_BASE.WORK_TYPE = B.CODE_ID
+                /*===============================================================================*/  
+        ) A     
+        JOIN (    
+               SELECT DISTINCT CONTRACT_ID 
+               FROM   TBL_EXP_TEAM_MEMBER
+               WHERE  1 = 1
+               AND    USER_ID    = #{sessionVo.userId}
+        ) B
+          ON  1 = 1
+          AND A.CONTRACT_ID = B.CONTRACT_ID      
+        WHERE 1 = 1
+        AND   TO_DATE(A.SCHEDULE_START_DATE, 'YYYY-MM-DD') <![CDATA[<=]]> SCHEDULE_LOOP_END_DATE
+        <if test='periodYn == "Y"' >
+            AND   (
+                    ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_START_DATE AND  A.SCHEDULE_START_DATE <![CDATA[<=]]> #{endDate} ) OR  
+                    ( A.SCHEDULE_START_DATE <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE)  OR  
+                    ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE AND A.SCHEDULE_END_DATE <![CDATA[<=]]> #{endDate} )  
+                  )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select> 
+        
+    <select id="getQuarterRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getQuarterRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,NVL2(B.USER_ID, 'Y', 'N')  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                               LEFT OUTER JOIN (
+                                       SELECT  B.USER_ID 
+                                              ,A.SCHEDULE_ID 
+                                        FROM   TBL_EXP_SCHEDULE A
+                                               JOIN TBL_EXP_SCHEDULE_SHARE B
+                                                   ON  1 = 1
+                                                   AND A.SCHEDULE_ID = B.SCHEDULE_ID
+                                                   AND B.USER_ID     = #{sessionVo.userId}
+                                                   AND A.USER_ID     != B.USER_ID
+                                        WHERE  1 = 1
+                                        AND    A.LOOP_TYPE = 'QUARTER'
+                               ) B
+                                 ON  1= 1
+                                 AND A.SCHEDULE_ID = B.SCHEDULE_ID
+                        WHERE  1 = 1
+                        AND    ( A.USER_ID = #{sessionVo.userId} OR B.USER_ID = #{sessionVo.userId} )
+                        AND    A.LOOP_TYPE = 'QUARTER'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   A.CONTRACT_ID = #{contractId}
+                        </if>
+                        )
+        ,TABLE_SELECT_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4     
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,NVL2(B.USER_ID, 'Y', 'N')  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                               LEFT OUTER JOIN (
+                                       SELECT  B.USER_ID 
+                                              ,A.SCHEDULE_ID 
+                                        FROM   TBL_EXP_SCHEDULE A
+                                               JOIN TBL_EXP_SCHEDULE_SHARE B
+                                                   ON  1 = 1
+                                                   AND A.SCHEDULE_ID = B.SCHEDULE_ID
+                                                   AND B.USER_ID     = #{sessionVo.userId}
+                                                   AND A.USER_ID     != B.USER_ID
+                                        WHERE  1 = 1
+                                        AND    A.LOOP_TYPE = 'QUARTER'
+                               ) B
+                                 ON  1= 1
+                                 AND A.SCHEDULE_ID = B.SCHEDULE_ID
+                        WHERE  1 = 1
+                        AND    ( A.USER_ID = #{sessionVo.userId} OR B.USER_ID = #{sessionVo.userId} )
+                        AND    A.LOOP_TYPE = 'QUARTER'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   A.CONTRACT_ID = #{contractId}
+                        </if>
+        )
+        ,TABLE_BASE AS ( 
+                         SELECT A.SCHEDULE_ID           
+                               ,A.LOOP_TYPE             
+                               ,A.LOOP_TYPE_DTL_CD      
+                               ,A.LOOP_TYPE_DTL_VAL     
+                               ,A.SCHEDULE_LOOP_END_DATE
+                               ,A.TITLE                 
+                               ,A.WORK_TYPE             
+                               ,A.ALL_APPLY_YN          
+                               ,A.SCHEDULE_START_DATE
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4     
+                               ,SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'YYYY-MM-DD'), 9, 2) AS SCHEDULE_START_DAY
+                               ,A.SCHEDULE_END_DATE 
+                               ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                               ,A.TIME_TYPE             
+                               ,A.START_TIME_HOUR       
+                               ,A.START_TIME_MINUTE     
+                               ,A.END_TIME_HOUR         
+                               ,A.END_TIME_MINUTE       
+                               ,A.CONTRACT_ID           
+                               ,A.POSITION              
+                               ,A.SECRET_YN             
+                               ,A.DESCRIPTION           
+                               ,A.USER_ID 
+                               ,NVL2(B.USER_ID, 'Y', 'N')  AS SHARE_YN
+                         FROM   TBL_EXP_SCHEDULE A
+                               LEFT OUTER JOIN (
+                                       SELECT  B.USER_ID 
+                                              ,A.SCHEDULE_ID 
+                                        FROM   TBL_EXP_SCHEDULE A
+                                               JOIN TBL_EXP_SCHEDULE_SHARE B
+                                                   ON  1 = 1
+                                                   AND A.SCHEDULE_ID = B.SCHEDULE_ID
+                                                   AND B.USER_ID     = #{sessionVo.userId}
+                                                   AND A.USER_ID     != B.USER_ID
+                                        WHERE  1 = 1
+                                        AND    A.LOOP_TYPE = 'QUARTER'
+                               ) B
+                                 ON  1= 1
+                                 AND A.SCHEDULE_ID = B.SCHEDULE_ID 
+                         WHERE  1 = 1
+                         AND    ( A.USER_ID = #{sessionVo.userId} OR B.USER_ID = #{sessionVo.userId} )
+                         AND    A.LOOP_TYPE = 'QUARTER'
+                         AND    A.LOOP_TYPE_DTL_CD IS NULL
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   A.CONTRACT_ID = #{contractId}
+                        </if>
+        )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+        SELECT SCHEDULE_ID
+              ,TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE /* 날짜 더하기*/
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_END_DAY
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    ( QUARTER1 = #{month} OR QUARTER2 = #{month} OR QUARTER3 = #{month} OR QUARTER4 = #{month})
+        UNION ALL
+        SELECT A.SCHEDULE_ID
+              ,A.TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||A.LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD'), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE /* 2022-05-01은 화면에서 받아온다*/
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||A.LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE /* 날짜 더하기*/
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   (        
+                    SELECT SCHEDULE_ID
+                          ,TITLE
+                          ,A.LAST_DATE
+                          ,A.SUB_DATE
+                          ,A.QUARTER1
+                          ,A.QUARTER2
+                          ,A.QUARTER3
+                          ,A.QUARTER4
+                          ,A.DATE_DIFFER
+                          ,A.LOOP_TYPE_DTL_VAL
+                          ,A.START_TIME_HOUR
+                          ,A.START_TIME_MINUTE
+                          ,A.END_TIME_HOUR
+                          ,A.END_TIME_MINUTE
+                          ,A.SHARE_YN
+                          ,A.WORK_TYPE
+                          ,CASE WHEN A.LAST_DATE <![CDATA[<]]> A.SUB_DATE THEN 'N'
+                                ELSE 'Y'
+                           END AS DAY_CHECK
+                    FROM   (
+                            SELECT SCHEDULE_ID
+                                  ,TITLE
+                                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD') AS LAST_DATE
+                                  ,SUBSTR(#{startDate},0,8)||LOOP_TYPE_DTL_VAL AS SUB_DATE
+                                  ,QUARTER1
+                                  ,QUARTER2
+                                  ,QUARTER3
+                                  ,QUARTER4
+                                  ,DATE_DIFFER
+                                  ,LOOP_TYPE_DTL_VAL
+                                  ,START_TIME_HOUR
+                                  ,START_TIME_MINUTE
+                                  ,END_TIME_HOUR
+                                  ,END_TIME_MINUTE
+                                  ,SHARE_YN
+                                  ,WORK_TYPE
+                            FROM   TABLE_SELECT_DAY
+                           ) A
+               )  A
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND A.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    A.DAY_CHECK = 'Y'
+        AND    ( A.QUARTER1 = #{month} OR A.QUARTER2 = #{month} OR A.QUARTER3 = #{month} OR A.QUARTER4 = #{month})
+        UNION ALL
+        SELECT SCHEDULE_ID
+              ,TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_BASE
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND TABLE_BASE.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    ( QUARTER1 = #{month} OR QUARTER2 = #{month} OR QUARTER3 = #{month} OR QUARTER4 = #{month})
+    </select>
+
+    <select id="getTeamQuarterRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamQuarterRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N'  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'QUARTER'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        )
+        ,TABLE_SELECT_DAY AS ( 
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                              ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4     
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID 
+                              ,'N'  AS SHARE_YN
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'QUARTER'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+        )
+        ,TABLE_BASE AS ( 
+                         SELECT A.SCHEDULE_ID           
+                               ,A.LOOP_TYPE             
+                               ,A.LOOP_TYPE_DTL_CD      
+                               ,A.LOOP_TYPE_DTL_VAL     
+                               ,A.SCHEDULE_LOOP_END_DATE
+                               ,A.TITLE                 
+                               ,A.WORK_TYPE             
+                               ,A.ALL_APPLY_YN          
+                               ,A.SCHEDULE_START_DATE
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 0),'YYYY-MM-DD'),6,2) AS QUARTER1
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 3),'YYYY-MM-DD'),6,2) AS QUARTER2
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 6),'YYYY-MM-DD'),6,2) AS QUARTER3
+                               ,SUBSTR(TO_CHAR(ADD_MONTHS(TO_DATE(A.SCHEDULE_START_DATE,'YYYY-MM-DD'), 9),'YYYY-MM-DD'),6,2) AS QUARTER4     
+                               ,SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'YYYY-MM-DD'), 9, 2) AS SCHEDULE_START_DAY
+                               ,A.SCHEDULE_END_DATE 
+                               ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                               ,A.TIME_TYPE             
+                               ,A.START_TIME_HOUR       
+                               ,A.START_TIME_MINUTE     
+                               ,A.END_TIME_HOUR         
+                               ,A.END_TIME_MINUTE       
+                               ,A.CONTRACT_ID           
+                               ,A.POSITION              
+                               ,A.SECRET_YN             
+                               ,A.DESCRIPTION           
+                               ,A.USER_ID 
+                               ,'N' AS SHARE_YN
+                         FROM   TBL_EXP_SCHEDULE A
+                         WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                         AND    A.LOOP_TYPE = 'QUARTER'
+                         AND    A.LOOP_TYPE_DTL_CD IS NULL
+        )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+        SELECT SCHEDULE_ID
+              ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE /* 2022-05-01은 화면에서 받아온다*/
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE /* 날짜 더하기*/
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_END_DAY
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    ( QUARTER1 = #{month} OR QUARTER2 = #{month} OR QUARTER3 = #{month} OR QUARTER4 = #{month})
+        UNION ALL
+        SELECT SCHEDULE_ID
+              ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD'), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE /* 2022-05-01은 화면에서 받아온다*/
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||LOOP_TYPE_DTL_VAL, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE /* 날짜 더하기*/
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_SELECT_DAY
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND TABLE_SELECT_DAY.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    ( QUARTER1 = #{month} OR QUARTER2 = #{month} OR QUARTER3 = #{month} OR QUARTER4 = #{month})
+        UNION ALL
+        SELECT SCHEDULE_ID
+              ,'['||GET_USER_NM(USER_ID)||']'||TITLE   AS TITLE
+              ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)||SCHEDULE_START_DAY, 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SHARE_YN
+              ,B.ATTR1              AS WORK_COLOR
+              ,B.ATTR2              AS TEXT_COLOR
+        FROM   TABLE_BASE
+               LEFT OUTER JOIN TABLE_CODE B
+                   ON  1 = 1
+                   AND TABLE_BASE.WORK_TYPE = B.CODE_ID  
+        WHERE  1 = 1
+        AND    ( QUARTER1 = #{month} OR QUARTER2 = #{month} OR QUARTER3 = #{month} OR QUARTER4 = #{month})
+    </select> 
+    
+    <select id="getYearRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getYearRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        /*월의 마지막일 - 월의 마지막일*/
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN  
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.USER_ID = #{sessionVo.userId}
+                        AND    A.LOOP_TYPE = 'YEAR'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   A.CONTRACT_ID = #{contractId}
+                        </if>
+                        )
+             ,TABLE_SELECT_DAY AS ( 
+                        /*월의 마지막일 - 선택일*/
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN 
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.USER_ID = #{sessionVo.userId}
+                        AND    A.LOOP_TYPE = 'YEAR'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+                        <if test=" contractId != null and contractId != '' " >
+                            AND   A.CONTRACT_ID = #{contractId}
+                        </if>
+        )
+        ,TABLE_BASE AS ( 
+               /*월의 일반일*/
+                SELECT A.SCHEDULE_ID           
+                      ,A.LOOP_TYPE             
+                      ,A.LOOP_TYPE_DTL_CD      
+                      ,A.LOOP_TYPE_DTL_VAL     
+                      ,A.SCHEDULE_LOOP_END_DATE
+                      ,A.TITLE                 
+                      ,A.WORK_TYPE             
+                      ,A.ALL_APPLY_YN          
+                      ,A.SCHEDULE_START_DATE   
+                      ,LPAD(SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'DD'), 1, 2), 2, '0') AS SCHEDULE_START_DAY
+                      ,A.SCHEDULE_END_DATE 
+                      ,A.SCHEDULE_END_DATE - A.SCHEDULE_START_DATE AS DATE_DIFFER
+                      ,A.TIME_TYPE             
+                      ,A.START_TIME_HOUR       
+                      ,A.START_TIME_MINUTE     
+                      ,A.END_TIME_HOUR         
+                      ,A.END_TIME_MINUTE       
+                      ,A.CONTRACT_ID           
+                      ,A.POSITION              
+                      ,A.SECRET_YN             
+                      ,A.DESCRIPTION           
+                      ,A.USER_ID
+                      ,'N'  AS SHARE_YN  
+                FROM   TBL_EXP_SCHEDULE A
+                WHERE  1 = 1
+                AND    A.USER_ID = #{sessionVo.userId}
+                AND    A.LOOP_TYPE = 'YEAR'
+                AND    A.LOOP_TYPE_DTL_CD IS NULL
+                <if test=" contractId != null and contractId != '' " >
+                    AND   A.CONTRACT_ID = #{contractId}
+                </if>
+                )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+
+        SELECT SCHEDULE_ID
+              ,TITLE
+              ,SCHEDULE_DATE 
+              ,SCHEDULE_START_DATE
+              ,START_TIME_HOUR
+              ,START_TIME_MINUTE
+              ,SCHEDULE_END_DATE
+              ,END_TIME_HOUR
+              ,END_TIME_MINUTE
+              ,SCHEDULE_LOOP_END_DATE
+              ,SHARE_YN
+              ,WORK_COLOR
+              ,TEXT_COLOR
+        FROM   (
+               /*==========================================================================*/
+               /* 월의 마지막날-자동 */
+               SELECT SCHEDULE_ID
+                     ,TITLE
+                     ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                     ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                     ,START_TIME_HOUR
+                     ,START_TIME_MINUTE
+                     ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                     ,END_TIME_HOUR
+                     ,END_TIME_MINUTE
+                     ,SCHEDULE_LOOP_END_DATE
+                     ,SHARE_YN
+                     ,B.ATTR1              AS WORK_COLOR
+                     ,B.ATTR2              AS TEXT_COLOR
+               FROM   TABLE_END_DAY
+                      LEFT OUTER JOIN TABLE_CODE B
+                          ON  1 = 1
+                          AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID  
+               WHERE  1 = 1
+               AND    SUBSTR( TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+               AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+               UNION ALL
+               /* 월의 마지막날-선택 */
+               SELECT SCHEDULE_ID
+                     ,TITLE
+                     ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                     ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},1,8) || LPAD(LOOP_TYPE_DTL_VAL, 2, '0'), 'YYYY-MM-DD'), 'YYYY-MM-DD') AS SCHEDULE_START_DATE
+                     ,START_TIME_HOUR
+                     ,START_TIME_MINUTE
+                     ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},1,8) || LPAD(LOOP_TYPE_DTL_VAL, 2, '0'), 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                     ,END_TIME_HOUR
+                     ,END_TIME_MINUTE
+                     ,SCHEDULE_LOOP_END_DATE
+                     ,SHARE_YN
+                     ,B.ATTR1              AS WORK_COLOR
+                     ,B.ATTR2              AS TEXT_COLOR
+               FROM   TABLE_SELECT_DAY
+                      LEFT OUTER JOIN TABLE_CODE B
+                          ON  1 = 1
+                          AND TABLE_SELECT_DAY.WORK_TYPE = B.CODE_ID  
+               WHERE  1 = 1
+               AND    SUBSTR(TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),9,2) = LPAD(LOOP_TYPE_DTL_VAL, 2, '0')
+               AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+               UNION ALL
+               /* 월의 일반날 */
+               SELECT SCHEDULE_ID
+                     ,TITLE
+                     ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                     ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8) || LPAD(SCHEDULE_START_DAY, 2, '0'), 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+                     ,START_TIME_HOUR
+                     ,START_TIME_MINUTE
+                     ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8) || LPAD(SCHEDULE_START_DAY, 2, '0'), 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                     ,END_TIME_HOUR
+                     ,END_TIME_MINUTE
+                     ,SCHEDULE_LOOP_END_DATE
+                     ,SHARE_YN
+                     ,B.ATTR1              AS WORK_COLOR
+                     ,B.ATTR2              AS TEXT_COLOR
+               FROM   TABLE_BASE
+                      LEFT OUTER JOIN TABLE_CODE B
+                          ON  1 = 1
+                          AND TABLE_BASE.WORK_TYPE = B.CODE_ID
+               WHERE  1 = 1
+               AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2) 
+               /*==========================================================================*/
+        ) A
+        WHERE 1 = 1
+        AND   A.SCHEDULE_START_DATE <![CDATA[<=]]> TO_CHAR(A.SCHEDULE_LOOP_END_DATE,'YYYY-MM-DD')
+    </select>
+    
+    <!-- 매년 반복이기때문에 시작만 보면됨  -->    
+    <select id="getTeamYearRepeat" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getTeamYearRepeat */
+        WITH TABLE_END_DAY AS ( 
+                        /*월의 마지막일 - 월의 마지막일*/
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN 
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        AND    A.SECRET_YN = 'Y' /*공개여부*/
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'YEAR'
+                        AND    A.LOOP_TYPE_DTL_CD = 'END_OF_MONTH'
+                        )
+       ,TABLE_SELECT_DAY AS ( 
+                        /*월의 마지막일 - 선택일*/
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE- A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN 
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'YEAR'
+                        AND    A.LOOP_TYPE_DTL_CD = 'SELECT_DAY'
+        )
+        ,TABLE_BASE AS ( 
+                       /*월의 일반일*/
+                        SELECT A.SCHEDULE_ID           
+                              ,A.LOOP_TYPE             
+                              ,A.LOOP_TYPE_DTL_CD      
+                              ,A.LOOP_TYPE_DTL_VAL     
+                              ,A.SCHEDULE_LOOP_END_DATE
+                              ,A.TITLE                 
+                              ,A.WORK_TYPE             
+                              ,A.ALL_APPLY_YN          
+                              ,A.SCHEDULE_START_DATE   
+                              ,LPAD(SUBSTR(TO_CHAR(A.SCHEDULE_START_DATE, 'DD'), 1, 2), 2, '0') AS SCHEDULE_START_DAY
+                              ,A.SCHEDULE_END_DATE 
+                              ,A.SCHEDULE_END_DATE - A.SCHEDULE_START_DATE AS DATE_DIFFER
+                              ,A.TIME_TYPE             
+                              ,A.START_TIME_HOUR       
+                              ,A.START_TIME_MINUTE     
+                              ,A.END_TIME_HOUR         
+                              ,A.END_TIME_MINUTE       
+                              ,A.CONTRACT_ID           
+                              ,A.POSITION              
+                              ,A.SECRET_YN             
+                              ,A.DESCRIPTION           
+                              ,A.USER_ID
+                              ,'N'  AS SHARE_YN 
+                        FROM   TBL_EXP_SCHEDULE A
+                        WHERE  1 = 1
+                        <if test='userListYn == "Y"' >
+                            AND    A.USER_ID    IN 
+                            <foreach collection="userIdList" item="userId" index="index" open="(" separator="," close=")">
+                                    #{userId}
+                            </foreach>
+                        </if>
+                        AND    A.LOOP_TYPE = 'YEAR'
+                        AND    A.LOOP_TYPE_DTL_CD IS NULL
+                )
+        ,TABLE_CODE AS ( 
+                      SELECT A.GRP_CODE_ID
+                            ,B.CODE_ID
+                            ,B.ATTR1
+                            ,B.ATTR2
+                      FROM   ${dbHdr}${comnHdr}TBL_EXP_GRPCODE A
+                             JOIN ${dbHdr}${comnHdr}TBL_EXP_CODE B
+                                 ON  1 = 1
+                                 AND B.DEL_YN = 'N'
+                                 AND A.GRP_CODE_ID =  B.GRP_CODE_ID
+                      WHERE  1 = 1
+                      AND    A.DEL_YN = 'N'
+                      AND    A.GRP_CODE_ID = 'SCHEDULE_WORK_TYPE'
+        )
+        SELECT A.SCHEDULE_ID
+              ,A.TITLE   AS TITLE_ORG
+              ,A.TITLE1  AS TITLE
+              ,A.CONTRACT_ID 
+              ,A.USER_ID
+              ,GET_USER_NM(A.USER_ID) AS USER_NM
+              ,A.POSITION
+              ,A.WORK_TYPE
+              ,A.WORK_TYPE_NM
+              ,A.DESCRIPTION
+              ,A.SCHEDULE_DATE
+              ,A.SCHEDULE_START_DATE
+              ,A.START_TIME_HOUR
+              ,A.START_TIME_MINUTE
+              ,A.SCHEDULE_END_DATE
+              ,A.END_TIME_HOUR
+              ,A.END_TIME_MINUTE
+              ,A.WORK_COLOR
+              ,A.TEXT_COLOR
+        FROM   (
+            /* 월의 마지막날-자동 */
+            SELECT SCHEDULE_ID
+                  ,TITLE
+                  ,'['||GET_USER_NM(USER_ID)||']'||TITLE    AS TITLE1 
+                  ,CONTRACT_ID
+                  ,USER_ID
+                  ,POSITION
+                  ,WORK_TYPE
+                  ,DESCRIPTION
+                  ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                  ,START_TIME_HOUR
+                  ,START_TIME_MINUTE
+                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')) + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                  ,END_TIME_HOUR
+                  ,END_TIME_MINUTE
+                  ,SHARE_YN
+                  ,B.ATTR1              AS WORK_COLOR
+                  ,B.ATTR2              AS TEXT_COLOR
+            FROM   TABLE_END_DAY
+                   LEFT OUTER JOIN TABLE_CODE B
+                       ON  1 = 1
+                       AND TABLE_END_DAY.WORK_TYPE = B.CODE_ID  
+            WHERE  1 = 1
+            AND    SUBSTR( TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+            AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+            UNION ALL
+            /* 월의 마지막날-선택 */
+            SELECT SCHEDULE_ID
+                  ,TITLE
+                  ,'['||GET_USER_NM(USER_ID)||']'||TITLE    AS TITLE1 
+                  ,CONTRACT_ID
+                  ,USER_ID
+                  ,POSITION
+                  ,WORK_TYPE
+                  ,DESCRIPTION
+                  ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                  ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)|| LPAD(LOOP_TYPE_DTL_VAL, 2, '0'), 'YYYY-MM-DD'), 'YYYY-MM-DD')    AS SCHEDULE_START_DATE
+                  ,START_TIME_HOUR
+                  ,START_TIME_MINUTE
+                  ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)|| LPAD(LOOP_TYPE_DTL_VAL, 2, '0'), 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                  ,END_TIME_HOUR
+                  ,END_TIME_MINUTE
+                  ,SHARE_YN
+                  ,B.ATTR1              AS WORK_COLOR
+                  ,B.ATTR2              AS TEXT_COLOR
+            FROM   TABLE_SELECT_DAY
+                   LEFT OUTER JOIN TABLE_CODE B
+                       ON  1 = 1
+                       AND TABLE_SELECT_DAY.WORK_TYPE = B.CODE_ID  
+            WHERE  1 = 1
+            AND    SUBSTR(TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD'),9,2) = LPAD(LOOP_TYPE_DTL_VAL, 2, '0')
+            AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)  
+            UNION ALL
+            /* 월의 일반날 */
+            SELECT SCHEDULE_ID
+                  ,TITLE
+                  ,'['||GET_USER_NM(USER_ID)||']'||TITLE    AS TITLE1
+                  ,CONTRACT_ID
+                  ,USER_ID 
+                  ,POSITION
+                  ,WORK_TYPE
+                  ,DESCRIPTION
+                  ,GET_CODE_NM('SCHEDULE_WORK_TYPE', WORK_TYPE) AS WORK_TYPE_NM
+                  ,TO_CHAR(LAST_DAY(TO_DATE(#{startDate}, 'YYYY-MM-DD')), 'YYYY-MM-DD')    AS SCHEDULE_DATE 
+                  ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)|| LPAD(SCHEDULE_START_DAY, 2, '0'), 'YYYY-MM-DD'), 'YYYY-MM-DD')     AS SCHEDULE_START_DATE
+                  ,START_TIME_HOUR
+                  ,START_TIME_MINUTE
+                  ,TO_CHAR(TO_DATE(SUBSTR(#{startDate},0,8)|| LPAD(SCHEDULE_START_DAY, 2, '0'), 'YYYY-MM-DD') + DATE_DIFFER, 'YYYY-MM-DD') AS SCHEDULE_END_DATE
+                  ,END_TIME_HOUR
+                  ,END_TIME_MINUTE
+                  ,SHARE_YN
+                  ,B.ATTR1              AS WORK_COLOR
+                  ,B.ATTR2              AS TEXT_COLOR
+            FROM   TABLE_BASE
+                   LEFT OUTER JOIN TABLE_CODE B
+                       ON  1 = 1
+                       AND TABLE_BASE.WORK_TYPE = B.CODE_ID
+            WHERE  1 = 1
+            AND    SUBSTR( TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD'),6,2) = SUBSTR(#{startDate},6,2)
+        ) A
+        JOIN (   
+              SELECT DISTINCT CONTRACT_ID 
+              FROM   TBL_EXP_TEAM_MEMBER
+              WHERE  1 = 1
+              AND    USER_ID    = #{sessionVo.userId}
+        ) B
+            ON  1 = 1
+            AND A.CONTRACT_ID = B.CONTRACT_ID
+        WHERE 1 = 1
+        <if test='periodYn == "Y"' >
+                AND (
+                        ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_START_DATE AND  A.SCHEDULE_START_DATE <![CDATA[<=]]> #{endDate} ) OR  
+                        ( A.SCHEDULE_START_DATE <![CDATA[<=]]> #{startDate} AND #{endDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE)  OR  
+                        ( #{startDate} <![CDATA[<=]]> A.SCHEDULE_END_DATE AND A.SCHEDULE_END_DATE <![CDATA[<=]]> #{endDate} )  
+                    )
+        </if>
+        <if test=" contractId != null and contractId != '' " >
+            AND   A.CONTRACT_ID = #{contractId}
+            AND   A.USER_ID IN  (
+                                   SELECT USER_ID 
+                                   FROM   TBL_EXP_TEAM_MEMBER 
+                                   WHERE  CONTRACT_ID = #{contractId}
+                                   AND    USER_ID !   = #{sessionVo.userId}
+                                )
+        </if>
+        <if test=" searchData != null and searchData != '' " >
+            AND   A.TITLE LIKE '%'||#{searchData}||'%'
+        </if>
+    </select> 
+     
+    <update id="updateGoogleSchedule" parameterType="java.util.HashMap"  flushCache="true"  >
+        /*  schedule.updateGoogleSchedule */
+        UPDATE TBL_EXP_SCHEDULE        
+        SET    UPDATE_USER              = #{userId}
+              ,UPDATE_DATE              = SYSDATE
+              <if test=" title != null and title != '' " >
+                  ,TITLE = #{title, jdbcType=VARCHAR}
+              </if>
+              <if test=" scheduleStartDate != null and scheduleStartDate != '' " >
+                  ,SCHEDULE_START_DATE = (TO_DATE(#{scheduleStartDate}, 'yyyy-mm-dd'))
+              </if>
+              <if test=" startTimeH != null and startTimeH != '' " >
+                  ,START_TIME_HOUR = #{startTimeH, jdbcType=VARCHAR}
+              </if>
+              <if test=" startTimeM != null and startTimeM != '' " >
+                  ,START_TIME_MINUTE = #{startTimeM, jdbcType=VARCHAR}
+              </if>
+              <if test=" scheduleEndDate != null and scheduleEndDate != '' " >
+                  ,SCHEDULE_END_DATE = (TO_DATE(#{scheduleEndDate}, 'yyyy-mm-dd'))
+              </if>
+              <if test=" endTimeH != null and endTimeH != '' " >
+                  ,END_TIME_HOUR = #{endTimeH, jdbcType=VARCHAR}
+              </if>
+              <if test=" endTimeM != null and endTimeM != '' " >
+                  ,END_TIME_MINUTE = #{endTimeM, jdbcType=VARCHAR}
+              </if>
+              <if test=" description != null and description != '' " >
+                  ,DESCRIPTION = #{description, jdbcType=VARCHAR}
+              </if>
+              <if test=" position != null and position != '' " >
+                  ,POSITION = #{position, jdbcType=VARCHAR}
+              </if>
+        WHERE 1 = 1
+        AND    USER_ID     = #{userId}
+        <if test=" googleCalendarId != null and googleCalendarId != '' " >
+            AND    GOOGLE_CALENDAR_EVENT_ID = #{googleCalendarId}
+        </if>
+    </update>
+    
+    <update id="updateGoogleSchedule1" parameterType="java.util.HashMap"  flushCache="true"  >
+        /*  schedule.updateGoogleSchedule1 */
+        UPDATE TBL_EXP_SCHEDULE        
+        SET    UPDATE_USER              = #{userId}
+              ,UPDATE_DATE              = SYSDATE
+              <if test=" googleCalendarEventId != null and googleCalendarEventId != '' " >
+                  ,GOOGLE_CALENDAR_EVENT_ID = #{googleCalendarEventId}
+              </if>
+        WHERE 1 = 1
+        AND    USER_ID     = #{userId}
+        AND    SCHEDULE_ID = #{scheduleId}
+    </update>
+    
+    <select id="getUserInfo" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getUserInfo */
+        SELECT GOOGLE_CALENDAR_ID
+              ,GOOGLE_CALENDAR_SYN_YN
+        FROM   TBL_EXP_USER
+        WHERE  1 = 1
+        AND    USER_ID    = #{sessionVo.userId}
+    </select> 
+    
+    <update id="saveUserGoogleCalendar" parameterType="map" >
+        /* schedule.saveUserGoogleCalendar */
+        UPDATE TBL_EXP_USER SET
+             GOOGLE_CALENDAR_ID      = #{googleCalendarId}
+            ,GOOGLE_CALENDAR_SYN_YN  = #{googleCalendarSynYn}
+            ,UPDATE_USER             = #{sessionVo.userId}
+            ,UPDATE_DATE             = sysdate
+        WHERE 1=1
+        AND    USER_ID    = #{sessionVo.userId}   
+    </update>
+    
+    <select id="getScheduleDel" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getScheduleDel */
+        SELECT MAX(SCHEDULE_EXIST)     AS SCHEDULE_EXIST
+              ,MAX(SCHEDULE_DEL_EXIST) AS SCHEDULE_DEL_EXIST
+        FROM   (
+                    /* SCHEDULE_DEL 에 존재하는지 확인*/
+                    SELECT NULL                          AS SCHEDULE_EXIST
+                          ,DECODE(COUNT(1), 0, 'N', 'Y') AS SCHEDULE_DEL_EXIST
+                    FROM   TBL_EXP_SCHEDULE_DEL
+                    WHERE  1 = 1
+                    AND    GOOGLE_CALENDAR_EVENT_ID = #{googleCalendarEventId}
+                    UNION ALL
+                    /* SCHEDULE 에 존재하는지 확인*/
+                    SELECT DECODE(COUNT(1), 0, 'N', 'Y')  AS SCHEDULE_EXIST
+                          ,NULL                           AS SCHEDULE_DEL_EXIST
+                    FROM   TBL_EXP_SCHEDULE
+                    WHERE  1 = 1
+                    AND    GOOGLE_CALENDAR_EVENT_ID = #{googleCalendarEventId}
+               )
+    </select>
+    
+    <!-- 일정 입력  이응규 -->
+    <insert id="insertGoogleSchedule" parameterType="map" >
+        /* schedule.insertGoogleSchedule */
+        INSERT INTO TBL_EXP_SCHEDULE (
+              SCHEDULE_ID            
+             ,LOOP_TYPE              
+             ,LOOP_TYPE_DTL_CD
+                    
+             ,LOOP_TYPE_DTL_VAL      
+             ,SCHEDULE_LOOP_END_DATE 
+             ,TITLE                  
+             ,WORK_TYPE             
+             ,TIME_TYPE
+                           
+             ,SCHEDULE_START_DATE    
+             ,START_TIME_HOUR        
+             ,START_TIME_MINUTE      
+             ,SCHEDULE_END_DATE      
+             ,END_TIME_HOUR
+                       
+             ,END_TIME_MINUTE        
+             ,CONTRACT_ID            
+             ,POSITION               
+             ,SECRET_YN              
+             ,DESCRIPTION
+                         
+             ,USER_ID    
+             ,GOOGLE_CALENDAR_EVENT_ID            
+             ,CREATE_USER            
+             ,CREATE_DATE         
+        )
+        VALUES(
+              #{scheduleId, jdbcType=VARCHAR}
+             ,#{loopType, jdbcType=VARCHAR}
+             ,#{loopTypeDtlCd, jdbcType=VARCHAR}
+             
+             ,#{loopTypeDtlVal, jdbcType=VARCHAR}
+             ,(TO_DATE(#{loopLimitDate}, 'yyyy-mm-dd'))
+             ,#{title, jdbcType=VARCHAR}
+             ,#{workType, jdbcType=VARCHAR}
+             ,#{timeType, jdbcType=VARCHAR}
+             
+             ,(TO_DATE(#{scheduleStartDate}, 'yyyy-mm-dd'))
+             ,#{startTimeH, jdbcType=VARCHAR}
+             ,#{startTimeM, jdbcType=VARCHAR}                                      
+             ,(TO_DATE(#{scheduleEndDate}, 'yyyy-mm-dd'))
+             ,#{endTimeH, jdbcType=VARCHAR}
+             
+             ,#{startTimeM, jdbcType=VARCHAR}
+             ,#{contractId, jdbcType=VARCHAR}
+             ,#{position, jdbcType=VARCHAR}
+             ,#{secretYn, jdbcType=VARCHAR}
+             ,#{description, jdbcType=VARCHAR}
+             
+             ,#{userId, jdbcType=VARCHAR}
+             ,#{googleCalendarEventId, jdbcType=VARCHAR}
+             ,#{userId, jdbcType=VARCHAR}                                
+             ,SYSDATE  
+        )
+    </insert>
+    
+    <select id="getScheduleGoogle" resultType="java.util.HashMap" flushCache="true"  useCache="false">
+        /* schedule.getScheduleGoogle */
+        SELECT SCHEDULE_ID            
+              ,LOOP_TYPE              
+              ,LOOP_TYPE_DTL_CD       
+              ,LOOP_TYPE_DTL_VAL      
+              ,TO_CHAR(SCHEDULE_LOOP_END_DATE,'YYYY-MM-DD')  AS SCHEDULE_LOOP_END_DATE 
+              ,TITLE                  
+              ,WORK_TYPE              
+              ,ALL_APPLY_YN        
+              ,TO_CHAR(SCHEDULE_START_DATE,'YYYY-MM-DD') AS SCHEDULE_START_DATE 
+              ,TO_CHAR(SCHEDULE_END_DATE,'YYYY-MM-DD')   AS SCHEDULE_END_DATE  
+              ,TIME_TYPE              
+              ,START_TIME_HOUR        
+              ,START_TIME_MINUTE      
+              ,END_TIME_HOUR          
+              ,END_TIME_MINUTE        
+              ,CONTRACT_ID            
+              ,POSITION               
+              ,SECRET_YN              
+              ,DESCRIPTION            
+              ,USER_ID
+              ,UPDATE_USER            
+              ,UPDATE_DATE            
+              ,CREATE_USER
+              ,CREATE_DATE
+              ,GOOGLE_CALENDAR_EVENT_ID
+              ,DECODE(GOOGLE_CALENDAR_EVENT_ID,NULL,'N','Y') AS GOOGLE_YN
+        FROM   TBL_EXP_SCHEDULE
+        WHERE  1 = 1
+        <if test=" userId != null and userId != '' " >
+            AND    USER_ID     = #{userId}
+        </if>
+        <if test=" startDay != null and startDay != '' " >
+            AND   SCHEDULE_START_DATE BETWEEN TO_DATE( #{startDay}, 'YYYY-MM-DD HH24:MI:SS')   AND  TO_DATE( #{endDay}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+    </select>
+</mapper>

@@ -1,0 +1,112 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@compId> = {
+		 loadComponent : function(selectList) {
+
+			// Code List 읽어오기
+			//var group1CdList = C_COM.getBrandCodeList(<@compId>.brandId, "STORE_MENU_GROUP1");
+
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "headerManage.getStoreSalesMenuList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_STORE_MENU_SALES_MST"
+					,columnMap 		: {
+						  "MENU_SALES_ID"		: { headerText : "메뉴매출ID"				 , hidden 	: "Y", ifNewAutoSet : "random"	}
+						 ,"STORE_ID"       		: { headerText : "지점ID"    				 , hidden 	: "Y", default : ()=>{ return G_VAL.current.storeId}	}
+						 ,"STORE_NM"       		: { headerText : "지점명"    	,noSave : "Y", hidden 	: "Y"						}
+						 ,"BRAND_MENU_CD"  		: { headerText : "본사메뉴CD"   ,noSave : "Y", hidden 	: "Y"						}
+						 ,"MENU_CD" 			: { headerText : "메뉴CD"   				 										}
+						 ,"MENU_NM"       		: { headerText : "Mst메뉴명"    ,noSave : "Y", width  	: "210px", align : "left"	}
+						 ,"STORE_MENU_NM" 		: { headerText : "메뉴명"    	,noSave : "Y", width  	: "210px", align : "left"	}
+						 ,"YYYYMMDD"       		: { headerText : "년월일"   	,dataType : "date", saveType : "text"				}
+						 ,"STORE_SELLING_PRICE" : { headerText : "판매단가" 	,noSave : "Y",dataType : "number"					}
+						 ,"SALES_QUANTITY" 		: { headerText : "판매횟수"  														}
+						 ,"SALES"          		: { headerText : "판매가"    	,dataType : "number"								}
+
+						 
+					}
+					,primaryKeyList		: ["MENU_SALES_ID"]
+					,searchColumnList	: ["A.MENU_NM", "A.STORE_MENU_NM", "YEAR"]	
+					,orderColumnList 	: ["YYYYMMDD"]		
+					,searchWhereMap		: {"B.BRAND_ID" : G_VAL.session.BRAND_ID }
+					,useRuntimeLoad		: 100
+					//,updateOnly			: "Y"
+					//,gridWidth			: "1800px"
+				 }
+				,noTitle 			: "Y"
+				,noBreadcrumb		: "Y"
+				,optionConfig		: {
+					searchComponentList : [
+						 {
+							 type			: "singleSelectBoxByFilter"	
+							,title			: "가맹점"
+							,whereColumn	: "A.STORE_ID"
+							,targetColumn	: "STORE_NM"
+							,optionList 	: selectList
+							,defaultVal		: G_VAL.current.storeId
+							,onChange		: function(selectVal, thisComp) {
+								G_VAL.current.storeId = selectVal;
+								thisComp.refreshOption("menuCd");
+								thisComp.refreshOption("mstMenuCd");
+								thisComp.reload();
+							 }
+						 }
+						,{
+							 id				: "mstMenuCd"
+							,type			: "multiSelectBox"	
+							,title			: "본사메뉴명"
+							,whereColumn	: "A.BRAND_MENU_CD"
+							,optionList 	: function() {
+								var parm = {
+									 queryId 		: "headerManage.getBrandMenuList"
+									,requestParm	: { 
+										 BRAND_ID : G_VAL.session.BRAND_ID 
+									 }
+									,noLoadingBar	: "Y"
+								}
+								let resultData = C_COM.requestQuery(parm);
+					        	let selectList = C_COM.makeCodeList(resultData.data, "BRAND_MENU_CD", "MENU_NM");
+								return selectList;
+							 }
+						}
+						,{
+							 id				: "menuCd"
+							,type			: "multiSelectBox"	
+							,title			: "메뉴명"
+							,whereColumn	: "A.MENU_CD"
+							,optionList 	: function() {
+								var parm = {
+									 queryId 		: "headerManage.getStoreMenuList"
+									,requestParm	: { 
+										 BRAND_ID : G_VAL.session.BRAND_ID 
+										,STORE_ID : G_VAL.current.storeId 
+									 }
+									,noLoadingBar	: "Y"
+								}
+								let resultData = C_COM.requestQuery(parm);
+					        	let selectList = C_COM.makeCodeList(resultData.data, "MENU_CD", "MENU_NM");
+								return selectList;
+							 }
+						}
+					]
+				 }		
+			}
+			C_COMP.import("<@compId>_editor", "component_compTableEditor",sendParm , function() {});		
+		 }
+	}
+	// Component Load가 완료된후 실행 된다.
+	C_COMP.onLoadComp("<@compId>", function(data) {
+		
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@compId>.loadComponent(selectList);	
+		}, true);
+	});
+</script>
+<component>
+    <!-- table area start -->
+	<compnent id="<@compId>_editor"></compnent>    
+    <!-- table area end -->
+</component>

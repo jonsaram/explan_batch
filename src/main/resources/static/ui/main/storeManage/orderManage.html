@@ -1,0 +1,126 @@
+<meta charset="utf-8">
+<script type="text/javascript">
+	var <@pageId> = {
+		 brandId	: G_VAL.session.BRAND_ID
+		,loadComponent : function(selectList) {
+			let sendParm = {
+				gridParm : {
+					 requestQuery 	: {
+						  queryId		: "storeManage.getOrderList"
+						 ,requestParm	: {}
+					 }	
+					,tableName		: "TBL_EXP_ORDER_PRODUCT"
+					,columnMap 		: {
+						 "ORDER_ID" 			: { headerText : "주문ID"	}
+						,"ORDER_DATE" 			: { headerText : "주문일시"	}
+						,"STATE"				: { headerText : "상태"		, columnType : "selectbox", useCodeId : "ORDER_STATE" 	}
+						,"CANCEL_ORDER"			: { headerText : "Action"	}
+						,"PRODUCT_CD" 			: { headerText : "제품CD"	}
+						,"PRODUCT_NM" 			: { headerText : "제품명"	}
+						,"ORDER_CNT" 			: { headerText : "개수"		}
+						,"CONVERSION_QUANTITY" 	: { headerText : "용량"		,dataType : "number"}
+						,"UNIT_PRICE"			: { headerText : "단가"		,dataType : "number"}
+						,"UNIT"					: { headerText : "단위"		, hidden : "Y"}
+					 }
+					,columnConfig 	: {
+						makeCellViewData	: {
+							 "CONVERSION_QUANTITY" : function(cellText, rowData) {
+								return `${cellText} ${rowData.UNIT}`;
+							 }
+							,"CANCEL_ORDER" : function(cellText, rowData) {
+								if(isEmpty(rowData.ORDER_ID)) {
+									return "";	
+								} else {
+									if			(rowData.STATE == "RQST") {
+										return `<button class="outline-btn" type="button" onClick="<@pageId>.cancelOrder('${rowData.ORDER_ID}', '${rowData.ORDER_DATE}');">주문취소</button>`;
+									} else if	(rowData.STATE == "CNSL") {
+										return `<button class="outline-btn" type="button" onClick="<@pageId>.reOrder('${rowData.ORDER_ID}', '${rowData.ORDER_DATE}');">주문복원</button>`;
+									}
+								}
+							 }
+						 }
+					 }
+					,primaryKeyList		: ["ORDER_ID"		, "PRODUCT_CD"]
+					,searchColumnList	: ["B.PRODUCT_CD"	, "PRODUCT_NM"]
+					,searchWhereMap		: {"BRAND_ID" : G_VAL.session.BRAND_ID }
+					,orderColumnList 	: ["A.ORDER_DATE DESC", "B.PRODUCT_CD"]
+					,cellMergeList		: [["ORDER_ID"		, "CANCEL_ORDER", 1]]
+				 }
+				,optionConfig		: {
+					selectBoxForSearchConfig : {
+						 title			: "가맹점"
+						,whereColumn	: "STORE_ID"
+						,targetColumn	: "STORE_NM"
+						,optionList 	: selectList
+						,selectVal		: G_VAL.current.storeId
+						,onChange		: function(selectVal, thisObj) {
+							G_VAL.current.storeId = selectVal;
+							thisObj.reload();
+						 }
+					}
+				 }
+				,noEdit : "Y"
+				/*
+				,editButtonTitle : "주문요청"
+				,callbackEditButton : function(parm) {
+					
+					let storeId = <@pageId>.gridEditor.selectBoxValue;
+					
+					C_POP.open("popup_storeManage_requestOrderPopup", { storeId : storeId }, function(retData){
+
+					});
+				 }
+				*/
+			
+			}
+			C_COMP.import("gridEditor", "component_compTableEditor",sendParm , function() {});		
+		 }
+		,cancelOrder : function(orderId, orderDate) {
+			C_POP.confirm(`${orderDate}에 요청하신 주문을 취소 하시겠습니까? `, function() {
+				// 주문 취소 하기			
+				var parm = {
+					 queryId 		: "storeManage.updateOrderState"
+					,requestParm	: {
+						 ORDER_ID 	: orderId
+						,STATE		: "CNSL"
+					}
+				}
+		        C_COM.requestQuery(parm, function(resultData) {
+					C_POP.alert('주문요청이 취소되었습니다.');
+					<@pageId>.gridEditor.reload();
+				});
+			});
+		 }
+		,reOrder : function(orderId, orderDate) {
+			C_POP.confirm(`${orderDate}에 취소하신 주문을 복원 하시겠습니까? `, function() {
+				// 주문 취소 하기			
+				var parm = {
+					 queryId 		: "storeManage.updateOrderState"
+					,requestParm	: {
+						 ORDER_ID 	: orderId
+						,STATE		: "RQST"
+					}
+				}
+		        C_COM.requestQuery(parm, function(resultData) {
+					C_POP.alert('주문요청 취소가 복원 되었습니다.');
+					<@pageId>.gridEditor.reload();
+				});
+			});
+		 }
+	}
+	// Page Load가 완료된후 실행 된다.
+	C_PM.onLoadPage("<@pageId>", function(parm) {
+		C_COM.getStoreList(G_VAL.session.BRAND_ID, function(selectList) {
+			<@pageId>.loadComponent(selectList);	
+		});
+	});
+	// History back으로 이동해왔을 경우 이루틴이 실행된다.
+	C_HM.onReturn("<@pageId>", function(pageId, data) {
+
+	});
+</script>
+<page-component>
+    <!-- table area start -->
+	<compnent id="gridEditor"></compnent>    
+    <!-- table area end -->
+</page-component>
