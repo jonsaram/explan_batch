@@ -90,7 +90,7 @@
 				let LOGIN_NM = isEmpty(G_VAL.session.USER_NM)? G_VAL.session.LOGIN_NM :G_VAL.session.LOGIN_NM+'('+G_VAL.session.USER_NM+')'; 
 				$("#loginUserNm").html(LOGIN_NM);	
 
-				C_PM.movePage("main_dashboard");
+				C_PM.movePage("exeBatch");
 
 				//C_PM.movePage("main_mainPage");
 				//C_PM.movePage("sample_mainPageSample");
@@ -152,6 +152,7 @@
 			,subMenuList	: []
 			,currentSubMenuId : ""
 			,initMenu : function() {
+				return;
 				var parm = {
 					 queryId 		: "system.getMenuList"
 					,requestParm	: {USE_YN : "Y"}
