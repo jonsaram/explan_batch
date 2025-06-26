@@ -1,0 +1,18 @@
+{
+	"sbox1": [
+		{
+			"val": "PRIME",
+			"txt": "전용"
+		},
+		{
+			"val": "RECMD",
+			"txt": "권장"
+		}
+	],
+	"sbox2": "obong_a00250",
+	"sbox4": {
+		"start": "2024-05-07",
+		"end": "2025-05-07",
+		"type": "range"
+	}
+}
